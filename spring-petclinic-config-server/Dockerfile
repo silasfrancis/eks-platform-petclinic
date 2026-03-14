@@ -7,13 +7,12 @@ COPY pom.xml .
 
 COPY spring-petclinic-config-server/pom.xml ./spring-petclinic-config-server/
 
-RUN mvn -B -q dependency:go-offline
-
 COPY spring-petclinic-config-server/microservices-config ./spring-petclinic-config-server/config
 
 COPY spring-petclinic-config-server/src ./spring-petclinic-config-server/src
 
-RUN mvn -B -q -f spring-petclinic-config-server/pom.xml package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -q -f spring-petclinic-config-server/pom.xml package -DskipTests
 
 FROM gcr.io/distroless/java17-debian13@sha256:e2844953049b92ed317e208fc50634f46e8fe51a0cef9522863ad18e393ef65a
 WORKDIR /app

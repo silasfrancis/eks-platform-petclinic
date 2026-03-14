@@ -7,11 +7,10 @@ COPY pom.xml .
 
 COPY spring-petclinic-genai-service/pom.xml ./spring-petclinic-genai-service/
 
-RUN mvn -B -q dependency:go-offline
-
 COPY spring-petclinic-genai-service/src ./spring-petclinic-genai-service/src
 
-RUN mvn -B -q -f spring-petclinic-genai-service/pom.xml package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -q -f spring-petclinic-genai-service/pom.xml package -DskipTests
 
 FROM gcr.io/distroless/java17-debian13@sha256:e2844953049b92ed317e208fc50634f46e8fe51a0cef9522863ad18e393ef65a
 WORKDIR /app

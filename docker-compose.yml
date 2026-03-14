@@ -134,6 +134,8 @@ services:
     ports:
       - "8084:8084"
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
   api-gateway:

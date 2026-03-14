@@ -40,6 +40,7 @@ services:
       context: .
       dockerfile: spring-petclinic-discovery-server/Dockerfile
     container_name: discovery-server
+    restart: on-failure
     mem_limit: 256m
     depends_on:
       config-server:
@@ -53,6 +54,7 @@ services:
       dockerfile: spring-petclinic-customers-service/Dockerfile
     container_name: customers-service
     mem_limit: 512m
+    restart: on-failure
     depends_on:
       config-server:
         condition: service_started
@@ -74,11 +76,14 @@ services:
       context: .
       dockerfile: spring-petclinic-visits-service/Dockerfile
     container_name: visits-service
+    restart: on-failure
     mem_limit: 512m
     depends_on:
       config-server:
         condition: service_started
       discovery-server:
+        condition: service_started
+      customers-service:
         condition: service_started
       mysql:
         condition: service_healthy
@@ -97,10 +102,13 @@ services:
       dockerfile: spring-petclinic-vets-service/Dockerfile
     container_name: vets-service
     mem_limit: 512m
+    restart: on-failure
     depends_on:
       config-server:
         condition: service_started
       discovery-server:
+        condition: service_started
+      customers-service:
         condition: service_started
       mysql:
         condition: service_healthy
@@ -119,6 +127,7 @@ services:
       dockerfile: spring-petclinic-genai-service/Dockerfile
     container_name: genai-service
     mem_limit: 256m
+    restart: on-failure
     depends_on:
       config-server:
         condition: service_started
@@ -135,6 +144,7 @@ services:
       dockerfile: spring-petclinic-api-gateway/Dockerfile
     container_name: api-gateway
     mem_limit: 512m
+    restart: on-failure
     depends_on:
       config-server:
         condition: service_started
@@ -151,6 +161,7 @@ services:
       dockerfile: spring-petclinic-admin-server/Dockerfile
     container_name: admin-server
     mem_limit: 256m
+    restart: on-failure
     depends_on:
       config-server:
         condition: service_started

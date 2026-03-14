@@ -16,7 +16,7 @@ FROM gcr.io/distroless/java17-debian13@sha256:e2844953049b92ed317e208fc50634f46e
 WORKDIR /app
 
 COPY --from=builder --chown=nonroot:nonroot \
-  /app/spring-petclinic-admin-server/target/spring-petclinic-admin-server-[0-9]*.jar app.jar
+  /app/spring-petclinic-admin-server/target/app.jar app.jar
 
 USER nonroot
 

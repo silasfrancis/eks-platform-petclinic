@@ -21,7 +21,7 @@ ENV SPRING_PROFILES_ACTIVE=native
 ENV CONFIG_DIR=/config
 
 COPY --from=builder --chown=nonroot:nonroot \
-  /app/spring-petclinic-config-server/target/spring-petclinic-config-server-[0-9]*.jar app.jar
+  /app/spring-petclinic-config-server/target/app.jar app.jar
 
 COPY --from=builder --chown=nonroot:nonroot \
 /app/spring-petclinic-config-server/config /config

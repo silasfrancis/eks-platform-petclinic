@@ -18,7 +18,7 @@ WORKDIR /app
 ENV SPRING_PROFILES_ACTIVE=docker,mysql
 
 COPY --from=builder --chown=nonroot:nonroot \
-  /app/spring-petclinic-customers-service/target/spring-petclinic-customers-service-[0-9]*.jar app.jar
+  /app/spring-petclinic-customers-service/target/app.jar app.jar
 
 USER nonroot
 

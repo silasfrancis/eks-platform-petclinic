@@ -169,6 +169,7 @@ services:
       - "9090:9090"
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
 
   tracing-server:
     image: openzipkin/zipkin

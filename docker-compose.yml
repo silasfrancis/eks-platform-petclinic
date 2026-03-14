@@ -83,8 +83,6 @@ services:
         condition: service_started
       discovery-server:
         condition: service_started
-      customers-service:
-        condition: service_started
       mysql:
         condition: service_healthy
     ports:
@@ -107,8 +105,6 @@ services:
       config-server:
         condition: service_started
       discovery-server:
-        condition: service_started
-      customers-service:
         condition: service_started
       mysql:
         condition: service_healthy

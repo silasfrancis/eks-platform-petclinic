@@ -47,6 +47,8 @@ services:
         condition: service_started
     ports:
       - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
 
   customers-service:
     build:

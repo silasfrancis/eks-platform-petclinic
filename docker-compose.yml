@@ -167,6 +167,8 @@ services:
         condition: service_started
     ports:
       - "9090:9090"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
 
   tracing-server:
     image: openzipkin/zipkin

@@ -3,4 +3,4 @@ spring:
     config:
       server:
         native:
-          searchLocations: file:///${GIT_REPO}
+          searchLocations: file:///${CONFIG_DIR}

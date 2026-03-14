@@ -20,52 +20,44 @@ services:
       retries: 5
 
   config-server:
-    image: springcommunity/spring-petclinic-config-server
+    build:
+      context: .
+      dockerfile: spring-petclinic-config-server/Dockerfile
     container_name: config-server
-    mem_limit: 512m
-    healthcheck:
-      test: ["CMD", "curl", "-I", "http://config-server:8888"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 60s 
+    mem_limit: 256m
     ports:
       - "8888:8888"
     environment:
       SPRING_PROFILES_ACTIVE: native
-      GIT_REPO: /config
+      CONFIG_DIR: /config
       MYSQL_HOST: mysql
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-    volumes:
-      - ./microservices-config:/config
 
   discovery-server:
-    image: springcommunity/spring-petclinic-discovery-server
+    build:
+      context: .
+      dockerfile: spring-petclinic-discovery-server/Dockerfile
     container_name: discovery-server
-    mem_limit: 512m
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://discovery-server:8761"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 120s
+    mem_limit: 256m
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8761:8761"
 
   customers-service:
-    image: springcommunity/spring-petclinic-customers-service
+    build:
+      context: .
+      dockerfile: spring-petclinic-customers-service/Dockerfile
     container_name: customers-service
     mem_limit: 512m
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       discovery-server:
-        condition: service_healthy
+        condition: service_started
       mysql:
         condition: service_healthy
     ports:
@@ -78,14 +70,16 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
 
   visits-service:
-    image: springcommunity/spring-petclinic-visits-service
+    build:
+      context: .
+      dockerfile: spring-petclinic-visits-service/Dockerfile
     container_name: visits-service
     mem_limit: 512m
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       discovery-server:
-        condition: service_healthy
+        condition: service_started
       mysql:
         condition: service_healthy
     ports:
@@ -98,14 +92,16 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
 
   vets-service:
-    image: springcommunity/spring-petclinic-vets-service
+    build:
+      context: .
+      dockerfile: spring-petclinic-vets-service/Dockerfile
     container_name: vets-service
     mem_limit: 512m
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       discovery-server:
-        condition: service_healthy
+        condition: service_started
       mysql:
         condition: service_healthy
     ports:
@@ -118,68 +114,69 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
 
   genai-service:
-    image: springcommunity/spring-petclinic-genai-service
+    build:
+      context: .
+      dockerfile: spring-petclinic-genai-service/Dockerfile
     container_name: genai-service
-    mem_limit: 512m
+    mem_limit: 256m
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       discovery-server:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8084:8084"
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
   api-gateway:
-    image: springcommunity/spring-petclinic-api-gateway
+    build:
+      context: .
+      dockerfile: spring-petclinic-api-gateway/Dockerfile
     container_name: api-gateway
     mem_limit: 512m
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://api-gateway:8080"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       discovery-server:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: docker
 
+  admin-server:
+    build:
+      context: .
+      dockerfile: spring-petclinic-admin-server/Dockerfile
+    container_name: admin-server
+    mem_limit: 256m
+    depends_on:
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    ports:
+      - "9090:9090"
+
   tracing-server:
     image: openzipkin/zipkin
     container_name: tracing-server
-    mem_limit: 512m
+    mem_limit: 256m
     ports:
       - "9411:9411"
-
-  admin-server:
-    image: springcommunity/spring-petclinic-admin-server
-    container_name: admin-server
-    mem_limit: 512m
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-    ports:
-      - "9090:9090"
 
   grafana-server:
     build: ./docker/grafana
     container_name: grafana-server
-    mem_limit: 256m
+    mem_limit: 128m
     ports:
       - "3030:3000"
 
   prometheus-server:
     build: ./docker/prometheus
     container_name: prometheus-server
+    mem_limit: 128m
     ports:
       - "9091:9090"
     healthcheck:

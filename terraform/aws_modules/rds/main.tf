@@ -20,6 +20,11 @@ resource "aws_db_parameter_group" "mysql" {
   }
 
   parameter {
+    name  = "max_execution_time"
+    value = "30000"  
+  }
+
+  parameter {
     name  = "log_output"
     value = "FILE"
   }
@@ -71,16 +76,5 @@ resource "aws_db_instance" "main" {
 
   lifecycle {
     ignore_changes = [password]  
-  }
-}
-
-resource "aws_db_snapshot" "pre_deploy" {
-  db_instance_identifier = aws_db_instance.main.identifier
-  db_snapshot_identifier = "${var.env}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
-
-  tags = { Purpose = "pre-deployment snapshot" }
-
-  lifecycle {
-    ignore_changes = [db_snapshot_identifier] 
   }
 }

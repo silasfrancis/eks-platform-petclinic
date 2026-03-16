@@ -93,3 +93,18 @@ resource "aws_iam_role" "vpc_flow_logs_role" {
     ]
   })
 }
+
+resource "aws_iam_role" "rds_enhanced_monitoring" {
+  name = "${var.env}-rds-monitoring-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { 
+        Service = "monitoring.rds.amazonaws.com" 
+      }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}

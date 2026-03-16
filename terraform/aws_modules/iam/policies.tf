@@ -34,6 +34,17 @@ resource "aws_iam_policy" "rds_export_policy" {
           "${var.rds_export_bucket_arn}",
           "${var.rds_export_bucket_arn}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = var.rds_export_kms_key_arn
       }
     ]
   })

@@ -25,6 +25,9 @@ resource "aws_kms_key" "eks_secrets" {
           "kms:GenerateDataKey"
         ],
         Resource = "*"
+        Condition = {
+          Bool = { "kms:GrantIsForAWSResource" = "true" }
+        }
       }
     ]
   })
@@ -57,6 +60,9 @@ resource "aws_kms_key" "infra_logs" {
           "kms:Describe*"
         ],
         Resource = "*"
+        Condition = {
+          StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        }
       }
     ]
   })
@@ -85,11 +91,62 @@ resource "aws_kms_key" "rds_data" {
           "kms:Encrypt",
           "kms:Decrypt",
           "kms:GenerateDataKey*",
-          "kms:CreateGrant"
+          "kms:CreateGrant",
+          "kms:DescribeKey"
         ],
         Resource = "*"
+        Condition = {
+          Bool = { "kms:GrantIsForAWSResource" = "true" }
+        }
       }
     ]
   })
 }
 
+resource "aws_kms_key" "eks_nodes_ebs" {
+  description             = "KMS Key for EKS Node EBS Encryption"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable Root Access",
+        Effect = "Allow",
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" },
+        Action   = "kms:*",
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow AutoScaling Service",
+        Effect = "Allow",
+        Principal = { 
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling" 
+        },
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ],
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow Attachment of Persistent Resources",
+        Effect = "Allow",
+        Principal = { 
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling" 
+        },
+        Action = [
+          "kms:CreateGrant"
+        ],
+        Resource = "*",
+        Condition = {
+          Bool = { "kms:GrantIsForAWSResource" = "true" }
+        }
+      }
+    ]
+  })
+}

@@ -40,7 +40,7 @@ variable "security_group_id" {
 
 variable "ami_type" {
     type = string
-  
+    # "AL2023_x86_64_STANDARD"
 }
 
 variable "disk_size" {
@@ -54,5 +54,9 @@ variable "instance_types" {
 }
 
 variable "kms_eks_secrets_arn" {
+  type = string
+}
+
+variable "kms_eks_nodes_ebs_arn" {
   type = string
 }

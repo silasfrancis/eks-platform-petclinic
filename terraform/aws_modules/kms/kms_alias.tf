@@ -12,3 +12,8 @@ resource "aws_kms_alias" "eks_secrets" {
   name          = "alias/${var.env}-eks-secrets"
   target_key_id = aws_kms_key.eks_secrets.key_id
 }
+
+resource "aws_kms_alias" "eks_nodes_ebs" {
+  name          = "alias/${var.env}-eks-nodes-ebs"
+  target_key_id = aws_kms_key.eks_nodes_ebs.key_id
+}

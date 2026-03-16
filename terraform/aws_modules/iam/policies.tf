@@ -1,12 +1,14 @@
 resource "aws_iam_policy" "read_secrets_policy" {
-  name        = "${var.env}-worker-nodes-secrets-read"
-  description = "Allows reading of a specific secret from AWS Secrets Manager for worker nodes"
+  name        = "${var.env}-jumphost-secrets-read"
+  description = "Allows reading of a specific secret from AWS Secrets Manager for jumphosts"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
+      Action   = [
+        "secretsmanager:GetSecretValue"
+      ]
       Resource = "arn:aws:secretsmanager:*:*:secret:${var.secret_name}*"
     }]
   })

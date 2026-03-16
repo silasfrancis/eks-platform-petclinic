@@ -61,7 +61,7 @@ resource "aws_iam_role" "jumphost_ec2_role" {
 }
 
 resource "aws_iam_role" "rds_export_role" {
-  name = "rds-snapshot-export-role"
+  name = "${var.env}-rds-snapshot-export-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -70,6 +70,23 @@ resource "aws_iam_role" "rds_export_role" {
         Effect = "Allow"
         Principal = {
           Service = "export.rds.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "vpc_flow_logs_role" {
+  name = "${var.env}-vpc-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }

@@ -36,3 +36,24 @@ resource "aws_iam_policy" "rds_export_policy" {
     ]
   })
 }
+
+resource "aws_iam_policy" "vpc_flow_log_policy" {
+  name = "${var.env}-vpc-flow-log-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}

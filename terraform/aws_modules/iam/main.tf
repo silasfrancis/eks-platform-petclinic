@@ -108,3 +108,29 @@ resource "aws_iam_role" "rds_enhanced_monitoring" {
     }]
   })
 }
+
+resource "aws_iam_role" "rds_export_lambda" {
+  name = "${var.env}-rds-export-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role" "slack_notifier_lambda" {
+  name = "${var.env}-slack-notifier-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}

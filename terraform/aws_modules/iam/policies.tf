@@ -70,3 +70,37 @@ resource "aws_iam_policy" "vpc_flow_log_policy" {
     ]
   })
 }
+
+resource "aws_iam_policy" "rds_export_lambda" {
+  name = "${var.env}-rds-export-lambda-policy"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["rds:StartExportTask", "rds:DescribeExportTasks", "rds:DescribeDBSnapshots"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = aws_iam_role.rds_export_role.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:GenerateDataKey*", "kms:Decrypt", "kms:DescribeKey"]
+        Resource = var.rds_export_kms_key_arn
+      }
+    ]
+  })
+}

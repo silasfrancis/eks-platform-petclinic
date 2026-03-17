@@ -6,6 +6,8 @@ output "roles" {
     rds_export_role     = aws_iam_role.rds_export_role.arn
     vpc_flow_logs_role  = aws_iam_role.vpc_flow_logs_role.arn
     rds_monitoring_role = aws_iam_role.rds_enhanced_monitoring.arn
+    slack_notifier_lambda_role = aws_iam_role.slack_notifier_lambda.arn
+    rds_export_lambda_role = aws_iam_role.rds_export_lambda.arn
   }
 }
 

@@ -54,7 +54,7 @@ variable "rds_export_kms_key_arn" {
   type = string
 }
 
-variable "run_snapshot_export" {
-  type    = bool
-  default = false
-}
+# variable "run_snapshot_export" {
+#   type    = bool
+#   default = false
+# }

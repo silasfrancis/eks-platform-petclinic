@@ -40,7 +40,6 @@ variable "security_group_id" {
 
 variable "ami_type" {
     type = string
-    # "AL2023_x86_64_STANDARD"
 }
 
 variable "disk_size" {

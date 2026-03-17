@@ -15,3 +15,7 @@ output "db_secrets" {
   sensitive = true
   }
 }
+
+output "secret_name" {
+  value = aws_secretsmanager_secret.secret.name
+}

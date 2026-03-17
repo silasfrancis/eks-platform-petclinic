@@ -41,20 +41,3 @@ variable "rds_data_kms_arn" {
 variable "rds_monitoring_role_arn" {
   type = string
 }
-
-variable "rds_export_role_arn" {
-  type = string
-}
-
-variable "rds_export_s3_bucket" {
-  type = string
-}
-
-variable "rds_export_kms_key_arn" {
-  type = string
-}
-
-# variable "run_snapshot_export" {
-#   type    = bool
-#   default = false
-# }

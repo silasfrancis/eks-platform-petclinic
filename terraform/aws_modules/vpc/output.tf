@@ -11,9 +11,25 @@ output "subnets" {
   }
 }
 
+output "public_subnets" {
+  value = [
+    aws_subnet.public_subnet_1.id,
+    aws_subnet.public_subnet_2.id
+  ]
+}
+
+output "private_subnets" {
+  value = [
+    aws_subnet.private_subnet_1.id,
+    aws_subnet.private_subnet_2.id
+  ]
+}
+
 output "security_group" {
   value = {
     alb = aws_security_group.alb.id
     ec2 = aws_security_group.ec2.id
+    eks = aws_security_group.eks.id
+    rds = aws_security_group.rds.id
   }
 }

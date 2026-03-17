@@ -5,21 +5,23 @@ WORKDIR /app
 
 COPY pom.xml .
 
-COPY spring-petclinic-api-gateway/pom.xml ./spring-petclinic-api-gateway/
+COPY customers-service/pom.xml ./customers-service/
 
-COPY spring-petclinic-api-gateway/src ./spring-petclinic-api-gateway/src
+COPY customers-service/src ./customers-service/src
 
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -q -f spring-petclinic-api-gateway/pom.xml package -DskipTests
+    mvn -B -q -f customers-service/pom.xml package -DskipTests
 
 FROM gcr.io/distroless/java17-debian13@sha256:e2844953049b92ed317e208fc50634f46e8fe51a0cef9522863ad18e393ef65a
 WORKDIR /app
 
+ENV SPRING_PROFILES_ACTIVE=docker,mysql
+
 COPY --from=builder --chown=nonroot:nonroot \
-  /app/spring-petclinic-api-gateway/target/app.jar app.jar
+  /app/customers-service/target/app.jar app.jar
 
 USER nonroot
 
-EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

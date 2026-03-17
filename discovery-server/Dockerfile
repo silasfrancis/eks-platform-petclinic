@@ -5,21 +5,21 @@ WORKDIR /app
 
 COPY pom.xml .
 
-COPY spring-petclinic-admin-server/pom.xml ./spring-petclinic-admin-server/
+COPY discovery-server/pom.xml ./discovery-server/
 
-COPY spring-petclinic-admin-server/src ./spring-petclinic-admin-server/src
+COPY discovery-server/src ./discovery-server/src
 
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -q -f spring-petclinic-admin-server/pom.xml package -DskipTests
-    
+    mvn -B -q -f discovery-server/pom.xml package -DskipTests
+
 FROM gcr.io/distroless/java17-debian13@sha256:e2844953049b92ed317e208fc50634f46e8fe51a0cef9522863ad18e393ef65a
 WORKDIR /app
 
 COPY --from=builder --chown=nonroot:nonroot \
-  /app/spring-petclinic-admin-server/target/app.jar app.jar
+  /app/discovery-server/target/app.jar app.jar
 
 USER nonroot
 
-EXPOSE 9090
+EXPOSE 8761
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

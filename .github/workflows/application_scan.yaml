@@ -29,15 +29,12 @@ jobs:
           cache: maven
           cache-dependency-path: "**/pom.xml"
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=silasfrancis_spring_boot_micro_services
-            -Dsonar.organization=silasfrancis
-            -Dsonar.exclusions=**/test/**
-            -Dsonar.java.binaries=**/target/classes
+      - name: Build and analyze with SonarQube
+        run: |
+            mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                -Dsonar.organization=silasfrancis \
+                -Dsonar.projectKey=silasfrancis_spring_boot_micro_services \
+                -Dsonar.exclusions=**/test/**
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -58,12 +55,16 @@ jobs:
           cache: maven
           cache-dependency-path: "**/pom.xml"
 
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
       - name: Compile project
         run: mvn -B compile --file pom.xml
 
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/maven-3-jdk-17@e2221410bff24446ba09102212d8bc75a567237d
-        with:
-          args: --all-projects --severity-threshold=high
+        run: snyk test --all-projects --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

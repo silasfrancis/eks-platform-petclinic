@@ -30,7 +30,7 @@ jobs:
         EXCLUDED_SERVICES: '["admin-server", "genai-service"]'
         AWS_REGION: us-east-2
         CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
-        AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBACTIONSOIDCROLE }}
+        AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
     steps:
         - name: Checkout code
           uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3

@@ -26,6 +26,10 @@ jobs:
     strategy:
       matrix:
         dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
+      fail-fast: false
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
+      cancel-in-progress: true
     env:
         EXCLUDED_SERVICES: '["admin-server", "genai-service"]'
         AWS_REGION: us-east-2

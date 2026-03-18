@@ -47,6 +47,10 @@ jobs:
     strategy:
       matrix:
         dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
+      fail-fast: false
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3

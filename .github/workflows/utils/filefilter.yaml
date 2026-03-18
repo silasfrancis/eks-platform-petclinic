@@ -1,0 +1,16 @@
+admin-server:
+    - admin-server/**
+api-gateway:
+    - api-gateway/**
+config-server:
+    - config-server/**
+discovery-server:
+    - discovery-server/**
+customer-service:
+    - customer-service/**
+vets-service:
+    - vets-service/**
+visits-service:
+    - visits-service/**
+genai-service:
+    - genai-service/**

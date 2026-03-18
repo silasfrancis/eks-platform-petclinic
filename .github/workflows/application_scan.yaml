@@ -1,0 +1,69 @@
+name: Application Security Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ dev ]
+
+jobs:
+  filter-updated-directories:
+    uses: ./.github/workflows/path_filter.yaml
+
+  sonarqube:
+    needs: filter-updated-directories
+    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: "**/pom.xml"
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=silasfrancis_spring_boot_micro_services
+            -Dsonar.organization=silasfrancis
+            -Dsonar.exclusions=**/test/**
+            -Dsonar.java.binaries=**/target/classes
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  snyk_dependency_security_checks:
+    needs: filter-updated-directories
+    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      - name: Setup Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: "**/pom.xml"
+
+      - name: Compile project
+        run: mvn -B compile --file pom.xml
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/maven-3-jdk-17@e2221410bff24446ba09102212d8bc75a567237d
+        with:
+          args: --all-projects --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

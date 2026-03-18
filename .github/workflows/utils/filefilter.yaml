@@ -10,8 +10,8 @@ config-server:
 discovery-server:
     - discovery-server/**
     - pom.xml
-customer-service:
-    - customer-service/**
+customers-service:
+    - customers-service/**
     - pom.xml
 vets-service:
     - vets-service/**

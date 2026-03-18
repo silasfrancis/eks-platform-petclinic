@@ -1,0 +1,6 @@
+version: v1.25.0
+ignore:
+  SNYK-JAVA-COMMONSLANG-10734077:
+    - '*':
+        reason: No fix available, transitive dependency via Spring Cloud Eureka client
+        expires: 2026-09-18T00:00:00.000Z

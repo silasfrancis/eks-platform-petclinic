@@ -1,16 +1,24 @@
 admin-server:
     - admin-server/**
+    - pom.xml
 api-gateway:
     - api-gateway/**
+    - pom.xml
 config-server:
     - config-server/**
+    - pom.xml
 discovery-server:
     - discovery-server/**
+    - pom.xml
 customer-service:
     - customer-service/**
+    - pom.xml
 vets-service:
     - vets-service/**
+    - pom.xml
 visits-service:
     - visits-service/**
+    - pom.xml
 genai-service:
     - genai-service/**
+    - pom.xml

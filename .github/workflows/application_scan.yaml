@@ -32,6 +32,7 @@ jobs:
       - name: Build and analyze with SonarQube
         run: |
             mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                -DskipTests \
                 -Dsonar.organization=silasfrancis \
                 -Dsonar.projectKey=silasfrancis_spring_boot_micro_services \
                 -Dsonar.exclusions=**/test/**

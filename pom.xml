@@ -72,22 +72,6 @@
                 <artifactId>datasource-micrometer-spring-boot</artifactId>
                 <version>${datasource-micrometer.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>2.21.1</version> 
-            </dependency>
-            
-            <dependency>
-                <groupId>tools.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>3.1.0</version>
-            </dependency>
-            <dependency>
-                <groupId>tools.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>3.1.0</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 

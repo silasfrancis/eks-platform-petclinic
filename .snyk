@@ -1,6 +1,10 @@
 version: v1.25.0
 ignore:
-  SNYK-JAVA-COMMONSLANG-10734077:
+  'SNYK-JAVA-COMMONSLANG-10734077':
     - '*':
-        reason: No fix available, transitive dependency via Spring Cloud Eureka client
-        expires: 2026-09-18T00:00:00.000Z
+        reason: 'No fix available, transitive dependency via Spring Cloud Eureka client'
+        expires: '2026-09-18T00:00:00.000Z'
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKAI-15679673':
+    - '*':
+        reason: 'Known SQL Injection in Spring AI 2.0.0-M1. Mitigated by internal-only vector store access.'
+        expires: '2026-04-18T00:00:00.000Z'

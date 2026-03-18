@@ -1,3 +1,4 @@
+# Snyk (https://snyk.io) policy file
 version: v1.25.0
 ignore:
   'SNYK-JAVA-COMMONSLANG-10734077':
@@ -10,9 +11,14 @@ ignore:
         expires: '2026-04-18T00:00:00.000Z'
   'SNYK-JAVA-TOOLSJACKSONCORE-15365915':
     - '*':
-        reason: 'Transitive dependency via Config Server. Fix available in 3.1.0; pending Spring Cloud upgrade.'
+        reason: 'Transitive dependency via Config Server. Fix available in 3.1.0.'
         expires: '2026-04-18T00:00:00.000Z'
   'SNYK-JAVA-TOOLSJACKSONCORE-15371178':
     - '*':
-        reason: 'Transitive dependency via Config Server. Fix available in 3.1.0; pending Spring Cloud upgrade.'
+        reason: 'Transitive dependency via Config Server. Fix available in 3.1.0.'
+        expires: '2026-04-18T00:00:00.000Z'
+  # Added Jackson Core 2.x Resource Exhaustion issue
+  'SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924':
+    - '*':
+        reason: 'Transitive dependency via Eureka Client. Fix available in 2.21.1; pending dependency update.'
         expires: '2026-04-18T00:00:00.000Z'

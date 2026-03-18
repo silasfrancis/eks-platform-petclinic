@@ -1,0 +1,12 @@
+name: "Install Task"
+description: "Installs Task, a task runner for Go, to the GitHub Actions runner."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install task
+      uses:  supplypike/setup-bin@1fafb085795af4a3f183502f3a9dffa8f7b83217
+      with:
+        uri: "https://github.com/go-task/task/releases/download/v3.46.4/task_linux_amd64.tar.gz"
+        name: "task"
+        version: v3.46.4

@@ -1,0 +1,28 @@
+version: "3"
+
+tasks:
+  get-repo:
+    vars:
+      ENV: '{{.ENV}}'
+      SERVICE: '{{.SERVICE}}'
+    cmds:
+      - |
+        if [ -z "{{.SERVICE}}" ]; then
+          echo "Error: Service name is required. Usage: task get-repo ENV=main SERVICE=my-service"
+          exit 1
+        fi
+        echo "{{.ENV}}-springboot/{{.SERVICE}}"
+
+  return-image-repo-dev:
+    cmds:
+      - task: get-repo
+        vars:
+          ENV: dev
+          SERVICE: '{{.SERVICE}}'
+
+  return-image-repo-main:
+    cmds:
+      - task: get-repo
+        vars:
+          ENV: main
+          SERVICE: '{{.SERVICE}}'

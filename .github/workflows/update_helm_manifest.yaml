@@ -54,20 +54,24 @@
 
 #         - name: Update Helm Values
 #           run: |
-#             VALUE_ENVIRONMENT: ${{env.BRANCH_NAME}}
-#             SERVICE: ${{matrix.dir}}
-#             TARGET_DIR: "helm/microservice/values/env/$VALUE_ENVIRONMENT"
-#             VALUES_FILE: "$TARGET_DIR/${{matrix.dir}}.yaml"
-#             TARGET_FILE: "build-manifest.json"
+#             VALUE_ENVIRONMENT=${{ env.BRANCH_NAME }}
+#             SERVICE=${{ matrix.dir }}
+#             TARGET_DIR="helm/microservice/values/env/$VALUE_ENVIRONMENT"
+#             VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
+#             TARGET_FILE="build-manifest.json"
 
-#             echo $VALUES_FILE
-#             echo $TARGET_FILE
-#             echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_OUTPUT
+#             echo "Processing service: $SERVICE"
+#             echo "Values file: $VALUES_FILE"
 
-#             TARGET_SERVICE=$(jq -r '.image_details.service' "$TARGET_FILE")
-#             NEW_IMAGE=$(jq -r '.image_details.image' "$TARGET_FILE")
+#             echo "Extracting image for ${{ matrix.dir }}"
+#             NEW_IMAGE=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image' "$TARGET_FILE")
 
-#             if $TARGET_SERVICE=$SERVICE; then
-              
+#             if [ -z "$NEW_IMAGE" ]; then
+#             echo "No image found for service $SERVICE. Skipping..."
+#             exit 0
+#             fi
 
-#             echo "Updating "
+#             echo "New image: $NEW_IMAGE"
+
+#             yq -i ".image.repository = \"$NEW_IMAGE\"" "$VALUES_FILE"
+

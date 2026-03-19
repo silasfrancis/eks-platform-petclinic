@@ -1,0 +1,25 @@
+name: 'Setup jq and yq'
+description: 'Installs jq, yq, and runs versions'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install jq
+      uses: supplypike/setup-bin@1fafb085795af4a3f183502f3a9dffa8f7b83217
+      with:
+        uri: "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64"
+        name: "jq"
+        version: "1.8.1"
+
+    - name: Install yq
+      uses: supplypike/setup-bin@1fafb085795af4a3f183502f3a9dffa8f7b83217
+      with:
+        uri: "https://github.com/mikefarah/yq/releases/download/v4.50.1/yq_linux_amd64.tar.gz"
+        name: "yq"
+        version: v4.50.1
+
+    - name: Verify Versions
+      shell: bash
+      run: |
+        jq --version
+        yq --version

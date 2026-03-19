@@ -3,5 +3,4 @@ CVE-2026-29062 exp:2026-04-30
 GHSA-72hv-8253-57qq exp:2026-04-30
 
 # libc6 glibc memalign - awaiting patched distroless digest
-# Track: https://github.com/GoogleContainerTools/distroless/issues
 CVE-2026-0861 exp:2026-04-30

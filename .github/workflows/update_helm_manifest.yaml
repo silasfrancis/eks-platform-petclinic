@@ -1,0 +1,73 @@
+# name: Update Helm Manifests
+
+# on:
+#   workflow_run:
+#     branches: [ dev, main]
+#     workflows: ["Build, Scan and Push to ECR"]
+#     types: [ completed ]
+
+# jobs:
+#   filter-updated-directories:
+#     uses: ./.github/workflows/path_filter.yaml
+
+#   update-helm-manifest:
+#     runs-on: ubuntu-24.04
+#     environment: >-
+#       ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+#       && 'production'
+#       || 'development' }}
+#     needs: filter-updated-directories
+#     if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' }}
+#     permissions:
+#       contents: read
+#       checks: write
+#       pull-requests: write
+#       id-token: write
+#     strategy:
+#       matrix:
+#         dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
+#       fail-fast: false
+#     concurrency:
+#       group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
+#       cancel-in-progress: true
+#     env:
+#       AWS_REGION: us-east-2
+#       CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
+#       AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
+#       BRANCH_NAME: ${{ github.ref_name }}
+
+#     steps:
+#         - name: Checkout code
+#           uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+#         - name: Setup jq and yq
+#           uses: ./.github/actions/install_jq_yq
+
+#         - name: Set short SHA and Report Date
+#           run: |
+#             echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+#             echo "REPORT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+#         - name: Download Manifest from S3
+#           run: |
+#             aws s3 cp s3://${{ env.CICD_BUCKET }}/manifests/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/build-manifest.json .
+
+#         - name: Update Helm Values
+#           run: |
+#             VALUE_ENVIRONMENT: ${{env.BRANCH_NAME}}
+#             SERVICE: ${{matrix.dir}}
+#             TARGET_DIR: "helm/microservice/values/env/$VALUE_ENVIRONMENT"
+#             VALUES_FILE: "$TARGET_DIR/${{matrix.dir}}.yaml"
+#             TARGET_FILE: "build-manifest.json"
+
+#             echo $VALUES_FILE
+#             echo $TARGET_FILE
+#             echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_OUTPUT
+
+#             TARGET_SERVICE=$(jq -r '.image_details.service' "$TARGET_FILE")
+#             NEW_IMAGE=$(jq -r '.image_details.image' "$TARGET_FILE")
+
+#             if $TARGET_SERVICE=$SERVICE; then
+              
+
+#             echo "Updating "

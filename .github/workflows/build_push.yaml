@@ -147,6 +147,26 @@ jobs:
           name: ${{ matrix.dir }}_build_metadata
           path: /tmp/build_metadata/${{ matrix.dir }}_metadata.json
 
+      - name: Send Slack notification on build progress
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+        if: (success() || failure()) 
+        with:
+          payload: |
+                      {
+                        "text": "${{ job.status == 'success' && '✅' || '❌' }} *${{ github.workflow }}* — `${{ matrix.dir }}` on `${{ github.ref_name }}`",
+                        "attachments": [{
+                          "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                          "fields": [
+                            { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
+                            { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                            { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                            { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                          ]
+                        }]
+                      }
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+
   publish-manifest:
     needs: build-scan-push
     if: ${{ contains(fromJson('["success", "failure"]'), needs.build-scan-push.result) }}
@@ -218,3 +238,23 @@ jobs:
           aws s3 cp build-manifest.json \
             s3://${{ env.CICD_BUCKET }}/manifests/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/build-manifest.json \
             --content-type "application/json"
+
+      - name: Send Slack notification update on s3 manifest uploads
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+        if: (success() || failure()) 
+        with:
+          payload: |
+                      {
+                        "text": "${{ job.status == 'success' && '✅ Manifest published' || '❌ Manifest publish failed' }} on `${{ github.ref_name }}`",
+                        "attachments": [{
+                          "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                          "fields": [
+                            { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+                            { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                            { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                            { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                          ]
+                        }]
+                      }
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook

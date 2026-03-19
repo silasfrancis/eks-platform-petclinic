@@ -3,7 +3,7 @@ name: Update Helm Manifests
 on:
   workflow_run:
     branches: [ dev, main]
-    workflows: ["Build, Scan and Push to ECR"]
+    workflows: ["Build, Scan, Push to ECR and Sign"]
     types: [ completed ]
 
 jobs:
@@ -147,3 +147,23 @@ jobs:
                       exit 1
                     fi
                 fi
+
+        - name: Send Slack notification
+          uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+          if: success() || failure()
+          with:
+            payload: |
+              {
+                "text": "${{ job.status == 'success' && '✅ Helm values updated' || '❌ Helm update failed' }} — `${{ matrix.dir }}` on `${{ github.ref_name }}`",
+                "attachments": [{
+                  "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                  "fields": [
+                    { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
+                    { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                    { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                    { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                  ]
+                }]
+              }
+            webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+            webhook-type: incoming-webhook

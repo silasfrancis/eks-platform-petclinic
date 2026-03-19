@@ -75,3 +75,23 @@ jobs:
                 --exclude "*" \
                 --include "TEST-*.xml" \
                 --content-type "application/xml"
+
+        - name: Send Slack notification on test results
+          uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+          if: "(success() || failure()) && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
+          with:
+            payload: |
+                        {
+                          "text": "${{ job.status == 'success' && '✅' || '❌' }} *${{ github.workflow }}* — `${{ matrix.dir }}` on `${{ github.ref_name }}`",
+                          "attachments": [{
+                            "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                            "fields": [
+                              { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
+                              { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                              { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                              { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                            ]
+                          }]
+                        }
+            webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+            webhook-type: incoming-webhook

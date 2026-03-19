@@ -93,8 +93,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
           trivyignores: .trivyignore
-        env:
-          TRIVY_IGNOREFILE: .trivyignore 
+          cache: false 
 
       - name: Upload trivy scan artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f

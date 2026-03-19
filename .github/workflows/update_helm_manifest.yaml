@@ -1,77 +1,118 @@
-# name: Update Helm Manifests
+name: Update Helm Manifests
 
-# on:
-#   workflow_run:
-#     branches: [ dev, main]
-#     workflows: ["Build, Scan and Push to ECR"]
-#     types: [ completed ]
+on:
+  workflow_run:
+    branches: [ dev, main]
+    workflows: ["Build, Scan and Push to ECR"]
+    types: [ completed ]
 
-# jobs:
-#   filter-updated-directories:
-#     uses: ./.github/workflows/path_filter.yaml
+jobs:
+  filter-updated-directories:
+    uses: ./.github/workflows/path_filter.yaml
 
-#   update-helm-manifest:
-#     runs-on: ubuntu-24.04
-#     environment: >-
-#       ${{ (github.ref_name == 'main' || github.base_ref == 'main')
-#       && 'production'
-#       || 'development' }}
-#     needs: filter-updated-directories
-#     if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' }}
-#     permissions:
-#       contents: read
-#       checks: write
-#       pull-requests: write
-#       id-token: write
-#     strategy:
-#       matrix:
-#         dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
-#       fail-fast: false
-#     concurrency:
-#       group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
-#       cancel-in-progress: true
-#     env:
-#       AWS_REGION: us-east-2
-#       CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
-#       AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
-#       BRANCH_NAME: ${{ github.ref_name }}
+  update-helm-manifest:
+    runs-on: ubuntu-24.04
+    environment: >-
+      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      && 'production'
+      || 'development' }}
+    needs: filter-updated-directories
+    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' }}
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      id-token: write
+    strategy:
+      matrix:
+        dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
+      fail-fast: false
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      AWS_REGION: us-east-2
+      CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
+      AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
+      BRANCH_NAME: ${{ github.ref_name }}
 
-#     steps:
-#         - name: Checkout code
-#           uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
 
-#         - name: Setup jq and yq
-#           uses: ./.github/actions/install_jq_yq
+        - name: Setup jq and yq
+          uses: ./.github/actions/install_jq_yq
 
-#         - name: Set short SHA and Report Date
-#           run: |
-#             echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
-#             echo "REPORT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+        - name: Set short SHA and Report Date
+          run: |
+            SHA=${{ github.event.workflow_run.head_sha }}
+            echo "SHORT_SHA=${SHA::8}" >> $GITHUB_ENV
+            echo "REPORT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-#         - name: Download Manifest from S3
-#           run: |
-#             aws s3 cp s3://${{ env.CICD_BUCKET }}/manifests/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/build-manifest.json .
+        - name: Download Manifest from S3
+          run: |
+            aws s3 cp s3://${{ env.CICD_BUCKET }}/manifests/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/build-manifest.json .
 
-#         - name: Update Helm Values
-#           run: |
-#             VALUE_ENVIRONMENT=${{ env.BRANCH_NAME }}
-#             SERVICE=${{ matrix.dir }}
-#             TARGET_DIR="helm/microservice/values/env/$VALUE_ENVIRONMENT"
-#             VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
-#             TARGET_FILE="build-manifest.json"
+        - name: Update Helm Values
+          id: update_image_value
+          run: |
+            VALUE_ENVIRONMENT=${{ env.BRANCH_NAME }}
+            SERVICE=${{ matrix.dir }}
+            TARGET_DIR="helm/microservice/values/env/$VALUE_ENVIRONMENT"
+            VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
+            TARGET_FILE="build-manifest.json"
 
-#             echo "Processing service: $SERVICE"
-#             echo "Values file: $VALUES_FILE"
+            echo "Processing service: $SERVICE"
+            echo "Values file: $VALUES_FILE"
 
-#             echo "Extracting image for ${{ matrix.dir }}"
-#             NEW_IMAGE=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image' "$TARGET_FILE")
+            echo "Extracting image for ${{ matrix.dir }}"
+            NEW_IMAGE=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image' "$TARGET_FILE")
+            REGISTRY_URI=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .registry_uri' "$TARGET_FILE")
+            NEW_IMAGE_TAG=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_tag' "$TARGET_FILE")
 
-#             if [ -z "$NEW_IMAGE" ]; then
-#             echo "No image found for service $SERVICE. Skipping..."
-#             exit 0
-#             fi
+            if [ -z "$NEW_IMAGE" ]; then
+            echo "No image found for service $SERVICE. Skipping..."
+            exit 0
+            fi
 
-#             echo "New image: $NEW_IMAGE"
+            echo "New image: $NEW_IMAGE"
 
-#             yq -i ".image.repository = \"$NEW_IMAGE\"" "$VALUES_FILE"
+            CURRENT_REGISTRY=$(yq '.image.repository' "$VALUES_FILE")
+            CURRENT_TAG=$(yq '.image.tag' "$VALUES_FILE")
 
+            echo "Current $SERVICE Image: $CURRENT_REGISTRY:$CURRENT_TAG"
+            echo "Updating $SERVICE Image -> $NEW_IMAGE"
+
+            yq -i ".image.repository = \"$REGISTRY_URI\"" "$VALUES_FILE"
+            yq -i ".image.tag = \"$NEW_IMAGE_TAG\"" "$VALUES_FILE"
+
+            echo "Contents after update:"
+            cat "$VALUES_FILE"
+
+            echo "Git diff:"
+            git diff "$VALUES_FILE"
+            echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_OUTPUT
+
+        - name: Commit and push Helm updates
+          env: 
+            GIT_USER: ${{ github.actor }}
+            GIT_USER_EMAIL: ${{ vars.GIT_USER_EMAIL }}
+          run: |
+                VALUES_FILE="${{ steps.update_image_value.outputs.VALUES_FILE }}"
+                git config user.name "$GIT_USER"
+                git config user.email "$GIT_USER_EMAIL"
+
+                echo "Staging changes..."
+                git add "$VALUES_FILE"
+
+                if git diff --cached --quiet; then
+                    echo "No changes to commit"
+                else
+                    git commit -m "Update container image in helm ${{ github.ref_name }} directory"
+                    for i in 1 2 3 4 5; do
+                        git pull --rebase origin ${{ github.ref_name }} && \
+                        git push https://x-access-token:${{github.token}}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }} && break
+                        echo "Push failed, retrying ($i/5)..."
+                        sleep $((i * 3))
+                    done
+                fi

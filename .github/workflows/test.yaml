@@ -48,7 +48,7 @@ jobs:
         - name: Set short SHA and Report Date
           run: |
             echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
-            echo "REPORT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+            echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
 
         - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
           with:
@@ -71,7 +71,7 @@ jobs:
           if: "always() && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
           run: |
             aws s3 sync ${{ matrix.dir }}/target/surefire-reports/ \
-                s3://${{ env.CICD_BUCKET }}/test-reports/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}/ \
+                s3://${{ env.CICD_BUCKET }}/test-reports/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}/ \
                 --exclude "*" \
                 --include "TEST-*.xml" \
                 --content-type "application/xml"

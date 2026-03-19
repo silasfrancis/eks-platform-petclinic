@@ -49,18 +49,30 @@ jobs:
         - name: Setup jq and yq
           uses: ./.github/actions/install_jq_yq
 
-        - name: Set short SHA and Report Date
+        - name: Set short SHA and Build Run ID
           run: |
             SHA=${{ github.event.workflow_run.head_sha }}
             echo "SHORT_SHA=${SHA::8}" >> $GITHUB_ENV
-            echo "REPORT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+            echo "BUILD_RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
 
         - name: Download Manifest from S3
+          id: download_manifest
           run: |
-            aws s3 cp s3://${{ env.CICD_BUCKET }}/manifests/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/build-manifest.json .
+            MANIFEST_KEY="manifests/${{ env.BUILD_RUN_ID }}/${{ env.SHORT_SHA }}/build-manifest.json"
+            if ! aws s3api head-object \
+              --bucket ${{ env.CICD_BUCKET }} \
+              --key "$MANIFEST_KEY" > /dev/null 2>&1; then
+              echo "Manifest not found for SHA ${{ env.SHORT_SHA }} — skipping"
+              exit 0
+            fi
+
+            echo "Manifest found, downloading..."
+            aws s3 cp s3://${{ env.CICD_BUCKET }}/$MANIFEST_KEY build-manifest.json
+            echo "MANIFEST_FOUND=true" >> $GITHUB_OUTPUT
 
         - name: Update Helm Values
           id: update_image_value
+          if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'
           run: |
             VALUE_ENVIRONMENT=${{ env.BRANCH_NAME }}
             SERVICE=${{ matrix.dir }}
@@ -100,6 +112,7 @@ jobs:
             echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_OUTPUT
 
         - name: Commit and push Helm updates
+          if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'
           env: 
             GIT_USER: ${{ github.actor }}
             GIT_USER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com

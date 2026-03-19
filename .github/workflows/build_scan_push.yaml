@@ -121,7 +121,7 @@ jobs:
             "image_tag": "${{ env.SHORT_SHA }}",
             "image": "${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}",
             "image_digest": "${{ steps.push_image.outputs.IMAGE_DIGEST }}",
-            "scan_report": "s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}_trivy-results.sarif"
+            "scan_report": "s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}_trivy-results.json"
           }
           EOF
 
@@ -157,7 +157,7 @@ jobs:
       - name: Set short SHA and report date
         run: |
           echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
-          echo "REPORT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+          echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
 
       - name: Download trivy scan artifacts
         uses: actions/download-artifact@v4
@@ -189,11 +189,11 @@ jobs:
       - name: Push trivy scan results to S3
         run: |
           aws s3 sync /tmp/trivy_scan/ \
-            s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/ \
+            s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/ \
             --content-type "application/json"
 
       - name: Publish manifest to S3
         run: |
           aws s3 cp build-manifest.json \
-            s3://${{ env.CICD_BUCKET }}/manifests/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/build-manifest.json \
+            s3://${{ env.CICD_BUCKET }}/manifests/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/build-manifest.json \
             --content-type "application/json"

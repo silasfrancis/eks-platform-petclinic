@@ -19,7 +19,7 @@ jobs:
     needs: filter-updated-directories
     if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' && github.event.workflow_run.conclusion == 'success'}} 
     permissions:
-      contents: read
+      contents: write
       checks: write
       pull-requests: write
       id-token: write
@@ -102,7 +102,7 @@ jobs:
         - name: Commit and push Helm updates
           env: 
             GIT_USER: ${{ github.actor }}
-            GIT_USER_EMAIL: ${{ vars.GIT_USER_EMAIL }}
+            GIT_USER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
           run: |
                 VALUES_FILE="${{ steps.update_image_value.outputs.VALUES_FILE }}"
                 git config user.name "$GIT_USER"
@@ -115,10 +115,18 @@ jobs:
                     echo "No changes to commit"
                 else
                     git commit -m "Update container image in helm ${{ github.ref_name }} directory"
+                    PUSHED=false
                     for i in 1 2 3 4 5; do
-                        git pull --rebase origin ${{ github.ref_name }} && \
-                        git push https://x-access-token:${{github.token}}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }} && break
-                        echo "Push failed, retrying ($i/5)..."
-                        sleep $((i * 3))
+                      if git pull --rebase origin ${{ github.ref_name }} && \
+                        git push https://x-access-token:${{github.token}}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }}; then
+                        PUSHED=true
+                        break
+                      fi
+                      echo "Push failed, retrying ($i/5)..."
+                      sleep $((i * 3))
                     done
+                    if [ "$PUSHED" = false ]; then
+                      echo "All 5 push attempts failed"
+                      exit 1
+                    fi
                 fi

@@ -17,7 +17,7 @@ jobs:
       && 'production'
       || 'development' }}
     needs: filter-updated-directories
-    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' }}
+    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' && github.event.workflow_run.conclusion == 'success'}} 
     permissions:
       contents: read
       checks: write

@@ -86,8 +86,8 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
-          format: 'sarif'
-          output: '${{ matrix.dir }}_trivy-results.sarif'
+          format: 'json'
+          output: '${{ matrix.dir }}_trivy-results.json'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
@@ -100,7 +100,7 @@ jobs:
         if: always()
         with:
           name: ${{ matrix.dir }}_trivy_scan
-          path: ${{ matrix.dir }}_trivy-results.sarif
+          path: ${{ matrix.dir }}_trivy-results.json
 
       - name: Push image to Amazon ECR
         id: push_image
@@ -190,7 +190,7 @@ jobs:
         run: |
           aws s3 sync /tmp/trivy_scan/ \
             s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/ \
-            --content-type "application/sarif+json"
+            --content-type "application/json"
 
       - name: Publish manifest to S3
         run: |

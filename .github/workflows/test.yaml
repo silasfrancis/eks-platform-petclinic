@@ -45,7 +45,7 @@ jobs:
             role-to-assume: ${{ env.AWS_S3_ROLE_ARN }}
             aws-region: ${{ env.AWS_REGION }}
 
-        - name: Set short SHA and Report Date
+        - name: Set short SHA and Build ID
           run: |
             echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
             echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV

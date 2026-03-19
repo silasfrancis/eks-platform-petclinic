@@ -87,18 +87,19 @@ jobs:
         with:
           image-ref: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: '${{ matrix.dir }}_trivy-results.sarif'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+          trivyignores: .trivyignore
 
       - name: Upload trivy scan artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
         with:
           name: ${{ matrix.dir }}_trivy_scan
-          path: trivy-results.sarif
+          path: ${{ matrix.dir }}_trivy-results.sarif
 
       - name: Push image to Amazon ECR
         id: push_image
@@ -184,7 +185,7 @@ jobs:
           EOF
           cat build-manifest.json
 
-      - name: Push scan results to S3
+      - name: Push trivy scan results to S3
         run: |
           aws s3 sync /tmp/trivy_scan/ \
             s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.REPORT_DATE }}/${{ env.SHORT_SHA }}/ \

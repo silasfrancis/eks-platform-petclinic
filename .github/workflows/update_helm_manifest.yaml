@@ -87,6 +87,7 @@ jobs:
             NEW_IMAGE=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image' "$TARGET_FILE")
             REGISTRY_URI=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .registry_uri' "$TARGET_FILE")
             NEW_IMAGE_TAG=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_tag' "$TARGET_FILE")
+            NEW_IMAGE_DIGEST=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_digest' "$TARGET_FILE")
 
             if [ -z "$NEW_IMAGE" ]; then
             echo "No image found for service $SERVICE. Skipping..."
@@ -94,15 +95,18 @@ jobs:
             fi
 
             echo "New image: $NEW_IMAGE"
+            echo "New Image Digest: $NEW_IMAGE_DIGEST"
 
             CURRENT_REGISTRY=$(yq '.image.repository' "$VALUES_FILE")
             CURRENT_TAG=$(yq '.image.tag' "$VALUES_FILE")
+            CURRENT_TAG=$(yq '.image.digest' "$VALUES_FILE")
 
             echo "Current $SERVICE Image: $CURRENT_REGISTRY:$CURRENT_TAG"
             echo "Updating $SERVICE Image -> $NEW_IMAGE"
 
             yq -i ".image.repository = \"$REGISTRY_URI\"" "$VALUES_FILE"
             yq -i ".image.tag = \"$NEW_IMAGE_TAG\"" "$VALUES_FILE"
+            yq -i ".image.digest = \"$NEW_IMAGE_DIGEST\"" "$VALUES_FILE"
 
             echo "Contents after update:"
             cat "$VALUES_FILE"

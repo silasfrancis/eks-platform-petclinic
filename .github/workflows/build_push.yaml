@@ -3,6 +3,16 @@ name: Build, Scan, Push to ECR and Sign
 on:
   push:
     branches: [ dev, main ]
+    paths:
+      - 'admin-server/**'
+      - 'api-gateway/**'
+      - 'config-server/**'
+      - 'discovery-server/**'
+      - 'customers-service/**'
+      - 'vets-service/**'
+      - 'visits-service/**'
+      - 'genai-service/**'
+      - 'pom.xml'
 
 jobs:
   filter-updated-directories:

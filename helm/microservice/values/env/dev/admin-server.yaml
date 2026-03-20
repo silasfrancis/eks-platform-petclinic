@@ -1,4 +1,4 @@
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server
-  tag: '0c2c74af'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server@sha256:73d41a16055689ebc09213801a94392dc2ce67b56c940dda286a0017287f8efa
+  tag: 'e748c781'
+  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server@sha256:5045fdf2cdbfeacc5da98e37f74ecfeb066fe1ac9f438842dd90eaa39a1c4958

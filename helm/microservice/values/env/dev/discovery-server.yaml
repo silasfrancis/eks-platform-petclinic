@@ -1,4 +1,4 @@
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/discovery-server
-  tag: '0c2c74af'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/discovery-server@sha256:45d79049e7bc959bea2d30a454566a69ff65b4fbd400150a599c752d6c31498b
+  tag: 'e748c781'
+  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/discovery-server@sha256:bcf962592198065a55f6d16d9ca4c97c8650c60d546d67ca6c64848803607850

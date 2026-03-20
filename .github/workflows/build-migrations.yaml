@@ -1,0 +1,251 @@
+name: Build, Scan, Push and Sign DB Migration Images
+
+on:
+  push:
+    branches: [ dev, main ]
+    paths:
+      - 'migrations/**'
+
+jobs:
+  build-scan-push-migration-images:
+    runs-on: ubuntu-24.04
+    environment: >-
+      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      && 'production'
+      || 'development' }}
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      id-token: write
+    env:
+      AWS_REGION: us-east-2
+      CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
+      AWS_ECR_ROLE_ARN: ${{ vars.ECRGITHUBHUBACTIONSOIDCROLE }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      SERVICE: migrations
+      BRANCH_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22
+
+      - name: Verify Cosign install
+        run: cosign version
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
+        with:
+          role-to-assume: ${{ env.AWS_ECR_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set short SHA and Build ID
+        run: |
+          echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+          echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
+
+      - name: Install task
+        uses: ./.github/actions/install_task
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@c962da2960ed15f492addc26fffa274485265950
+
+      - name: Get image repo
+        id: get_image_repo
+        run: |
+          REPO_NAME=$(task -t .github/workflows/utils/Taskfile.yaml return-image-repo-${{ env.BRANCH_NAME }} SERVICE=${{ env.SERVICE }})
+          REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${REPO_NAME}"
+          echo "IMAGE_REPO=$REPO_NAME" >> $GITHUB_OUTPUT
+          echo "REGISTRY_URI=$REGISTRY_URI" >> $GITHUB_OUTPUT
+
+      - name: Build image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: .
+          file: ${{ env.SERVICE }}/Dockerfile
+          push: false
+          load: true
+          tags: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
+          format: 'json'
+          output: '${{ env.SERVICE }}_trivy-results.json'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: .trivyignore
+          cache: false 
+
+      - name: Upload trivy scan artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        if: always()
+        with:
+          name: ${{ env.SERVICE }}_trivy_scan
+          path: ${{ env.SERVICE }}_trivy-results.json
+
+      - name: Push image to Amazon ECR
+        id: push_image
+        run: |
+          IMAGE=${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
+          docker push $IMAGE
+          
+          echo "Retrieving image digest"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE)
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Sign image with Cosign
+        run: cosign sign --yes ${{ steps.push_image.outputs.IMAGE_DIGEST }}
+
+      - name: Verify Image Signature
+        run: |
+          cosign verify ${{ steps.push_image.outputs.IMAGE_DIGEST }} \
+          --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+                
+      - name: Save image metadata
+        run: |
+          mkdir -p /tmp/build_metadata
+          cat > /tmp/build_metadata/${{ env.SERVICE }}_metadata.json << EOF
+          {
+            "service": "${{ env.SERVICE }}",
+            "registry_uri": "${{ steps.get_image_repo.outputs.REGISTRY_URI }}",
+            "image_tag": "${{ env.SHORT_SHA }}",
+            "image": "${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}",
+            "image_digest": "${{ steps.push_image.outputs.IMAGE_DIGEST }}",
+            "scan_report": "s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/${{ env.SERVICE }}_trivy-results.json"
+          }
+          EOF
+
+      - name: Upload build metadata artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: ${{ env.SERVICE }}_build_metadata
+          path: /tmp/build_metadata/${{ env.SERVICE }}_metadata.json
+
+      - name: Send Slack notification on build progress
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+        if: (success() || failure()) 
+        with:
+          payload: |
+                      {
+                        "text": "${{ job.status == 'success' && '✅' || '❌' }} *DB Migration Image Build* — `${{ github.ref_name }}`",
+                        "attachments": [{
+                          "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                          "fields": [
+                            { "title": "Service", "value": "${{ env.SERVICE }}", "short": true },
+                            { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                            { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                            { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                          ]
+                        }]
+                      }
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+
+  publish-manifest:
+    needs: build-scan-push-migration-images
+    if: ${{ contains(fromJson('["success", "failure"]'), needs.build-scan-push-migration-images.result) }}
+    runs-on: ubuntu-24.04
+    environment: >-
+      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      && 'production'
+      || 'development' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
+      AWS_REGION: us-east-2
+      AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
+        with:
+          role-to-assume: ${{ env.AWS_S3_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set short SHA and Build ID
+        run: |
+          echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+          echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
+
+      - name: Download trivy scan artifacts
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*_trivy_scan"
+          path: /tmp/trivy_scan
+          merge-multiple: true
+
+      - name: Download build metadata artifacts
+        if: ${{ needs.build-scan-push-migration-images.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*_build_metadata"
+          path: /tmp/build_metadata
+          merge-multiple: true
+
+      - name: Combine build metadata into single manifest
+        if: ${{ needs.build-scan-push-migration-images.result == 'success' }}
+        run: |
+          cat > build-manifest.json << EOF
+          {
+            "build_id": "${{ github.sha }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "branch": "${{ github.ref_name }}",
+            "triggered_by": "${{ github.actor }}",
+            "image_details": $(ls /tmp/build_metadata/*.json | xargs jq -s '.')
+          }
+          EOF
+          cat build-manifest.json
+
+      - name: Push trivy scan results to S3
+        if: always()
+        run: |
+          aws s3 sync /tmp/trivy_scan/ \
+            s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/ \
+            --content-type "application/json"
+
+      - name: Publish manifest to S3
+        if: ${{ needs.build-scan-push-migration-images.result == 'success' }}
+        run: |
+          aws s3 cp build-manifest.json \
+            s3://${{ env.CICD_BUCKET }}/manifests/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/build-manifest.json \
+            --content-type "application/json"
+
+      - name: Send Slack notification update on s3 manifest uploads
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+        if: (success() || failure()) 
+        with:
+          payload: |
+                      {
+                        "text": "${{ job.status == 'success' && '✅ Migration Manifest Published' || '❌ Migration Manifest Publish Failed' }} on `${{ github.ref_name }}`",
+                        "attachments": [{
+                          "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                          "fields": [
+                            { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+                            { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                            { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                            { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                          ]
+                        }]
+                      }
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook

@@ -45,7 +45,7 @@ module "kms" {
 
 module "secret_manager" {
   source      = "../../aws_modules/secret_manager"
-  secret_name = "spring_boot_micro_services_secrets"
+  secret_name = "${local.environment}/springboot-microservices"
 }
 
 module "s3" {

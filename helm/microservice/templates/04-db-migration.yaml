@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: 
+  namespace: 
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: 
+          image: 
+          args:
+            - migrate
+        env:
+        - name: MYSQL_HOST
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_HOST
+        - name: MYSQL_DATABASE
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_DATABASE
+        - name: FLYWAY_URL
+            value: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
+        - name: FLYWAY_USER
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_USER
+        - name: FLYWAY_PASSWORD
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_PASSWORD
+                

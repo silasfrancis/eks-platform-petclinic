@@ -49,6 +49,7 @@ services:
       - "8761:8761"
     environment:
       SERVER_PORT: 8761
+      CONFIG_SERVER_URL: http://config-server:8888
 
   customers-service:
     build:
@@ -72,6 +73,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
+      CONFIG_SERVER_URL: http://config-server:8888
 
   visits-service:
     build:
@@ -95,6 +97,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
+      CONFIG_SERVER_URL: http://config-server:8888
 
   vets-service:
     build:
@@ -118,6 +121,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
+      CONFIG_SERVER_URL: http://config-server:8888
 
   genai-service:
     build:
@@ -135,8 +139,9 @@ services:
       - "8084:8084"
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server:8888
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CONFIG_SERVER_URL: http://config-server:8888
+
 
   api-gateway:
     build:
@@ -154,6 +159,7 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
 
   admin-server:
     build:

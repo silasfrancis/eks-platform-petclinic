@@ -14,7 +14,7 @@ locals {
 
 
 resource "aws_iam_role" "pod_secrets_reader" {
-  name = "${var.env}-pod-secrets-reader"
+  name = "${var.env}-${var.service_account_name}-pod-secrets-reader"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

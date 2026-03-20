@@ -1,5 +1,5 @@
 resource "aws_iam_policy" "pod_read_secrets_policy" {
-  name        = "${var.env}-pod-secrets-read"
+  name        = "${var.env}-${var.service_account_name}-pod-secrets-read"
   description = "Allows reading of a specific secret from AWS Secrets Manager for pods in EKS using OIDC authentication"
 
   policy = jsonencode({
@@ -8,7 +8,9 @@ resource "aws_iam_policy" "pod_read_secrets_policy" {
       Effect   = "Allow"
       Action   = [
         "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret"
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetResourcePolicy",
+        "secretsmanager:ListSecretVersionIds"
       ]
       Resource = "arn:aws:secretsmanager:*:*:secret:${var.secret_name}*"
     }]

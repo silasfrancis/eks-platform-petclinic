@@ -4,3 +4,6 @@ GHSA-72hv-8253-57qq exp:2026-04-30
 
 # libc6 glibc memalign - awaiting patched distroless digest
 CVE-2026-0861 exp:2026-04-30
+
+# mssql-jdbc bundled by Flyway - image used only for file copy, driver never executed
+CVE-2025-59250

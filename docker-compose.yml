@@ -48,7 +48,6 @@ services:
     ports:
       - "8761:8761"
     environment:
-      SERVER_PORT: 8761
       CONFIG_SERVER_URL: http://config-server:8888
 
   customers-service:

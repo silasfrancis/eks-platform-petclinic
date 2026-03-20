@@ -1,0 +1,111 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: 
+spec:
+  replicas: 
+  selector:
+    matchLabels:
+      app: 
+  template:
+    metadata:
+      labels:
+        app: 
+    spec:
+      serviceAccountName: 
+      containers:
+        - name: 
+          image: 
+          ports:
+            - containerPort: 
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: 
+        - name: CONFIG_SERVER_URL
+          value: 
+        - name: MYSQL_HOST
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_HOST
+        - name: MYSQL_USER
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_DATABASE
+        - name: OPENAI_API_KEY
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: OPENAI_API_KEY
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 
+            initialDelaySeconds: 
+            periodSeconds: 
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 
+            initialDelaySeconds: 
+            periodSeconds: 
+            failureThreshold: 3
+          resources:
+            limits:
+              memory: 
+              cpu: 
+            requests:
+              memory: 
+              cpu: 
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: 
+                topologyKey: kubernetes.io/hostname
+  minReadySeconds: 30
+  revisionHistoryLimit: 5
+  strategy:
+    canary:
+      maxSurge: '25%'
+      maxUnavailable: 0
+      dynamicStableScale: true
+      abortScaleDownDelaySeconds: 600
+      canaryService: 
+      stableService: 
+    #   analysis:
+    #     templates:
+    #       - templateName: 
+    #     startingStep: 2
+    #     args:
+    #       - name:
+    #         value: 
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: 
+              routes:
+                - 
+      steps:
+        - setWeight: 20
+        - pause: { duration: 30s }
+        - setWeight: 40
+        - pause: { duration: 1m }
+        - setWeight: 80
+        - pause: { duration: 1m }
+        - setWeight: 100

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: #plain service
+spec:
+  selector:
+    app: 
+  ports:
+    - port: 80
+      targetPort:apiVersion: v1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: 
+spec:
+  selector:
+    app: 
+  ports:
+    - port: 80
+      targetPort:
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: 
+spec:
+  selector:
+    app: 
+  ports:
+    - port: 80
+      targetPort:

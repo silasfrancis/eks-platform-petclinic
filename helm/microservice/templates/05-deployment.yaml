@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 
+spec:
+  replicas: 
+  selector:
+    matchLabels:
+      app: 
+  template:
+    metadata:
+      labels:
+        app: 
+    spec:
+      serviceAccountName: 
+      containers:
+        - name: 
+          image: 
+          ports:
+            - containerPort: 
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: 
+        - name: CONFIG_SERVER_URL
+          value: 
+        - name: MYSQL_HOST
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_HOST
+        - name: MYSQL_USER
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+            valueFrom:
+            secretKeyRef:
+                name: 
+                key: MYSQL_DATABASE
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 
+            initialDelaySeconds: 
+            periodSeconds: 
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 
+            initialDelaySeconds: 
+            periodSeconds: 
+            failureThreshold: 3
+          resources:
+            limits:
+              memory: 
+              cpu: 
+            requests:
+              memory: 
+              cpu: 
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: 
+                topologyKey: kubernetes.io/hostname
+  minReadySeconds: 30
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0

@@ -1,4 +1,4 @@
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/customers-service
-  tag: '0c2c74af'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/customers-service@sha256:ba9f3e2225501017fce83aff7926d70ac59b75e479564e78680c5f6a2ed26bc8
+  tag: 'e748c781'
+  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/customers-service@sha256:1b300b14d00813bc22b98b303196936cba0e3779e533df981a236aa8ff1d54b0

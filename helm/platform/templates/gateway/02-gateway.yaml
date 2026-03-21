@@ -1,15 +1,16 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: petclinic-gateway
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
-    istio: ingressgateway
+    {{- toYaml .Values.selectorLabels | nindent 4 }}
   servers:
     - port:
         number: 80
         name: http
         protocol: HTTP
       hosts:
-        - "api-gateway.lefrancis.org"
+        {{- toYaml .Values.servers.hosts | nindent 4 }}
   

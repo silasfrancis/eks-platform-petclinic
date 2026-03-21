@@ -1,24 +1,55 @@
 # Snyk (https://snyk.io) policy file
 version: v1.25.0
+
 ignore:
   'SNYK-JAVA-COMMONSLANG-10734077':
     - '*':
         reason: 'No fix available, transitive dependency via Spring Cloud Eureka client'
         expires: '2026-09-18T00:00:00.000Z'
+
   'SNYK-JAVA-ORGSPRINGFRAMEWORKAI-15679673':
     - '*':
         reason: 'Known SQL Injection in Spring AI 2.0.0-M1. Mitigated by internal-only vector store access.'
         expires: '2026-04-18T00:00:00.000Z'
+
   'SNYK-JAVA-TOOLSJACKSONCORE-15365915':
     - '*':
         reason: 'Transitive dependency via Config Server. Fix available in 3.1.0.'
         expires: '2026-04-18T00:00:00.000Z'
+
   'SNYK-JAVA-TOOLSJACKSONCORE-15371178':
     - '*':
         reason: 'Transitive dependency via Config Server. Fix available in 3.1.0.'
         expires: '2026-04-18T00:00:00.000Z'
-  # Added Jackson Core 2.x Resource Exhaustion issue
+
   'SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924':
     - '*':
         reason: 'Transitive dependency via Eureka Client. Fix available in 2.21.1; pending dependency update.'
         expires: '2026-04-18T00:00:00.000Z'
+
+  'SNYK-JAVA-ORGSPRINGFRAMEWORK-15701844':
+    - '*':
+        reason: 'Directory Traversal in spring-webflux@7.0.5 via spring-boot-starter-webflux@4.0.3. Pending upgrade to 4.0.4.'
+        expires: '2025-07-01T00:00:00.000Z'
+
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701835':
+    - '*':
+        reason: 'Authentication Bypass in spring-boot-actuator-autoconfigure@4.0.3 via spring-boot-admin-starter-server. Fixed in 4.0.4; awaiting de.codecentric upstream compatibility.'
+        expires: '2025-07-01T00:00:00.000Z'
+
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701839':
+    - '*':
+        reason: 'Authentication Bypass in spring-boot-actuator-autoconfigure@4.0.3 via spring-boot-admin-starter-server. Fixed in 4.0.4; awaiting de.codecentric upstream compatibility.'
+        expires: '2025-07-01T00:00:00.000Z'
+
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836':
+    - '*':
+        reason: 'Authentication Bypass in spring-boot-actuator@4.0.3 via spring-boot-admin-starter-server. Fixed in 4.0.4; awaiting de.codecentric upstream compatibility.'
+        expires: '2025-07-01T00:00:00.000Z'
+
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701840':
+    - '*':
+        reason: 'Authentication Bypass in spring-boot-actuator@4.0.3 via spring-boot-admin-starter-server. Fixed in 4.0.4; awaiting de.codecentric upstream compatibility.'
+        expires: '2025-07-01T00:00:00.000Z'
+
+patch: {}

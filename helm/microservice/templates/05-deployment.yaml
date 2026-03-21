@@ -1,69 +1,58 @@
+{{- if .Values.deployment.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: 
+  name: {{ .Values.deployment.name }}
+  namespace: {{ .Values.namespace }}
 spec:
-  replicas: 
+  replicas: {{ .Values.deployment.replicas }}
   selector:
     matchLabels:
-      app: 
+      {{- toYaml .Values.selectorLabels | nindent 4 }} 
   template:
     metadata:
       labels:
-        app: 
+        {{- toYaml .Values.selectorLabels | nindent 4 }} 
     spec:
-      serviceAccountName: 
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       containers:
-        - name: 
-          image: 
+        - name: {{ .Values.container.name }}
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
           ports:
-            - containerPort: 
+            - containerPort: {{ .Values.container.port }}
         env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: 
-        - name: CONFIG_SERVER_URL
-          value: 
-        - name: MYSQL_HOST
-            valueFrom:
+        {{- range .Values.deployment.env.secrets }}
+        - name: {{ .name }}
+          valueFrom:
             secretKeyRef:
-                name: 
-                key: MYSQL_HOST
-        - name: MYSQL_USER
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_USER
-        - name: MYSQL_PASSWORD
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_PASSWORD
-        - name: MYSQL_DATABASE
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_DATABASE
+              name: {{ .secretName }}
+              key: {{ .secretKey }}
+        {{- end }}
+        {{- range $key, $val := .Values.deployment.env.plain }}
+        - name: {{ $key }}
+          value: {{ $val | quote }}
+        {{- end }}
           readinessProbe:
             httpGet:
-              path: /
-              port: 
-            initialDelaySeconds: 
-            periodSeconds: 
-            failureThreshold: 3
+              path: {{ .Values.container.readinessProbe.path }}
+              port: {{ .Values.container.port }}
+            initialDelaySeconds: {{ .Values.container.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.container.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.container.readinessProbe.failureThreshold }}
           livenessProbe:
             httpGet:
-              path: /
-              port: 
-            initialDelaySeconds: 
-            periodSeconds: 
-            failureThreshold: 3
+              path: {{ .Values.container.livenessProbe.path }}
+              port: {{ .Values.container.port }}
+            initialDelaySeconds: {{ .Values.container.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.container.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.container.livenessProbe.failureThreshold }}
           resources:
             limits:
-              memory: 
-              cpu: 
+              memory: {{ .Values.container.resources.limits.memory }}
+              cpu: {{ .Values.container.resources.limits.cpu }}
             requests:
-              memory: 
-              cpu: 
+              memory: {{ .Values.container.resources.requests.memory }}
+              cpu: {{ .Values.container.resources.requests.cpu }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -71,12 +60,13 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: 
+                    {{- toYaml .Values.selectorLabels | nindent 4 }}  
                 topologyKey: kubernetes.io/hostname
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
+  minReadySeconds: {{ .Values.deployment.minReadySeconds }}
+  revisionHistoryLimit: {{ .Values.deployment.revisionHistoryLimit }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 0
+      maxSurge: {{ .Values.deployment.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.deployment.strategy.rollingUpdate.maxUnavailable }}
+{{- end }}

@@ -1,0 +1,8 @@
+namespace: istio-system
+name: petclinic-gateway
+selectorLabels:
+  app: istio-ingressgateway
+  istio: ingressgateway
+servers:
+  hosts:
+  - "petclinic.lefrancis.org"

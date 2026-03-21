@@ -1,43 +1,33 @@
+{{- if .Values.databaseMigration.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: 
-  namespace: 
+  name: {{ .Values.databaseMigration.name }}
+  namespace: {{ .Values.namespace }}
+  {{- if .Values.databaseMigration.annotations }}
   annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
+    {{- toYaml .Values.databaseMigration.annotations | nindent 4 }}
+  {{- end }}
 spec:
-  backoffLimit: 3
+  backoffLimit: {{ .Values.databaseMigration.backoffLimit }}
   template:
     spec:
-      restartPolicy: Never
+      restartPolicy: {{ .Values.databaseMigration.restartPolicy }}
       containers:
-        - name: 
-          image: 
+        - name: {{ .Values.container.name }}
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
           args:
             - migrate
         env:
-        - name: MYSQL_HOST
-            valueFrom:
+        {{- range .Values.databaseMigration.env.secrets }}
+        - name: {{ .name }}
+          valueFrom:
             secretKeyRef:
-                name: 
-                key: MYSQL_HOST
-        - name: MYSQL_DATABASE
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_DATABASE
-        - name: FLYWAY_URL
-            value: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
-        - name: FLYWAY_USER
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_USER
-        - name: FLYWAY_PASSWORD
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_PASSWORD
-                
+              name: {{ .secretName }}
+              key: {{ .secretKey }}
+        {{- end }}
+        {{- range $key, $val := .Values.databaseMigration.env.plain }}
+        - name: {{ $key }}
+          value: {{ $val | quote }}
+        {{- end }}
+{{- end }}

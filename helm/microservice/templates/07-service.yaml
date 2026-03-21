@@ -1,32 +1,41 @@
+{{- if not .Values.service.rolloutServices.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: #plain service
+  name: {{ .Values.service.name }}
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
-    app: 
+    {{- toYaml .Values.selectorLabels | nindent 4 }}
   ports:
-    - port: 80
-      targetPort:apiVersion: v1
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.container.port }}
+{{- end }}
 ---
+{{- if .Values.service.rolloutServices.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: 
+  name: {{ .Values.service.rolloutServices.stableService }}
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
-    app: 
+    {{- toYaml .Values.selectorLabels | nindent 4 }}
   ports:
-    - port: 80
-      targetPort:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.container.port }}
+{{- end }}
 ---
+{{- if .Values.service.rolloutServices.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: 
+  name: {{ .Values.service.rolloutServices.canaryService }}
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
-    app: 
+    {{- toYaml .Values.selectorLabels | nindent 4 }} 
   ports:
-    - port: 80
-      targetPort:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.container.port }}
+{{- end }}

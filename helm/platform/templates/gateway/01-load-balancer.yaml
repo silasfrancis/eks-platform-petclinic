@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- toYaml .Values.annotations | nindent 4}}
+spec:
+  type: LoadBalancer
+  selector:
+    {{- toYaml .Values.selectorLabels | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.istioTargetPorts.http }}
+    - name: https
+      port: 443
+      targetPort: {{ .Values.istioTargetPorts.https }}

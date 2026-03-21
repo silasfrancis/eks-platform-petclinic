@@ -1,74 +1,58 @@
+{{- if .Values.argoRollout.enabled }}
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: 
+  name: {{ .Values.argoRollout.name }}
+  namespace: {{ .Values.namespace }}
 spec:
   replicas: 
   selector:
     matchLabels:
-      app: 
+      {{- toYaml .Values.selectorLabels | nindent 4 }}
   template:
     metadata:
       labels:
-        app: 
+        {{- toYaml .Values.selectorLabels | nindent 4 }}
     spec:
-      serviceAccountName: 
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       containers:
-        - name: 
-          image: 
+        - name: {{ .Values.container.name }}
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
           ports:
-            - containerPort: 
+            - containerPort: {{ .Values.container.port }}
         env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: 
-        - name: CONFIG_SERVER_URL
-          value: 
-        - name: MYSQL_HOST
-            valueFrom:
+        {{- range .Values.argoRollout.env.secrets }}
+        - name: {{ .name }}
+          valueFrom:
             secretKeyRef:
-                name: 
-                key: MYSQL_HOST
-        - name: MYSQL_USER
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_USER
-        - name: MYSQL_PASSWORD
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_PASSWORD
-        - name: MYSQL_DATABASE
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: MYSQL_DATABASE
-        - name: OPENAI_API_KEY
-            valueFrom:
-            secretKeyRef:
-                name: 
-                key: OPENAI_API_KEY
+              name: {{ .secretName }}
+              key: {{ .secretKey }}
+        {{- end }}
+        {{- range $key, $val := .Values.argoRollout.env.plain }}
+        - name: {{ $key }}
+          value: {{ $val | quote }}
+        {{- end }}
           readinessProbe:
             httpGet:
-              path: /
-              port: 
-            initialDelaySeconds: 
-            periodSeconds: 
-            failureThreshold: 3
+              path: {{ .Values.container.readinessProbe.path }}
+              port: {{ .Values.container.port }}
+            initialDelaySeconds: {{ .Values.container.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.container.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.container.readinessProbe.failureThreshold }}
           livenessProbe:
             httpGet:
-              path: /
-              port: 
-            initialDelaySeconds: 
-            periodSeconds: 
-            failureThreshold: 3
+              path: {{ .Values.container.livenessProbe.path }}
+              port: {{ .Values.container.port }}
+            initialDelaySeconds: {{ .Values.container.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.container.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.container.livenessProbe.failureThreshold }}
           resources:
             limits:
-              memory: 
-              cpu: 
+              memory: {{ .Values.container.resources.limits.memory }}
+              cpu: {{ .Values.container.resources.limits.cpu }}
             requests:
-              memory: 
-              cpu: 
+              memory: {{ .Values.container.resources.requests.memory }}
+              cpu: {{ .Values.container.resources.requests.cpu }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -76,18 +60,18 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: 
+                    {{- toYaml .Values.selectorLabels | nindent 4 }}  
                 topologyKey: kubernetes.io/hostname
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
+  minReadySeconds: {{ .Values.argoRollout.minReadySeconds }}
+  revisionHistoryLimit: {{ .Values.argoRollout.revisionHistoryLimit }}
   strategy:
     canary:
-      maxSurge: '25%'
-      maxUnavailable: 0
-      dynamicStableScale: true
-      abortScaleDownDelaySeconds: 600
-      canaryService: 
-      stableService: 
+      maxSurge: {{ .Values.argoRollout.strategy.canary.maxSurge }}
+      maxUnavailable: {{ .Values.argoRollout.strategy.canary.maxUnavailable }}
+      dynamicStableScale: {{ .Values.argoRollout.strategy.canary.dynamicStableScale }}
+      abortScaleDownDelaySeconds: {{ .Values.argoRollout.strategy.canary.abortScaleDownDelaySeconds }}
+      canaryService: {{ .Values.service.rolloutServices.canaryService }}
+      stableService: {{ .Values.service.rolloutServices.stableService }}
     #   analysis:
     #     templates:
     #       - templateName: 
@@ -98,9 +82,9 @@ spec:
       trafficRouting:
         istio:
           virtualServices:
-            - name: 
+            - name: {{ .Values.virtualService.strategy.name }}
               routes:
-                - 
+                - {{ .Values.virtualService.http.route }}
       steps:
         - setWeight: 20
         - pause: { duration: 30s }
@@ -109,3 +93,4 @@ spec:
         - setWeight: 80
         - pause: { duration: 1m }
         - setWeight: 100
+{{- end }}

@@ -1,22 +1,27 @@
+{{- if .Values.virtualService.enabled }}
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: customers-service-vsvc
+  name: {{ .Values.virtualService.name }}   
+  namespace: {{ .Values.namespace }}
 spec:
   hosts:
-    - customers-service      
+    - {{- toYaml .Values.virtualService.hosts | nindent 4 }} 
+  {{- if .Values.virtualService.gatewayRef.enabled }}      
   gateways:
-    -                    #for frontend
+    -  "{{ .Values.virtualService.gatewayRef.namespace }}/{{ .Values.virtualService.gatewayRef.name }}"    
+  {{- end }}              
   http:
-    - name: primary
+    - name: {{ .Values.virtualService.http.route }}
       route:
         - destination:
-            host: #the stable service
+            host: {{ .Values.service.rolloutServices.stableService }}
             port:
-              number: 8080
+              number: {{ .Values.service.port }}
           weight: 100
         - destination:
-            host: #canary service
+            host: {{ .Values.service.rolloutServices.canaryService }}
             port:
-              number: 8080
+              number: {{ .Values.service.port }}
           weight: 0
+{{- end }}

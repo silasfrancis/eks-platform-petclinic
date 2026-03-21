@@ -1,4 +1,4 @@
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/visits-service
-  tag: 'e748c781'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/visits-service@sha256:c5828298e735a8490251be5957170ddf37123caac1ca5bf36d0d1e4d17983ce6
+  tag: '31c1440c'
+  digest: sha256:93ed370a036259c394535910fbc923d102528ec57a63696bb488a3541b372120

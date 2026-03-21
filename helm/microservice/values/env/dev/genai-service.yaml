@@ -22,9 +22,9 @@ container:
 selectorLabels:
   app: admin-server
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
+  tag: '6af97245'
+  digest: sha256:2497981a898654d88ccfb08a37ca7da2cacb6a70e7a47cab8e7684a5392a04db
 serviceAccount:
   enabled: false
   name: admin-server-sa

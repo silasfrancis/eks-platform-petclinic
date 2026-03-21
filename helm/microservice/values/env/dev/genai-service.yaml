@@ -1,4 +1,4 @@
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/genai-service
-  tag: '31c1440c'
-  digest: sha256:182726e850aa06883924540a0a7cc489a30b3bba383df2245cda6be8a1108a53
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
+  tag: '81ba4e5e'
+  digest: sha256:188f1205814e615317726481206d6480310a2a77f1cc0b3d032422c916cbfcb7

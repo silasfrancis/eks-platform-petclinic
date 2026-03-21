@@ -1,4 +1,4 @@
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/api-gateway
-  tag: 'e748c781'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/api-gateway@sha256:11abbdaf8e1354ad2a4032bbdb653a46bac222b4e84c772348b446f55378231f
+  tag: '31c1440c'
+  digest: sha256:1d00ba0a914790b4c1957f08457b1c74bfab1b87b4b939af6678d5f7dc3b129b

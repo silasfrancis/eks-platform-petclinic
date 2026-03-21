@@ -1,5 +1,5 @@
 namespace: petclinic
-container: 
+container:
   name: admin-server
   port: 9090
   readiness:
@@ -13,7 +13,7 @@ container:
     periodSeconds: 10
     failureThreshold: 3
   resources:
-    limits: 
+    limits:
       memory: 512Mi
       cpu: 500m
     requests:
@@ -23,13 +23,13 @@ selectorLabels:
   app: admin-server
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server
-  tag: 'e748c781'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server@sha256:5045fdf2cdbfeacc5da98e37f74ecfeb066fe1ac9f438842dd90eaa39a1c4958
+  tag: '31c1440c'
+  digest: sha256:78de8cef346fbcd33e6c02a2fe7428e587c8ee94e4b6a1172a6d0ba4eb98d0e5
 serviceAccount:
   enabled: false
   name: admin-server-sa
   annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
 secretStore:
   enabled: false
   name: admin-server-secretStore
@@ -86,4 +86,3 @@ virtualService:
     name: petclinic-gateway
   hosts:
     - admin-server
-

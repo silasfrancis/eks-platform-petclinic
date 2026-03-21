@@ -22,9 +22,9 @@ container:
 selectorLabels:
   app: admin-server
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server
-  tag: '31c1440c'
-  digest: sha256:78de8cef346fbcd33e6c02a2fe7428e587c8ee94e4b6a1172a6d0ba4eb98d0e5
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
+  tag: '81ba4e5e'
+  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
 serviceAccount:
   enabled: false
   name: admin-server-sa
@@ -52,7 +52,7 @@ externalSecret:
         property: MYSQL_PASSWORD
     - secretKey: OPENAI_API_KEY
       remoteRef:
-        key: dev/springboot-microservices       
+        key: dev/springboot-microservices
         property: OPENAI_API_KEY
 databaseMigration:
   enabled: false
@@ -70,7 +70,7 @@ databaseMigration:
       secretKey: MYSQL_HOST
     - name: MYSQL_DATABASE
       secretName: admin-server-secrets
-      secretKey: MYSQL_DATABASE 
+      secretKey: MYSQL_DATABASE
     - name: FLYWAY_USER
       secretName: admin-server-secrets
       secretKey: MYSQL_USER
@@ -95,11 +95,11 @@ deployment:
         secretName: admin-server-secrets
         secretKey: MYSQL_PASSWORD
       - name: OPENAI_API_KEY
-        secretName: ai-secrets          
+        secretName: ai-secrets
         secretKey: OPENAI_API_KEY
     plain:
-      SPRING_PROFILES_ACTIVE: 
-      CONFIG_SERVER_URL: 
+      SPRING_PROFILES_ACTIVE:
+      CONFIG_SERVER_URL:
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:
@@ -122,11 +122,11 @@ argoRollout:
         secretName: admin-server-secrets
         secretKey: MYSQL_PASSWORD
       - name: OPENAI_API_KEY
-        secretName: ai-secrets          
+        secretName: ai-secrets
         secretKey: OPENAI_API_KEY
     plain:
-      SPRING_PROFILES_ACTIVE: 
-      CONFIG_SERVER_URL: 
+      SPRING_PROFILES_ACTIVE:
+      CONFIG_SERVER_URL:
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:

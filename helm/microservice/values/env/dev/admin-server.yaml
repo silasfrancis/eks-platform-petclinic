@@ -1,4 +1,89 @@
+namespace: petclinic
+container: 
+  name: admin-server
+  port: 9090
+  readiness:
+    probePath: /
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  liveness:
+    probePath: /
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits: 
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+selectorLabels:
+  app: admin-server
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server
   tag: 'e748c781'
   digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/admin-server@sha256:5045fdf2cdbfeacc5da98e37f74ecfeb066fe1ac9f438842dd90eaa39a1c4958
+serviceAccount:
+  enabled: false
+  name: admin-server-sa
+  annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+secretStore:
+  enabled: false
+  name: admin-server-secretStore
+  awsRegion: us-east-2
+externalSecret:
+  enabled: false
+  name: admin-server-externalSecret
+  secret: admin-server-secrets
+  remoteRef:
+    awsSecretKey: dev/springboot-microservices
+    secretsProperties:
+      dbSecrets:
+        enabled: false
+        dbHost: MYSQL_HOST
+        dbHser: MYSQL_USER
+        dbPwd: MYSQL_PASSWORD
+        dbName: MYSQL_DATABASE
+      aiSecrets:
+        enabled: false
+        open-ai-key: OPENAI_API_KEY
+databaseMigration:
+  enabled: false
+  name: admin-server-migrationJob
+deployment:
+  enabled: true
+  name: admin-server-deployment
+  replicas: 2
+  secrets:
+    springProfiles: docker
+    dbSecrets:
+      enabled: false
+argoRollout:
+  enabled: false
+  name: admin-server-rollout
+  replicas: 2
+  secrets:
+    springProfiles: docker
+    dbSecrets:
+      enabled: false
+    aiSecrets:
+      enabled: false
+service:
+  name: admin-server-service
+  port: 9090
+  rolloutServices:
+    enabled: false
+    stableService: admin-server-stable-service
+    canaryService: admin-server-canary-service
+virtualService:
+  enabled: false
+  name: admin-server-vs
+  gatewayRef:
+    enabled: false
+    name: petclinic-gateway
+  hosts:
+    - admin-server
+

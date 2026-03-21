@@ -22,7 +22,7 @@ provider "aws" {
 locals {
   environment = "dev"
   tag         = "silas-dev"
-  namespace   = "microservices"
+  namespace   = "petclinic"
 
   service_accounts = [
     "config-server-sa",

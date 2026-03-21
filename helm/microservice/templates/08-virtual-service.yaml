@@ -11,12 +11,12 @@ spec:
     - name: primary
       route:
         - destination:
-            host: customers-service-stable
+            host: #the stable service
             port:
               number: 8080
           weight: 100
         - destination:
-            host: customers-service-canary
+            host: #canary service
             port:
               number: 8080
           weight: 0

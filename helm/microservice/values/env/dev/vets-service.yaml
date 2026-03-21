@@ -1,4 +1,4 @@
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/vets-service
-  tag: 'e748c781'
-  digest: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/vets-service@sha256:4b4afb45eb79d53e46e889c6f2d1bad11b94b13ac512ac4ca9a1dadf10cb5b45
+  tag: '31c1440c'
+  digest: sha256:e89c4b19b3e9ec3cb46f21ba6088b08b23c7cb9c0e5456bf63f6d45fd713da24

@@ -165,8 +165,8 @@ jobs:
           webhook-type: incoming-webhook
 
   publish-manifest:
-    needs: build-scan-push
-    if: ${{ contains(fromJson('["success", "failure"]'), needs.build-scan-push.result) }}
+    needs: build-scan-push-migration-images
+    if: ${{ contains(fromJson('["success", "failure"]'), needs.build-scan-push-migration-images.result) }}
     runs-on: ubuntu-24.04
     environment: >-
       ${{ (github.ref_name == 'main' || github.base_ref == 'main')

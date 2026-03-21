@@ -1,4 +1,4 @@
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/dev-springboot/config-server
-  tag: '31c1440c'
-  digest: sha256:e7334bfb59f1207890590d2e9d36e1e718ba3cc5d9ef15e4b464c901968b6680
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/config-server
+  tag: '81ba4e5e'
+  digest: sha256:2a7cb7d6885d0a7eee318bdb4023d7fddbb1f9781d25403605f4f1388a0f2468

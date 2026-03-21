@@ -22,9 +22,9 @@ container:
 selectorLabels:
   app: admin-server
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
+  tag: '6af97245'
+  digest: sha256:f2c46e92bacb30f8a9a9b07cb2b7e9144ead02356a85f77cc7ce4cfa87300b56
 serviceAccount:
   enabled: false
   name: admin-server-sa

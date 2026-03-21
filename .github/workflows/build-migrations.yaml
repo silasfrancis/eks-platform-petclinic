@@ -63,7 +63,7 @@ jobs:
       - name: Get image repo
         id: get_image_repo
         run: |
-          REPO_NAME=$(task -t .github/workflows/utils/Taskfile.yaml return-image-repo-${{ env.BRANCH_NAME }} SERVICE=${{ env.SERVICE }})
+          REPO_NAME=$(task -t .github/workflows/utils/Taskfile.yaml get-repo SERVICE=${{ env.SERVICE }})
           REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${REPO_NAME}"
           echo "IMAGE_REPO=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "REGISTRY_URI=$REGISTRY_URI" >> $GITHUB_OUTPUT

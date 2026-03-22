@@ -8,11 +8,11 @@ spec:
   replicas: {{ .Values.deployment.replicas }}
   selector:
     matchLabels:
-      {{- toYaml .Values.selectorLabels | nindent 4 }} 
+      {{- toYaml .Values.selectorLabels | nindent 6 }} 
   template:
     metadata:
       labels:
-        {{- toYaml .Values.selectorLabels | nindent 4 }} 
+        {{- toYaml .Values.selectorLabels | nindent 6 }} 
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       containers:
@@ -20,22 +20,22 @@ spec:
           image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
           ports:
             - containerPort: {{ .Values.container.port }}
-        env:
-        {{- if .Values.deployment.env.secrets }}
-        {{- range .Values.deployment.env.secrets }}
-        - name: {{ .name }}
-          valueFrom:
-            secretKeyRef:
-              name: {{ .secretName }}
-              key: {{ .secretKey }}
-        {{- end }}
-        {{- end }}
-        {{- if .Values.deployment.env.plain }}
-        {{- range $key, $val := .Values.deployment.env.plain }}
-        - name: {{ $key }}
-          value: {{ $val | quote }}
-        {{- end }}
-        {{- end }}
+          env:
+          {{- if .Values.deployment.env.secrets }}
+          {{- range .Values.deployment.env.secrets }}
+          - name: {{ .name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretName }}
+                key: {{ .secretKey }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.deployment.env.plain }}
+          {{- range $key, $val := .Values.deployment.env.plain }}
+          - name: {{ $key }}
+            value: {{ $val | quote }}
+          {{- end }}
+          {{- end }}
           readinessProbe:
             httpGet:
               path: {{ .Values.container.readinessProbe.path }}
@@ -64,7 +64,7 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    {{- toYaml .Values.selectorLabels | nindent 4 }}  
+                    {{- toYaml .Values.selectorLabels | nindent 20 }}  
                 topologyKey: kubernetes.io/hostname
   minReadySeconds: {{ .Values.deployment.minReadySeconds }}
   revisionHistoryLimit: {{ .Values.deployment.revisionHistoryLimit }}

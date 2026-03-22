@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   hosts:
-    - {{- toYaml .Values.virtualService.hosts | nindent 4 }} 
+    {{- toYaml .Values.virtualService.hosts | nindent 4 }} 
   {{- if .Values.virtualService.gatewayRef.enabled }}      
   gateways:
     -  "{{ .Values.virtualService.gatewayRef.namespace }}/{{ .Values.virtualService.gatewayRef.name }}"    

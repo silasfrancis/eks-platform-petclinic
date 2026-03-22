@@ -35,6 +35,7 @@ serviceAccount:
 
 secretStore:
   enabled: true
+  kind: SecretStore
   name: genai-service-secretStore
   awsRegion: us-east-2
 

@@ -36,6 +36,7 @@ serviceAccount:
 
 secretStore:
   enabled: true
+  kind: SecretStore
   name: visits-service-secretStore
   awsRegion: us-east-2
 

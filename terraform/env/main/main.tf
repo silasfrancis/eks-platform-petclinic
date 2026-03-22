@@ -1,8 +1,8 @@
 terraform {
   #   backend "s3" {
-  #     bucket       = "silas-main-silas-main"
-  #     key          = "main/terraform.tfstate"
-  #     region       = "us-east-2"
+  #     bucket       = ""${var.application_tag}-silas-${var.environment}""
+  #     key          = "${var.environment}/terraform.tfstate"
+  #     region       = "var.aws_region"
   #     use_lockfile = true
   #     encrypt      = true
   #   }
@@ -10,7 +10,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "6.35.1"
+      version = "6.37.0"
     }
   }
 }

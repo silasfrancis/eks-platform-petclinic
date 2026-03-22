@@ -7,7 +7,9 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http" {
   cidr_ipv4 = "0.0.0.0/0"
   depends_on = [ aws_security_group.alb ]
   tags = {
-    Resource = "ALB"
+    resource = "ALB"
+    env = var.env
+    app = var.application
   }
 }
 
@@ -19,7 +21,9 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_https" {
   ip_protocol = "tcp"
   cidr_ipv4 = "0.0.0.0/0"
     tags = {
-    Resource = "ALB"
+    resource = "ALB"
+    env = var.env
+    app = var.application
   }
   depends_on = [ aws_security_group.alb ]
 }
@@ -30,7 +34,9 @@ resource "aws_vpc_security_group_egress_rule" "alb_egress" {
   ip_protocol = "-1"
   cidr_ipv4 = "0.0.0.0/0"
     tags = {
-    Resource = "ALB"
+    resource = "ALB"
+    env = var.env
+    app = var.application
   }
   depends_on = [ aws_security_group.alb ]
 }

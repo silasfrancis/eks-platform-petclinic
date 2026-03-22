@@ -5,7 +5,9 @@ resource "aws_vpc_security_group_ingress_rule" "eks_ingress_rule_alb_http" {
     ip_protocol = "tcp"
     referenced_security_group_id = aws_security_group.alb.id
     tags = {
-    Resource = "EKS"
+    resource = "EKS"
+    env = var.env
+    app = var.application
   }
   depends_on = [ aws_security_group.eks, aws_security_group.alb ]
 }
@@ -17,7 +19,9 @@ resource "aws_vpc_security_group_ingress_rule" "eks_ingress_rule_alb_https" {
     ip_protocol = "tcp"
     referenced_security_group_id = aws_security_group.alb.id
     tags = {
-    Resource = "EKS"
+    resource = "EKS"
+    env = var.env
+    app = var.application
   }
   depends_on = [ aws_security_group.eks, aws_security_group.alb ]
 }
@@ -29,7 +33,9 @@ resource "aws_vpc_security_group_ingress_rule" "eks_ingress_rule_jump_host" {
     ip_protocol = "tcp"
     referenced_security_group_id = aws_security_group.ec2.id
     tags = {
-    Resource = "EKS"
+    resource = "EKS"
+    env = var.env
+    app = var.application
   }
   depends_on = [ aws_security_group.eks, aws_security_group.ec2 ]
 }
@@ -39,7 +45,9 @@ resource "aws_vpc_security_group_egress_rule" "ec2_egress_rule" {
   ip_protocol = "-1"
   cidr_ipv4 = "0.0.0.0/0"
   tags = {
-    Resource = "EKS"
+    resource = "EKS"
+    env = var.env
+    app = var.application
   }
   depends_on = [ aws_security_group.ec2 ]
 }

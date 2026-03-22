@@ -1,12 +1,21 @@
 resource "aws_nat_gateway" "nat_1" {
   allocation_id = aws_eip.nat_eip_1.id
   subnet_id = aws_subnet.public_subnet_1.id
+  tags = {
+    env = var.env
+    app = var.application
+  }
   depends_on = [aws_internet_gateway.igw]
 }
 
 resource "aws_nat_gateway" "nat_2" {
   allocation_id = aws_eip.nat_eip_2.id
   subnet_id = aws_subnet.public_subnet_2.id
+  tags = {
+    env = var.env
+    app = var.application
+  }
+
   depends_on = [aws_internet_gateway.igw]
 }
 
@@ -20,6 +29,8 @@ resource "aws_route_table" "private_rt_1" {
 
   tags = { 
     Name = "${var.tags}-private-rt"
+    env = var.env
+    app = var.application
     }
 }
 
@@ -33,6 +44,8 @@ resource "aws_route_table" "private_rt_2" {
 
   tags = { 
     Name = "${var.tags}-private-rt"
+    env = var.env
+    app = var.application
     }
 }
 

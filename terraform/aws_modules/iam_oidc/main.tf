@@ -32,4 +32,8 @@ resource "aws_iam_role" "pod_secrets_reader" {
       }
     }]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }

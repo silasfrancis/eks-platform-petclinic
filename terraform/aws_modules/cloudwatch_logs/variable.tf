@@ -5,3 +5,7 @@ variable "env" {
 variable "kms_infra_logs_arn" {
   type = string
 }
+
+variable "application" {
+  type = string
+}

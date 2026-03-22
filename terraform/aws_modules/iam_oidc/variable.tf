@@ -17,3 +17,7 @@ variable "service_account_name" {
 variable "secret_name" {
   type = string
 }
+
+variable "application" {
+  type = string
+}

@@ -2,7 +2,10 @@ resource "aws_db_subnet_group" "main" {
   name       = "${var.env}-rds-subnet-group"
   subnet_ids = var.private_subnet_ids
 
-  tags = { Name = "${var.env}-rds-subnet-group" }
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_db_parameter_group" "mysql" {
@@ -27,6 +30,11 @@ resource "aws_db_parameter_group" "mysql" {
   parameter {
     name  = "log_output"
     value = "FILE"
+  }
+  
+  tags = {
+    env = var.env
+    app = var.application
   }
 }
 
@@ -72,7 +80,10 @@ resource "aws_db_instance" "main" {
 
   auto_minor_version_upgrade = true
 
-  tags = { Name = "${var.env}-mysql" }
+  tags = {
+    env = var.env
+    app = var.application
+  }
 
   lifecycle {
     ignore_changes = [password]  
@@ -83,7 +94,10 @@ resource "aws_db_snapshot" "pre_deploy" {
   db_instance_identifier = aws_db_instance.main.identifier
   db_snapshot_identifier = "${var.env}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
 
-  tags = { Purpose = "pre-deployment snapshot" }
+  tags = {
+    env = var.env
+    app = var.application
+  }
 
   lifecycle {
     ignore_changes = [db_snapshot_identifier] 

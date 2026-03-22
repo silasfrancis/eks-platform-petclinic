@@ -16,7 +16,8 @@ resource "aws_iam_role" "cluster_role" {
     ]
   })
   tags = {
-    Name: "${var.tags}"
+    env = var.env
+    app = var.application
   }
 }
 
@@ -36,7 +37,8 @@ resource "aws_iam_role" "worker_node_role" {
     ]
   })
   tags = {
-    Name: "${var.tags}"
+    env = var.env
+    app = var.application
   }
 }
 
@@ -56,7 +58,8 @@ resource "aws_iam_role" "jumphost_ec2_role" {
     ]
   })
   tags = {
-    Name: "${var.tags}"
+    env = var.env
+    app = var.application
   }
 }
 
@@ -75,6 +78,10 @@ resource "aws_iam_role" "rds_export_role" {
       }
     ]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_iam_role" "vpc_flow_logs_role" {
@@ -92,6 +99,10 @@ resource "aws_iam_role" "vpc_flow_logs_role" {
       }
     ]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_iam_role" "rds_enhanced_monitoring" {
@@ -107,6 +118,10 @@ resource "aws_iam_role" "rds_enhanced_monitoring" {
       Action    = "sts:AssumeRole"
     }]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_iam_role" "rds_export_lambda" {
@@ -120,6 +135,10 @@ resource "aws_iam_role" "rds_export_lambda" {
       Action    = "sts:AssumeRole"
     }]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_iam_role" "slack_notifier_lambda" {
@@ -133,4 +152,8 @@ resource "aws_iam_role" "slack_notifier_lambda" {
       Action    = "sts:AssumeRole"
     }]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }

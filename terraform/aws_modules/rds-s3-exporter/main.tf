@@ -4,8 +4,8 @@ resource "aws_cloudwatch_log_group" "rds_export_lambda" {
   kms_key_id        = var.rds_export_kms_key_arn
 
   tags = {
-    Name = var.env
-    Resource = "RDS"
+    env = var.env
+    app = var.application
   }
 }
 
@@ -22,5 +22,10 @@ resource "aws_cloudwatch_metric_alarm" "rds_export_failed" {
 
   dimensions = {
     FunctionName = aws_lambda_function.rds_export_trigger.function_name
+  }
+
+  tags = {
+    env = var.env
+    app = var.application
   }
 }

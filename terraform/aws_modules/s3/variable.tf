@@ -23,3 +23,10 @@ variable "bucket_exp_days" {
 variable "bucket_tag_name" {
   type = string
 }
+
+variable "env" {
+  type = string
+}
+variable "application" {
+  type = string 
+}

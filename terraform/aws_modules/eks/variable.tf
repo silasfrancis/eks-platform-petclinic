@@ -59,3 +59,7 @@ variable "kms_eks_secrets_arn" {
 variable "kms_eks_nodes_ebs_arn" {
   type = string
 }
+
+variable "application" {
+  type = string
+}

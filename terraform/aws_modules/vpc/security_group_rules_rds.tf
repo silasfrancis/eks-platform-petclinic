@@ -5,7 +5,9 @@ resource "aws_vpc_security_group_ingress_rule" "rds_ingress_rule_eks" {
     ip_protocol = "tcp"
     referenced_security_group_id = aws_security_group.eks.id
     tags = {
-    Resource = "RDS"
+    resource = "RDS"
+    env = var.env
+    app = var.application
     }
     depends_on = [ aws_security_group.rds ]
 }
@@ -17,7 +19,9 @@ resource "aws_vpc_security_group_ingress_rule" "rds_ingress_rule_jump_host" {
     ip_protocol = "tcp"
     referenced_security_group_id = aws_security_group.ec2.id
     tags = {
-    Resource = "RDS"
+    resource = "RDS"
+    env = var.env
+    app = var.application
     }
     depends_on = [ aws_security_group.rds ]
 }
@@ -27,7 +31,9 @@ resource "aws_vpc_security_group_egress_rule" "rds_egress_rule" {
   ip_protocol = "-1"
   cidr_ipv4 = "0.0.0.0/0"
   tags = {
-    Resource = "RDS"
+    resource = "RDS"
+    env = var.env
+    app = var.application
     }
   depends_on = [ aws_security_group.rds ]
 }

@@ -2,6 +2,8 @@ resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.main_vpc.id
   tags = {
     Name = "default-restricted"
+    env = var.env
+    app = var.application
   }
 }
 
@@ -10,7 +12,9 @@ resource "aws_security_group" "alb" {
   name = "${var.env}-alb-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = {
-    Name = "${var.tags}-security_group-alb"      
+    Name = "${var.tags}-security_group-alb" 
+    env = var.env
+    app = var.application     
   }
 }
 
@@ -19,7 +23,9 @@ resource "aws_security_group" "ec2" {
   name = "${var.env}-ec2-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = {
-    Name = "${var.tags}-security_group-ec2"      
+    Name = "${var.tags}-security_group-ec2"   
+    env = var.env
+    app = var.application   
   }
 }
 
@@ -28,7 +34,9 @@ resource "aws_security_group" "eks" {
   name = "${var.env}-eks-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = {
-    Name = "${var.tags}-security_group-eks"      
+    Name = "${var.tags}-security_group-eks"  
+    env = var.env
+    app = var.application    
   }
 }
 
@@ -37,6 +45,8 @@ resource "aws_security_group" "rds" {
   name = "${var.env}-rds-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = {
-    Name = "${var.tags}-security_group-rds"      
+    Name = "${var.tags}-security_group-rds" 
+    env = var.env
+    app = var.application     
   }
 }

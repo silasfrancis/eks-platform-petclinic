@@ -31,6 +31,10 @@ resource "aws_kms_key" "eks_secrets" {
       }
     ]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_kms_key" "infra_logs" {
@@ -66,6 +70,10 @@ resource "aws_kms_key" "infra_logs" {
       }
     ]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_kms_key" "rds_data" {
@@ -101,6 +109,10 @@ resource "aws_kms_key" "rds_data" {
       }
     ]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_kms_key" "eks_nodes_ebs" {
@@ -149,4 +161,8 @@ resource "aws_kms_key" "eks_nodes_ebs" {
       }
     ]
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }

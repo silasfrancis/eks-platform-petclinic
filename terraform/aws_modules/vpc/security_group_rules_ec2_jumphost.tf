@@ -6,6 +6,8 @@ resource "aws_vpc_security_group_egress_rule" "ec2_egress_rule" {
   ip_protocol = "tcp"
   cidr_ipv4   = "0.0.0.0/0"
   tags = {
-  Resource = "EC2"
+  resource = "EC2"
+  env = var.env
+  app = var.application
   }
 }

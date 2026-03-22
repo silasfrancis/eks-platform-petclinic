@@ -28,6 +28,10 @@ resource "aws_lambda_function" "rds_export_trigger" {
     }
   }
 
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_lambda_function" "slack_notifier" {
@@ -42,6 +46,11 @@ resource "aws_lambda_function" "slack_notifier" {
     variables = {
       SLACK_WEBHOOK_URL = var.slack_webhook_url 
     }
+  }
+
+  tags = {
+    env = var.env
+    app = var.application
   }
 }
 

@@ -4,8 +4,9 @@ resource "aws_cloudwatch_log_group" "eks_log_group" {
   kms_key_id        = var.kms_infra_logs_arn
   
   tags = {
-    Name = var.env
-    Resource = "EKS"
+    env = var.env
+    app = var.application
+    resource = "EKS"
   }
 }
 
@@ -15,7 +16,8 @@ resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
   kms_key_id        = var.kms_infra_logs_arn
   
   tags = {
-    Name = var.env
-    Resource = "VPC"
+    env = var.env
+    app = var.application
+    resource = "VPC"
   }
 }

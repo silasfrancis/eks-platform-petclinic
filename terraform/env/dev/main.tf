@@ -23,6 +23,7 @@ locals {
   environment = "dev"
   tag         = "silas-dev"
   namespace   = "petclinic"
+  application = "petclinic"
 
   service_accounts = [
     "config-server-sa",
@@ -42,6 +43,7 @@ module "kms" {
   source = "../../aws_modules/kms"
 
   env = local.environment
+  app = local.application
 }
 
 module "secret_manager" {
@@ -52,6 +54,8 @@ module "secret_manager" {
 module "s3" {
   source = "../../aws_modules/s3"
 
+  env             = local.environment
+  app             = local.application
   bucket_name     = "${local.tag}-silas-${local.environment}"
   bucket_key      = "${local.environment}/terraform.tfstate"
   bucket_prefix   = "alb-logs"
@@ -65,6 +69,7 @@ module "iam" {
 
   tags                   = local.tag
   env                    = local.environment
+  app                    = local.application
   secret_name            = module.secret_manager.secret_name
   rds_export_bucket_arn  = module.s3.bucket_arn["rds_export_bucket_arn"]
   rds_export_kms_key_arn = module.kms.kms_key_arn["rds_data"]
@@ -74,6 +79,7 @@ module "cloudwatch_logs" {
   source = "../../aws_modules/cloudwatch_logs"
 
   env                = local.environment
+  app                = local.application
   kms_infra_logs_arn = module.kms.kms_key_arn["infra_logs"]
 }
 
@@ -82,6 +88,7 @@ module "vpc" {
 
   tags                     = local.tag
   env                      = local.environment
+  app                      = local.application
   vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
   vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
 }
@@ -89,6 +96,8 @@ module "vpc" {
 module "ec2" {
   source = "../../aws_modules/ec2"
 
+  env                   = local.environment
+  app                   = local.application
   tags                  = local.tag
   ami                   = "ami-0b0b78dcacbab728f"
   instance_type         = "t3.micro"
@@ -102,6 +111,7 @@ module "eks" {
   source = "../../aws_modules/eks"
 
   env                    = local.environment
+  app                    = local.application
   k8_version             = "1.35"
   cluster_role_arn       = module.iam.roles["eks_cluster_role"]
   node_role_arn          = module.iam.roles["eks_node_role"]
@@ -124,6 +134,7 @@ module "rds" {
   source = "../../aws_modules/rds"
 
   env                     = local.environment
+  app                     = local.application
   private_subnet_ids      = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
   mysql_version           = "8.0"
   db_instance_class       = "db.t3.micro"
@@ -140,6 +151,7 @@ module "rds-s3-exporter" {
   source = "../../aws_modules/rds-s3-exporter"
 
   env                          = local.environment
+  app                          = local.application
   db_instance_identifier       = module.rds.db_identifier
   rds_export_bucket            = module.s3.bucket_name["rds_export_bucket_name"]
   rds_export_role_arn          = module.iam.roles["rds_export_role"]
@@ -155,6 +167,7 @@ module "iam_oidc" {
   for_each = toset(local.service_accounts)
 
   env                   = local.environment
+  app                   = local.application
   eks_oidc_provider_url = module.eks.oidc_provider_url
   namespace             = local.namespace
   service_account_name  = each.value

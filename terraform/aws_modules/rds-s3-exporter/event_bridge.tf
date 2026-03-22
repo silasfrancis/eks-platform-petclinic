@@ -10,11 +10,20 @@ resource "aws_cloudwatch_event_rule" "rds_snapshot_complete" {
       SourceIdentifier = [var.db_instance_identifier]
     }
   })
+  tags = {
+    env = var.env
+    app = var.application
+  }
 }
 
 resource "aws_cloudwatch_event_target" "rds_export" {
   rule      = aws_cloudwatch_event_rule.rds_snapshot_complete.name
   target_id = "TriggerSnapshotExport"
   arn       = aws_lambda_function.rds_export_trigger.arn
+  tags = {
+    env = var.env
+    app = var.application
+  }
+  
   depends_on = [ aws_lambda_function.rds_export_trigger ]
 }

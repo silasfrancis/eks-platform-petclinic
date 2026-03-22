@@ -28,6 +28,11 @@ resource "aws_eks_cluster" "main_cluster" {
     create = "30m"
     delete = "30m"
   }
+  tags = {
+    env = var.env
+    app = var.application
+    resource = "EKS"
+  }
 
 }
 
@@ -65,6 +70,12 @@ resource "aws_launch_template" "eks_nodes" {
       Name = "${var.env}-eks-node-volume"
     }
   }
+  tag_specifications {
+    tags = {
+      env = var.env
+      app = var.application
+    }
+  }
 }
 
 resource "aws_eks_node_group" "cluster_node_group" {
@@ -92,6 +103,8 @@ resource "aws_eks_node_group" "cluster_node_group" {
   capacity_type = "ON_DEMAND"
 
   tags = {
+    env = var.env
+    app = var.application
     "k8s.io/cluster-autoscaler/enabled"                              = "true"
     "k8s.io/cluster-autoscaler/${aws_eks_cluster.main_cluster.name}" = "owned"
   }

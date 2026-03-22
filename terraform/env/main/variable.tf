@@ -23,10 +23,6 @@ variable "eks_namespace" {
   default = "petclinic"
 }
 
-variable "slack_webhook_url" {
-  type = string
-}
-
 variable "appregistry_application_tag" {
   type    = string
   default = ""

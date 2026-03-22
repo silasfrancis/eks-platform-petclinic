@@ -197,7 +197,7 @@ module "rds-s3-exporter" {
   slack_notify_lambda_role_arn = module.iam.roles["slack_notify_lambda_role"]
   rds_export_kms_key_arn       = module.kms.kms_key_arn["rds_export"]
   rds_export_kms_key_id        = module.kms.kms_key_id["rds_export"]
-  slack_webhook_url            = var.slack_webhook_url
+  slack_webhook_url            = module.secret_manager.slack_secrets["slack_aws_alert_webhook_url"]
 
   depends_on = [
     module.app-registry,
@@ -208,8 +208,8 @@ module "rds-s3-exporter" {
   ]
 }
 
-module "iam_oidc" {
-  source   = "../../modules/iam_oidc"
+module "iam-oidc" {
+  source   = "../../modules/iam-oidc"
   for_each = toset(local.service_accounts)
 
   env                   = var.environment

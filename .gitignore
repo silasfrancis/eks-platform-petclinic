@@ -1,1 +1,7 @@
-*target
+*target*
+*.terraform/
+*terraform.tfstate
+*tfplan
+*plan.json
+*.terraform.lock.hcl
+*terraform.tfstate*

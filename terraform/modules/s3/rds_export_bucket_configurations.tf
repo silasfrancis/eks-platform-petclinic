@@ -1,4 +1,4 @@
-resource "aws_s3_bucket_lifecycle_configuration" "s3_bucket_config" {
+resource "aws_s3_bucket_lifecycle_configuration" "rds_export_bucket_config" {
     bucket = aws_s3_bucket.rds_export.id
     rule {
       id = var.bucket_rule_id
@@ -13,14 +13,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "s3_bucket_config" {
   
 }
 
-resource "aws_s3_bucket_versioning" "bucket_versioning_config" {
+resource "aws_s3_bucket_versioning" "rds_export_bucket_versioning_config" {
   bucket = aws_s3_bucket.rds_export.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "s3_server_side_config" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "rds_export_server_side_config" {
     bucket = aws_s3_bucket.rds_export.id
     rule {
         apply_server_side_encryption_by_default {
@@ -29,7 +29,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "s3_server_side_co
     }  
 }
 
-resource "aws_s3_bucket_public_access_block" "example" {
+resource "aws_s3_bucket_public_access_block" "rds_export_bucket_public_access_block" {
   bucket = aws_s3_bucket.rds_export.id
 
   block_public_acls       = true

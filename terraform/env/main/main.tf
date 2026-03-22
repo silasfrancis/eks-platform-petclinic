@@ -15,16 +15,7 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "us-east-2"
-}
-
 locals {
-  environment = "main"
-  tag         = "silas-main"
-  namespace   = "petclinic"
-  application = "petclinic"
-
   service_accounts = [
     "config-server-sa",
     "customers-service-sa",
@@ -35,83 +26,117 @@ locals {
   ]
 }
 
-variable "slack_webhook_url" {
-  type = string
+module "app-registry" {
+  source = "../../modules/app-registry"
+
+  providers = {
+    aws = aws.appregistry
+  }
+
+  env       = var.environment
+  app       = var.app_name
+  owner     = "silasfrancis"
+  repo      = "https://github.com/silasfrancis/spring-boot-microservices"
+  language  = "java"
+  framework = "spring-boot"
 }
 
 module "kms" {
-  source = "../../aws_modules/kms"
+  source = "../../modules/kms"
 
-  env = local.environment
-  app = local.application
+  env = var.environment
+
+  depends_on = [module.app-registry]
 }
 
 module "secret_manager" {
-  source      = "../../aws_modules/secret_manager"
-  secret_name = "${local.environment}/springboot-microservices"
+  source      = "../../modules/secret_manager"
+  secret_name = "${var.environment}/springboot-microservices"
+
+  depends_on = [module.app-registry]
 }
 
 module "s3" {
-  source = "../../aws_modules/s3"
+  source = "../../modules/s3"
 
-  env             = local.environment
-  app             = local.application
-  bucket_name     = "${local.tag}-silas-${local.environment}"
-  bucket_key      = "${local.environment}/terraform.tfstate"
+  env             = var.environment
+  bucket_name     = "${var.application_tag}-silas-${var.environment}"
+  bucket_key      = "${var.environment}/terraform.tfstate"
   bucket_prefix   = "alb-logs"
-  bucket_rule_id  = "${local.tag}${local.environment}"
+  bucket_rule_id  = "${var.application_tag}${var.environment}"
   bucket_exp_days = 60
-  bucket_tag_name = local.tag
+  bucket_tag_name = var.application_tag
+
+  depends_on = [module.app-registry]
 }
 
 module "iam" {
-  source = "../../aws_modules/iam"
+  source = "../../modules/iam"
 
-  tags                   = local.tag
-  env                    = local.environment
-  app                    = local.application
+  tags                   = var.application_tag
+  env                    = var.environment
   secret_name            = module.secret_manager.secret_name
   rds_export_bucket_arn  = module.s3.bucket_arn["rds_export_bucket_arn"]
   rds_export_kms_key_arn = module.kms.kms_key_arn["rds_data"]
+
+  depends_on = [
+    module.app-registry,
+    module.secret_manager,
+    module.s3,
+    module.kms,
+  ]
 }
 
 module "cloudwatch_logs" {
-  source = "../../aws_modules/cloudwatch_logs"
+  source = "../../modules/cloudwatch_logs"
 
-  env                = local.environment
-  app                = local.application
+  env                = var.environment
   kms_infra_logs_arn = module.kms.kms_key_arn["infra_logs"]
+
+  depends_on = [
+    module.app-registry,
+    module.kms,
+  ]
 }
 
 module "vpc" {
-  source = "../../aws_modules/vpc"
+  source = "../../modules/vpc"
 
-  tags                     = local.tag
-  env                      = local.environment
-  app                      = local.application
+  tags                     = var.application_tag
+  env                      = var.environment
   vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
   vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
+
+  depends_on = [
+    module.app-registry,
+    module.iam,
+    module.cloudwatch_logs,
+  ]
 }
 
 module "ec2" {
-  source = "../../aws_modules/ec2"
+  source = "../../modules/ec2"
 
-  env                   = local.environment
-  app                   = local.application
-  tags                  = local.tag
+  env                   = var.environment
+  tags                  = var.application_tag
   ami                   = "ami-0b0b78dcacbab728f"
   instance_type         = "t3.micro"
   vpc_id                = module.vpc.vpc_id
   private_subnet_id     = module.vpc.subnets["private_subnet"]
   ec2_security_group_id = [module.vpc.security_group["ec2"]]
   iam_instance_profile  = module.iam.iam_instance_profile
+
+  depends_on = [
+    module.app-registry,
+    module.vpc,
+    module.iam,
+  ]
 }
 
 module "eks" {
-  source = "../../aws_modules/eks"
+  source = "../../modules/eks"
 
-  env                    = local.environment
-  app                    = local.application
+  env                    = var.environment
   k8_version             = "1.35"
   cluster_role_arn       = module.iam.roles["eks_cluster_role"]
   node_role_arn          = module.iam.roles["eks_node_role"]
@@ -128,13 +153,19 @@ module "eks" {
   instance_types        = ["t4g.medium"]
   kms_eks_secrets_arn   = module.kms.kms_key_arn["eks_secrets"]
   kms_eks_nodes_ebs_arn = module.kms.kms_key_arn["eks_nodes_ebs"]
+
+  depends_on = [
+    module.app-registry,
+    module.vpc,
+    module.iam,
+    module.kms,
+  ]
 }
 
 module "rds" {
-  source = "../../aws_modules/rds"
+  source = "../../modules/rds"
 
-  env                     = local.environment
-  app                     = local.application
+  env                     = var.environment
   private_subnet_ids      = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
   mysql_version           = "8.0"
   db_instance_class       = "db.t3.micro"
@@ -145,13 +176,20 @@ module "rds" {
   rds_security_group_id   = [module.vpc.security_group["rds"]]
   rds_data_kms_arn        = module.kms.kms_key_arn["rds_data"]
   rds_monitoring_role_arn = module.iam.roles["rds_monitoring_role"]
+
+  depends_on = [
+    module.app-registry,
+    module.vpc,
+    module.secret_manager,
+    module.kms,
+    module.iam,
+  ]
 }
 
 module "rds-s3-exporter" {
-  source = "../../aws_modules/rds-s3-exporter"
+  source = "../../modules/rds-s3-exporter"
 
-  env                          = local.environment
-  app                          = local.application
+  env                          = var.environment
   db_instance_identifier       = module.rds.db_identifier
   rds_export_bucket            = module.s3.bucket_name["rds_export_bucket_name"]
   rds_export_role_arn          = module.iam.roles["rds_export_role"]
@@ -160,16 +198,29 @@ module "rds-s3-exporter" {
   rds_export_kms_key_arn       = module.kms.kms_key_arn["rds_export"]
   rds_export_kms_key_id        = module.kms.kms_key_id["rds_export"]
   slack_webhook_url            = var.slack_webhook_url
+
+  depends_on = [
+    module.app-registry,
+    module.rds,
+    module.s3,
+    module.iam,
+    module.kms,
+  ]
 }
 
 module "iam_oidc" {
-  source   = "../../aws_modules/iam_oidc"
+  source   = "../../modules/iam_oidc"
   for_each = toset(local.service_accounts)
 
-  env                   = local.environment
-  app                   = local.application
+  env                   = var.environment
   eks_oidc_provider_url = module.eks.oidc_provider_url
-  namespace             = local.namespace
+  namespace             = var.eks_namespace
   service_account_name  = each.value
   secret_name           = module.secret_manager.secret_name
+
+  depends_on = [
+    module.app-registry,
+    module.eks,
+    module.secret_manager,
+  ]
 }

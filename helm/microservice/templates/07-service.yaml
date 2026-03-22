@@ -1,4 +1,4 @@
-{{- if not .Values.service.rolloutServices.enabled }}
+{{- if not .Values.service.rolloutServices.enabled and .Values.service.enabled }}
 apiVersion: v1
 kind: Service
 metadata:

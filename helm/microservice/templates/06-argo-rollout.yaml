@@ -21,6 +21,7 @@ spec:
           ports:
             - containerPort: {{ .Values.container.port }}
         env:
+        {{- if .Values.argoRollout.env.secrets }}
         {{- range .Values.argoRollout.env.secrets }}
         - name: {{ .name }}
           valueFrom:
@@ -28,9 +29,12 @@ spec:
               name: {{ .secretName }}
               key: {{ .secretKey }}
         {{- end }}
+        {{- end }}
+        {{- if .Values.argoRollout.env.plain }}
         {{- range $key, $val := .Values.argoRollout.env.plain }}
         - name: {{ $key }}
           value: {{ $val | quote }}
+        {{- end }}
         {{- end }}
           readinessProbe:
             httpGet:

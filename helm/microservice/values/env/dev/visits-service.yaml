@@ -1,14 +1,15 @@
 namespace: petclinic
+
 container:
-  name: admin-server
-  port: 9090
+  name: visits-service
+  port: 8082
   readinessProbe:
-    path: /
+    path: /actuator/health
     initialDelaySeconds: 60
     periodSeconds: 10
     failureThreshold: 3
   livenessProbe:
-    path: /
+    path: /actuator/health
     initialDelaySeconds: 60
     periodSeconds: 10
     failureThreshold: 3
@@ -19,27 +20,31 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
+
 selectorLabels:
-  app: admin-server
+  app: visits-service
+
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
   tag: '6af97245'
   digest: sha256:f2c46e92bacb30f8a9a9b07cb2b7e9144ead02356a85f77cc7ce4cfa87300b56
 serviceAccount:
-  enabled: false
-  name: admin-server-sa
+  enabled: true
+  name: visits-service-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+
 secretStore:
-  enabled: false
-  name: admin-server-secretStore
+  enabled: true
+  name: visits-service-secretStore
   awsRegion: us-east-2
+
 externalSecret:
-  enabled: false
-  name: admin-server-externalSecret
+  enabled: true
+  name: visits-service-externalSecret
   refreshInterval: "5m"
   target:
-    name: admin-server-secrets
+    name: visits-service-secrets
     creationPolicy: Owner
   data:
     - secretKey: MYSQL_HOST
@@ -50,83 +55,42 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: MYSQL_PASSWORD
-    - secretKey: OPENAI_API_KEY
+    - secretKey: MYSQL_USER
       remoteRef:
         key: dev/springboot-microservices
-        property: OPENAI_API_KEY
+        property: MYSQL_USER
+    - secretKey: MYSQL_DATABASE
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_DATABASE
+
 databaseMigration:
   enabled: false
-  name: admin-server-migrationJob
-  backoffLimit: 3
-  restartPolicy: Never
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
-  env:
-  secrets:
-    - name: MYSQL_HOST
-      secretName: admin-server-secrets
-      secretKey: MYSQL_HOST
-    - name: MYSQL_DATABASE
-      secretName: admin-server-secrets
-      secretKey: MYSQL_DATABASE
-    - name: FLYWAY_USER
-      secretName: admin-server-secrets
-      secretKey: MYSQL_USER
-    - name: FLYWAY_PASSWORD
-      secretName: admin-server-secrets
-      secretKey: MYSQL_PASSWORD
-  plain:
-    FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
+
 deployment:
-  enabled: true
-  name: admin-server-deployment
-  replicas: 2
-  env:
-    secrets:
-      - name: MYSQL_HOST
-        secretName: admin-server-secrets
-        secretKey: MYSQL_HOST
-      - name: MYSQL_USER
-        secretName: admin-server-secrets
-        secretKey: MYSQL_USER
-      - name: MYSQL_PASSWORD
-        secretName: admin-server-secrets
-        secretKey: MYSQL_PASSWORD
-      - name: OPENAI_API_KEY
-        secretName: ai-secrets
-        secretKey: OPENAI_API_KEY
-    plain:
-      SPRING_PROFILES_ACTIVE:
-      CONFIG_SERVER_URL:
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 0
-argoRollout:
   enabled: false
-  name: admin-server-rollout
+
+argoRollout:
+  enabled: true
+  name: visits-service-rollout
   replicas: 2
   env:
     secrets:
       - name: MYSQL_HOST
-        secretName: admin-server-secrets
+        secretName: visits-service-secrets
         secretKey: MYSQL_HOST
       - name: MYSQL_USER
-        secretName: admin-server-secrets
+        secretName: visits-service-secrets
         secretKey: MYSQL_USER
       - name: MYSQL_PASSWORD
-        secretName: admin-server-secrets
+        secretName: visits-service-secrets
         secretKey: MYSQL_PASSWORD
-      - name: OPENAI_API_KEY
-        secretName: ai-secrets
-        secretKey: OPENAI_API_KEY
+      - name: MYSQL_DATABASE
+        secretName: visits-service-secrets
+        secretKey: MYSQL_DATABASE
     plain:
-      SPRING_PROFILES_ACTIVE:
-      CONFIG_SERVER_URL:
+      SPRING_PROFILES_ACTIVE: docker,mysql
+      CONFIG_SERVER_URL: http://config-server
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:
@@ -135,21 +99,22 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
+
 service:
-  name: admin-server-service
-  port: 9090
+  enabled: true
+  name: visits-service
+  port: 8082
   rolloutServices:
-    enabled: false
-    stableService: admin-server-stable-service
-    canaryService: admin-server-canary-service
+    enabled: true
+    stableService: visits-service-stable-service
+    canaryService: visits-service-canary-service
+
 virtualService:
-  enabled: false
-  name: admin-server-vs
+  enabled: true
+  name: visits-service-vs
   gatewayRef:
     enabled: false
-    namespace: istio-system
-    name: petclinic-gateway
   http:
     route: primary
   hosts:
-    - admin-server
+    - visits-service-stable-service

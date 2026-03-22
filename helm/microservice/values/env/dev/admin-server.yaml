@@ -21,135 +21,44 @@ container:
       cpu: 100m
 selectorLabels:
   app: admin-server
+
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
   tag: '6af97245'
   digest: sha256:fd0b2c33bb05c605712ebf21b42b76377923ce07008ffbe983e500cb98a9a84e
 serviceAccount:
   enabled: false
-  name: admin-server-sa
-  annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+
 secretStore:
   enabled: false
-  name: admin-server-secretStore
-  awsRegion: us-east-2
+
 externalSecret:
   enabled: false
-  name: admin-server-externalSecret
-  refreshInterval: "5m"
-  target:
-    name: admin-server-secrets
-    creationPolicy: Owner
-  data:
-    - secretKey: MYSQL_HOST
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_HOST
-    - secretKey: MYSQL_PASSWORD
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_PASSWORD
-    - secretKey: OPENAI_API_KEY
-      remoteRef:
-        key: dev/springboot-microservices
-        property: OPENAI_API_KEY
+
 databaseMigration:
   enabled: false
-  name: admin-server-migrationJob
-  backoffLimit: 3
-  restartPolicy: Never
-  annotations:
-    helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation
-  env:
-  secrets:
-    - name: MYSQL_HOST
-      secretName: admin-server-secrets
-      secretKey: MYSQL_HOST
-    - name: MYSQL_DATABASE
-      secretName: admin-server-secrets
-      secretKey: MYSQL_DATABASE
-    - name: FLYWAY_USER
-      secretName: admin-server-secrets
-      secretKey: MYSQL_USER
-    - name: FLYWAY_PASSWORD
-      secretName: admin-server-secrets
-      secretKey: MYSQL_PASSWORD
-  plain:
-    FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
+
 deployment:
   enabled: true
   name: admin-server-deployment
   replicas: 2
   env:
-    secrets:
-      - name: MYSQL_HOST
-        secretName: admin-server-secrets
-        secretKey: MYSQL_HOST
-      - name: MYSQL_USER
-        secretName: admin-server-secrets
-        secretKey: MYSQL_USER
-      - name: MYSQL_PASSWORD
-        secretName: admin-server-secrets
-        secretKey: MYSQL_PASSWORD
-      - name: OPENAI_API_KEY
-        secretName: ai-secrets
-        secretKey: OPENAI_API_KEY
     plain:
-      SPRING_PROFILES_ACTIVE:
-      CONFIG_SERVER_URL:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
-argoRollout:
-  enabled: false
-  name: admin-server-rollout
-  replicas: 2
-  env:
-    secrets:
-      - name: MYSQL_HOST
-        secretName: admin-server-secrets
-        secretKey: MYSQL_HOST
-      - name: MYSQL_USER
-        secretName: admin-server-secrets
-        secretKey: MYSQL_USER
-      - name: MYSQL_PASSWORD
-        secretName: admin-server-secrets
-        secretKey: MYSQL_PASSWORD
-      - name: OPENAI_API_KEY
-        secretName: ai-secrets
-        secretKey: OPENAI_API_KEY
-    plain:
-      SPRING_PROFILES_ACTIVE:
-      CONFIG_SERVER_URL:
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    canary:
-      maxSurge: 25%
-      maxUnavailable: 0
-      dynamicStableScale: true
-      abortScaleDownDelaySeconds: 600
+
 service:
-  name: admin-server-service
+  enabled: true
+  name: admin-server
   port: 9090
   rolloutServices:
     enabled: false
-    stableService: admin-server-stable-service
-    canaryService: admin-server-canary-service
+
 virtualService:
   enabled: false
-  name: admin-server-vs
-  gatewayRef:
-    enabled: false
-    namespace: istio-system
-    name: petclinic-gateway
-  http:
-    route: primary
-  hosts:
-    - admin-server

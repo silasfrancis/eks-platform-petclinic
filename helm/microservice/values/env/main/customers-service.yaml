@@ -1,0 +1,121 @@
+namespace: petclinic
+
+container:
+  name: customers-service
+  port: 8081
+  readinessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+
+selectorLabels:
+  app: customers-service
+
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
+  tag: '81ba4e5e'
+  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+
+serviceAccount:
+  enabled: true
+  name: customers-service-sa
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+
+secretStore:
+  enabled: true
+  name: customers-service-secretStore
+  awsRegion: us-east-2
+
+externalSecret:
+  enabled: true
+  name: customers-service-externalSecret
+  refreshInterval: "5m"
+  target:
+    name: customers-service-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: MYSQL_HOST
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_HOST
+    - secretKey: MYSQL_PASSWORD
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_PASSWORD
+    - secretKey: MYSQL_USER
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_USER
+    - secretKey: MYSQL_DATABASE
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_DATABASE
+
+databaseMigration:
+  enabled: false
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: true
+  name: customers-service-rollout
+  replicas: 2
+  env:
+    secrets:
+      - name: MYSQL_HOST
+        secretName: customers-service-secrets
+        secretKey: MYSQL_HOST
+      - name: MYSQL_USER
+        secretName: customers-service-secrets
+        secretKey: MYSQL_USER
+      - name: MYSQL_PASSWORD
+        secretName: customers-service-secrets
+        secretKey: MYSQL_PASSWORD
+      - name: MYSQL_DATABASE
+        secretName: customers-service-secrets
+        secretKey: MYSQL_DATABASE
+    plain:
+      SPRING_PROFILES_ACTIVE: docker,mysql
+      CONFIG_SERVER_URL: http://config-server
+  minReadySeconds: 30
+  revisionHistoryLimit: 5
+  strategy:
+    canary:
+      maxSurge: 25%
+      maxUnavailable: 0
+      dynamicStableScale: true
+      abortScaleDownDelaySeconds: 600
+
+service:
+  enabled: true
+  name: customers-service
+  port: 8081
+  rolloutServices:
+    enabled: true
+    stableService: customers-service-stable-service
+    canaryService: customers-service-canary-service
+
+virtualService:
+  enabled: true
+  name: customers-service-vs
+  gatewayRef:
+    enabled: false
+  http:
+    route: primary
+  hosts:
+    - customers-service-stable-service

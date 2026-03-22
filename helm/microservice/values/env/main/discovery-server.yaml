@@ -1,0 +1,65 @@
+namespace: petclinic
+container:
+  name: discovery-server
+  port: 8761
+  readinessProbe:
+    path: /
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    path: /
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+selectorLabels:
+  app: discovery-server
+
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/discovery-server
+  tag: '81ba4e5e'
+  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+
+serviceAccount:
+  enabled: false
+
+secretStore:
+  enabled: false
+
+externalSecret:
+  enabled: false
+
+databaseMigration:
+  enabled: false
+
+deployment:
+  enabled: true
+  name: discovery-server-deployment
+  replicas: 2
+  env:
+    plain:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server
+  minReadySeconds: 30
+  revisionHistoryLimit: 5
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+
+service:
+  enabled: true
+  name: discovery-server
+  port: 8761
+  rolloutServices:
+    enabled: false
+
+virtualService:
+  enabled: false

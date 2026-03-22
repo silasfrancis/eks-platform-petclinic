@@ -1,0 +1,83 @@
+namespace: petclinic
+container:
+  name: db-migration
+
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
+  tag: '81ba4e5e'
+  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+
+serviceAccount:
+  enabled: true
+  name: db-migration-sa
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+
+secretStore:
+  enabled: true
+  name: db-migration-secretStore
+  awsRegion: us-east-2
+
+externalSecret:
+  enabled: true
+  name: db-migration-externalSecret
+  refreshInterval: "5m"
+  target:
+    name: db-migration-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: MYSQL_HOST
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_HOST
+    - secretKey: MYSQL_PASSWORD
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_PASSWORD
+    - secretKey: MYSQL_USER
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_USER
+    - secretKey: MYSQL_DATABASE
+      remoteRef:
+        key: dev/springboot-microservices
+        property: MYSQL_DATABASE
+
+databaseMigration:
+  enabled: true
+  name: db-migration-job
+  backoffLimit: 3
+  restartPolicy: Never
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+  env:
+  secrets:
+    - name: MYSQL_HOST
+      secretName: db-migration-secrets
+      secretKey: MYSQL_HOST
+    - name: MYSQL_DATABASE
+      secretName: db-migration-secrets
+      secretKey: MYSQL_DATABASE
+    - name: FLYWAY_USER
+      secretName: db-migration-secrets
+      secretKey: MYSQL_USER
+    - name: FLYWAY_PASSWORD
+      secretName: db-migration-secrets
+      secretKey: MYSQL_PASSWORD
+  plain:
+    FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: false
+
+service:
+  enabled: false
+
+virtualService:
+  enabled: false
+

@@ -21,6 +21,7 @@ spec:
           ports:
             - containerPort: {{ .Values.container.port }}
         env:
+        {{- if .Values.deployment.env.secrets }}
         {{- range .Values.deployment.env.secrets }}
         - name: {{ .name }}
           valueFrom:
@@ -28,9 +29,12 @@ spec:
               name: {{ .secretName }}
               key: {{ .secretKey }}
         {{- end }}
+        {{- end }}
+        {{- if .Values.deployment.env.plain }}
         {{- range $key, $val := .Values.deployment.env.plain }}
         - name: {{ $key }}
           value: {{ $val | quote }}
+        {{- end }}
         {{- end }}
           readinessProbe:
             httpGet:

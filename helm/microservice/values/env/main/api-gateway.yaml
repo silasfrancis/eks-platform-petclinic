@@ -1,0 +1,83 @@
+namespace: petclinic
+
+container:
+  name: api-gateway
+  port: 8080
+  readinessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+
+selectorLabels:
+  app: api-gateway
+
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
+  tag: '81ba4e5e'
+  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+
+serviceAccount:
+  enabled: false
+
+secretStore:
+  enabled: false
+
+externalSecret:
+  enabled: false
+
+databaseMigration:
+  enabled: false
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: true
+  name: api-gateway-rollout
+  replicas: 2
+  env:
+    plain:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server
+  minReadySeconds: 30
+  revisionHistoryLimit: 5
+  strategy:
+    canary:
+      maxSurge: 25%
+      maxUnavailable: 0
+      dynamicStableScale: true
+      abortScaleDownDelaySeconds: 600
+
+service:
+  enabled: true
+  name: api-gateway
+  port: 8080
+  rolloutServices:
+    enabled: false
+    stableService: api-gateway-stable-service
+    canaryService: api-gateway-canary-service
+
+virtualService:
+  enabled: true
+  name: api-gateway-vs
+  gatewayRef:
+    enabled: true
+    namespace: istio-system
+    name: petclinic-gateway
+  http:
+    route: primary
+  hosts:
+    - petclinic.lefrancis.org

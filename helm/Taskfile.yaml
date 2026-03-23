@@ -8,60 +8,70 @@ tasks:
     desc: Install Kubernetes Gateway API CRDs
     cmd: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
 
-  install_istio_base:
-    desc: Install Istio base
+# istio
+  add_istio_repo:
+    desc: Add and update Istio Helm repo
     cmds:
       - helm repo add istio https://istio-release.storage.googleapis.com/charts
       - helm repo update
+
+  install_istio_base:
+    desc: Install Istio base — CRDs and cluster-wide resources
+    cmds:
+      - task: add_istio_repo
       - |
         helm upgrade --install istio-base istio/base \
           -n istio-system \
           --create-namespace \
-          --version 1.23.0
+          --set defaultRevision=default \
+          --wait
 
   install_istiod:
-    desc: Install Istiod
+    desc: Install Istiod — Istio control plane
     cmds:
       - |
         helm upgrade --install istiod istio/istiod \
           -n istio-system \
-          --version 1.23.0 \
           --set pilot.resources.requests.cpu=100m \
           --set pilot.resources.requests.memory=256Mi \
           --wait
+      - kubectl get pods -n istio-system
 
   install_istio_ingress:
-    desc: Install Istio Ingress Gateway
+    desc: Install Istio Ingress Gateway in its own namespace
     cmds:
       - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
       - |
         helm upgrade --install istio-ingressgateway istio/gateway \
           -n istio-ingress \
-          --version 1.23.0 \
           --wait
+      - kubectl get pods -n istio-ingress
 
   install_istio:
-    desc: Install full Istio stack
+    desc: Install full Istio stack — base + istiod + ingress gateway
     cmds:
       - task: install_istio_base
       - task: install_istiod
       - task: install_istio_ingress
 
   inject_envoy_petclinic:
-    desc: Enable Envoy sidecar injection for the petclinic namespace and restart pods
+    desc: Enable Envoy sidecar injection for petclinic namespace and restart pods
     cmds:
       - kubectl label namespace petclinic istio-injection=enabled --overwrite
       - kubectl rollout restart deployment -n petclinic
       - kubectl get pods -n petclinic
 
+# argocd
   install_argocd:
-    desc: Install ArgoCD into the cluster
+    desc: Install ArgoCD — server-side apply required due to CRD size limits
     cmds:
       - kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       - |
         kubectl apply -n argocd \
+          --server-side \
+          --force-conflicts \
           -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-      - kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+      - kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=180s
 
   argocd_password:
     desc: Get the initial ArgoCD admin password
@@ -71,6 +81,7 @@ tasks:
     desc: Port forward ArgoCD UI to localhost:8080
     cmd: kubectl port-forward svc/argocd-server -n argocd 8080:443
 
+# argo rollouts
   install_argo_rollouts:
     desc: Install Argo Rollouts controller
     cmds:
@@ -78,16 +89,18 @@ tasks:
       - |
         kubectl apply -n argo-rollouts \
           -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-      - kubectl wait --for=condition=available deployment/argo-rollouts -n argo-rollouts --timeout=120s
+      - kubectl wait --for=condition=available deployment/argo-rollouts -n argo-rollouts --timeout=180s
 
   install_argo_rollouts_plugin:
-    desc: Install Argo Rollouts kubectl plugin
+    desc: Install Argo Rollouts kubectl plugin (Linux amd64)
     cmds:
       - |
         curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
       - chmod +x kubectl-argo-rollouts-linux-amd64
       - sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+      - kubectl argo rollouts version
 
+# microservices releases
   release_config_server:
     desc: Helm release for config-server
     cmds:

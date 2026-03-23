@@ -12,5 +12,5 @@ output "roles" {
 }
 
 output "iam_instance_profile" {
-  value = aws_iam_instance_profile.ec2_profile.name
+  value = aws_iam_instance_profile.jumphost_ec2_profile.name
 }

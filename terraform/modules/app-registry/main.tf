@@ -12,13 +12,13 @@ resource "aws_servicecatalogappregistry_attribute_group" "app_registry_attribute
     repo      = var.repo
     language  = var.language
     framework = var.framework
-    env       = var.environment
+    env       = var.env
   })
 
   tags = aws_servicecatalogappregistry_application.app_registry.application_tag
 }
 
 resource "aws_servicecatalogappregistry_attribute_group_association" "app_registry_attributes_association" {
-  application     = aws_servicecatalogappregistry_application.app_registry.id
-  attribute_group = aws_servicecatalogappregistry_attribute_group.app_registry_attributes.id
+  application_id     = aws_servicecatalogappregistry_application.app_registry.id
+  attribute_group_id = aws_servicecatalogappregistry_attribute_group.app_registry_attributes.id
 }

@@ -9,11 +9,11 @@ output "db_secrets" {
     )["MYSQL_PASSWORD"]
 
     data_base = jsondecode(
-      data.aws_secretsmanager_secret_version.db_secrets.secret_string
+      data.aws_secretsmanager_secret_version.secrets.secret_string
     )["MYSQL_DATABASE"]
 
     slack_aws_alert_webhook_url = jsondecode(
-      data.aws_secretsmanager_secret_version.db_secrets.secret_string
+      data.aws_secretsmanager_secret_version.secrets.secret_string
     )["SLACK_AWS_ALERT_WEBHOOK_URL"]
 
   sensitive = true
@@ -31,5 +31,5 @@ output "slack_secrets" {
 }
 
 output "secret_name" {
-  value = aws_secretsmanager_secret.secret.name
+  value = data.aws_secretsmanager_secret.secret.name
 }

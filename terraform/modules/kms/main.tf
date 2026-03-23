@@ -1,3 +1,6 @@
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 resource "aws_kms_key" "eks_secrets" {
   description             = "KMS Key for EKS Secret Encryption"
   deletion_window_in_days = 30
@@ -32,8 +35,6 @@ resource "aws_kms_key" "eks_secrets" {
     ]
   })
   tags = {
-    env = var.env
-    app = var.application
     resource = "kms"
   }
 }
@@ -56,7 +57,7 @@ resource "aws_kms_key" "infra_logs" {
       {
         Sid    = "Allow CloudWatch Logs Service",
         Effect = "Allow",
-        Principal = { Service = "logs.${data.aws_region.current.name}.amazonaws.com" },
+        Principal = { Service = "logs.${data.aws_region.current.id}.amazonaws.com" },
         Action = [
           "kms:Encrypt*",
           "kms:Decrypt*",
@@ -72,8 +73,6 @@ resource "aws_kms_key" "infra_logs" {
     ]
   })
   tags = {
-    env = var.env
-    app = var.application
     resource = "kms"
   }
 }
@@ -112,8 +111,6 @@ resource "aws_kms_key" "rds_data" {
     ]
   })
   tags = {
-    env = var.env
-    app = var.application
     resource = "kms"
   }
 }

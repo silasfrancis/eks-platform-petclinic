@@ -19,9 +19,6 @@ resource "aws_cloudwatch_event_target" "rds_export" {
   rule      = aws_cloudwatch_event_rule.rds_snapshot_complete.name
   target_id = "TriggerSnapshotExport"
   arn       = aws_lambda_function.rds_export_trigger.arn
-  tags = {
-    resource = "event_bridge"
-  }
   
   depends_on = [ aws_lambda_function.rds_export_trigger ]
 }

@@ -34,7 +34,7 @@ module "app-registry" {
   }
 
   env       = var.environment
-  app       = var.app_name
+  app       = var.app
   owner     = "silasfrancis"
   repo      = "https://github.com/silasfrancis/spring-boot-microservices"
   language  = "java"
@@ -117,12 +117,11 @@ module "vpc" {
 module "ec2" {
   source = "../../modules/ec2"
 
-  env                   = var.environment
   tags                  = var.application_tag
   ami                   = "ami-0b0b78dcacbab728f"
   instance_type         = "t3.micro"
   vpc_id                = module.vpc.vpc_id
-  private_subnet_id     = module.vpc.subnets["private_subnet"]
+  private_subnet_id     = module.vpc.subnets["private_subnet_1"]
   ec2_security_group_id = [module.vpc.security_group["ec2"]]
   iam_instance_profile  = module.iam.iam_instance_profile
 
@@ -138,8 +137,8 @@ module "eks" {
 
   env                    = var.environment
   k8_version             = "1.35"
-  cluster_role_arn       = module.iam.roles["eks_cluster_role"]
-  node_role_arn          = module.iam.roles["eks_node_role"]
+  cluster_role_arn       = module.iam.roles["cluster_role"]
+  node_role_arn          = module.iam.roles["worker_node_role"]
   subnet_ids_for_cluster = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
   subnet_ids_node_group  = module.vpc.private_subnets
   node_scaling_config = {
@@ -194,9 +193,9 @@ module "rds-s3-exporter" {
   rds_export_bucket            = module.s3.bucket_name["rds_export_bucket_name"]
   rds_export_role_arn          = module.iam.roles["rds_export_role"]
   rds_export_lambda_role_arn   = module.iam.roles["rds_export_lambda_role"]
-  slack_notify_lambda_role_arn = module.iam.roles["slack_notify_lambda_role"]
-  rds_export_kms_key_arn       = module.kms.kms_key_arn["rds_export"]
-  rds_export_kms_key_id        = module.kms.kms_key_id["rds_export"]
+  slack_notify_lambda_role_arn = module.iam.roles["slack_notifier_lambda_role"]
+  rds_export_kms_key_arn       = module.kms.kms_key_arn["rds_data"]
+  rds_export_kms_key_id        = module.kms.kms_key_id["rds_data"]
   slack_webhook_url            = module.secret_manager.slack_secrets["slack_aws_alert_webhook_url"]
 
   depends_on = [

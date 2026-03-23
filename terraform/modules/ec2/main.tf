@@ -14,6 +14,7 @@ resource "aws_instance" "ec2_instance" {
     encrypted = true
   }
   tags = {
+    Name = "${var.env}-${var.app}-jumphost"
     resource = "ec2"
   }
 }

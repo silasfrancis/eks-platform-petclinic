@@ -1,5 +1,5 @@
 resource "aws_iam_role" "cluster_role" {
-  name = "${var.env}-cluster-role"
+  name = "${var.env}-${var.app}-cluster-role"
   assume_role_policy = jsonencode({
     "Version": "2012-10-17",
     "Statement": [
@@ -21,7 +21,7 @@ resource "aws_iam_role" "cluster_role" {
 }
 
 resource "aws_iam_role" "worker_node_role" {
-  name = "${var.env}-worker-node-role"
+  name = "${var.env}-${var.app}-worker-node-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -41,7 +41,7 @@ resource "aws_iam_role" "worker_node_role" {
 }
 
 resource "aws_iam_role" "jumphost_ec2_role" {
-  name = "${var.env}-jumphost-ec2-role"
+  name = "${var.env}-${var.app}-jumphost-ec2-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -61,7 +61,7 @@ resource "aws_iam_role" "jumphost_ec2_role" {
 }
 
 resource "aws_iam_role" "rds_export_role" {
-  name = "${var.env}-rds-snapshot-export-role"
+  name = "${var.env}-${var.app}-rds-snapshot-export-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -81,7 +81,7 @@ resource "aws_iam_role" "rds_export_role" {
 }
 
 resource "aws_iam_role" "vpc_flow_logs_role" {
-  name = "${var.env}-vpc-flow-logs-role"
+  name = "${var.env}-${var.app}-vpc-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -101,7 +101,7 @@ resource "aws_iam_role" "vpc_flow_logs_role" {
 }
 
 resource "aws_iam_role" "rds_enhanced_monitoring" {
-  name = "${var.env}-rds-monitoring-role"
+  name = "${var.env}-${var.app}-rds-monitoring-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -119,7 +119,7 @@ resource "aws_iam_role" "rds_enhanced_monitoring" {
 }
 
 resource "aws_iam_role" "rds_export_lambda" {
-  name = "${var.env}-rds-export-lambda-role"
+  name = "${var.env}-${var.app}-rds-export-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -135,7 +135,7 @@ resource "aws_iam_role" "rds_export_lambda" {
 }
 
 resource "aws_iam_role" "slack_notifier_lambda" {
-  name = "${var.env}-slack-notifier-lambda-role"
+  name = "${var.env}-${var.app}-slack-notifier-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

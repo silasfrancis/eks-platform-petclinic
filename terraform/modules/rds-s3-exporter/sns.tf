@@ -1,5 +1,5 @@
 resource "aws_sns_topic" "rds_export_alerts" {
-  name              = "${var.env}-rds-export-alerts"
+  name              = "${var.env}-${var.app}-rds-export-alerts"
   kms_master_key_id = var.rds_export_kms_key_id
   tags = {
     resource = "sns"

@@ -41,3 +41,7 @@ variable "rds_data_kms_arn" {
 variable "rds_monitoring_role_arn" {
   type = string
 }
+
+variable "app" {
+  type = string
+}

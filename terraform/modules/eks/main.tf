@@ -1,5 +1,5 @@
 resource "aws_eks_cluster" "main_cluster" {
-  name     = "${var.env}-eks-cluster"
+  name     = "${var.env}-${var.app}-eks-cluster"
   version  = var.k8_version
   role_arn = var.cluster_role_arn
 
@@ -35,7 +35,7 @@ resource "aws_eks_cluster" "main_cluster" {
 }
 
 resource "aws_launch_template" "eks_nodes" {
-  name = "${var.env}-eks-node-template"
+  name = "${var.env}-${var.app}-eks-node-template"
   description = "EKS node launch template for ${var.env}"
 
   metadata_options {
@@ -72,7 +72,7 @@ resource "aws_launch_template" "eks_nodes" {
 
 resource "aws_eks_node_group" "cluster_node_group" {
   cluster_name    = aws_eks_cluster.main_cluster.name
-  node_group_name = "${var.env}-node-group"
+  node_group_name = "${var.env}-${var.app}-node-group"
   node_role_arn   = var.node_role_arn
   subnet_ids      = var.subnet_ids_node_group
   ami_type        = var.ami_type
@@ -98,6 +98,12 @@ resource "aws_eks_node_group" "cluster_node_group" {
     resource = "eks"
     "k8s.io/cluster-autoscaler/enabled"                              = "true"
     "k8s.io/cluster-autoscaler/${aws_eks_cluster.main_cluster.name}" = "owned"
+  }
+
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
   }
 
   lifecycle {

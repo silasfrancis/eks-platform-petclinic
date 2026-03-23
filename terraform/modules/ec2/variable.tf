@@ -1,4 +1,4 @@
-variable "tags" {
+variable "env" {
   type = string
 }
 
@@ -25,3 +25,8 @@ variable "ec2_security_group_id" {
 variable "iam_instance_profile" {
   type = string
 }
+
+variable "app" {
+  type = string
+}
+

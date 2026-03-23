@@ -11,7 +11,7 @@ data "archive_file" "slack_sns_notify" {
 }
 
 resource "aws_lambda_function" "rds_export_trigger" {
-  function_name    = "${var.env}-rds-export-trigger"
+  function_name    = "${var.env}-${var.app}-rds-export-trigger"
   filename         = data.archive_file.rds_export.output_path
   source_code_hash = data.archive_file.rds_export.output_base64sha256
   runtime          = "python3.12"
@@ -34,7 +34,7 @@ resource "aws_lambda_function" "rds_export_trigger" {
 }
 
 resource "aws_lambda_function" "slack_notifier" {
-  function_name = "${var.env}-slack-notifier"
+  function_name = "${var.env}-${var.app}-slack-notifier"
   filename = data.archive_file.slack_sns_notify.output_path
   source_code_hash = data.archive_file.slack_sns_notify.output_base64sha256
   runtime          = "python3.12"

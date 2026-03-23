@@ -1,5 +1,5 @@
 resource "aws_iam_policy" "read_secrets_policy" {
-  name        = "${var.env}-jumphost-secrets-read"
+  name        = "${var.env}-${var.app}-jumphost-secrets-read"
   description = "Allows reading of a specific secret from AWS Secrets Manager for jumphosts"
 
   policy = jsonencode({
@@ -18,7 +18,7 @@ resource "aws_iam_policy" "read_secrets_policy" {
 }
 
 resource "aws_iam_policy" "rds_export_policy" {
-  name = "${var.env}-rds-snapshot-export-policy"
+  name = "${var.env}-${var.app}-rds-snapshot-export-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -57,7 +57,7 @@ resource "aws_iam_policy" "rds_export_policy" {
 }
 
 resource "aws_iam_policy" "vpc_flow_log_policy" {
-  name = "${var.env}-vpc-flow-log-policy"
+  name = "${var.env}-${var.app}-vpc-flow-log-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -81,7 +81,7 @@ resource "aws_iam_policy" "vpc_flow_log_policy" {
 }
 
 resource "aws_iam_policy" "rds_export_lambda" {
-  name = "${var.env}-rds-export-lambda-policy"
+  name = "${var.env}-${var.app}-rds-export-lambda-policy"
   
   policy = jsonencode({
     Version = "2012-10-17"

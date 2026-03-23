@@ -4,16 +4,18 @@ kind: Job
 metadata:
   name: {{ .Values.databaseMigration.name }}
   namespace: {{ .Values.namespace }}
-  {{- if .Values.databaseMigration.annotations }}
+  {{- with .Values.databaseMigration.annotations }}
   annotations:
-    {{- toYaml .Values.databaseMigration.annotations | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   backoffLimit: {{ .Values.databaseMigration.backoffLimit }}
   template:
     spec:
       restartPolicy: {{ .Values.databaseMigration.restartPolicy }}
+      {{- if .Values.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
       containers:
         - name: {{ .Values.container.name }}
           image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"

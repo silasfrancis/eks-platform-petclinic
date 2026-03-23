@@ -3,8 +3,10 @@ kind: Service
 metadata:
   name: {{ .Values.name }}
   namespace: {{ .Values.namespace }}
+  {{- with .Values.serviceAccount.annotations }}
   annotations:
-    {{- toYaml .Values.annotations | nindent 4}}
+    {{- toYaml . | nindent 4}}
+  {{- end }}
 spec:
   type: LoadBalancer
   selector:

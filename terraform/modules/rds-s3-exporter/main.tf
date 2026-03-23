@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_log_group" "rds_export_lambda" {
-  name              = "/aws/lambda/${var.env}-rds-export-trigger"
+  name              = "/aws/lambda/${var.env}-${var.app}-rds-export-trigger"
   retention_in_days = 14
   kms_key_id        = var.rds_export_kms_key_arn
 
@@ -9,7 +9,7 @@ resource "aws_cloudwatch_log_group" "rds_export_lambda" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_export_failed" {
-  alarm_name          = "${var.env}-rds-export-failed"
+  alarm_name          = "${var.env}-${var.app}-rds-export-failed"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   metric_name         = "Errors"

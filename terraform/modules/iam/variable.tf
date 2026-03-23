@@ -1,7 +1,3 @@
-variable "tags" {
-  type = string
-}
-
 variable "env" {
   type = string
 }
@@ -15,5 +11,9 @@ variable "rds_export_bucket_arn" {
 }
 
 variable "rds_export_kms_key_arn" {
+  type = string
+}
+
+variable "app" {
   type = string
 }

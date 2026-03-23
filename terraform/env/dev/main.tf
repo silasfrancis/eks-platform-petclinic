@@ -73,8 +73,8 @@ module "s3" {
 module "iam" {
   source = "../../modules/iam"
 
-  tags                   = var.application_tag
   env                    = var.environment
+  app                    = var.app
   secret_name            = module.secret_manager.secret_name
   rds_export_bucket_arn  = module.s3.bucket_arn["rds_export_bucket_arn"]
   rds_export_kms_key_arn = module.kms.kms_key_arn["rds_data"]
@@ -91,6 +91,7 @@ module "cloudwatch_logs" {
   source = "../../modules/cloudwatch_logs"
 
   env                = var.environment
+  app                = var.app
   kms_infra_logs_arn = module.kms.kms_key_arn["infra_logs"]
 
   depends_on = [
@@ -103,6 +104,7 @@ module "vpc" {
   source = "../../modules/vpc"
 
   tags                     = var.application_tag
+  app                      = var.app
   env                      = var.environment
   vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
   vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
@@ -117,7 +119,8 @@ module "vpc" {
 module "ec2" {
   source = "../../modules/ec2"
 
-  tags                  = var.application_tag
+  env                   = var.environment
+  app                   = var.app
   ami                   = "ami-0b0b78dcacbab728f"
   instance_type         = "t3.micro"
   vpc_id                = module.vpc.vpc_id
@@ -136,6 +139,7 @@ module "eks" {
   source = "../../modules/eks"
 
   env                    = var.environment
+  app                    = var.app
   k8_version             = "1.35"
   cluster_role_arn       = module.iam.roles["cluster_role"]
   node_role_arn          = module.iam.roles["worker_node_role"]
@@ -165,6 +169,7 @@ module "rds" {
   source = "../../modules/rds"
 
   env                     = var.environment
+  app                     = var.app
   private_subnet_ids      = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
   mysql_version           = "8.0"
   db_instance_class       = "db.t3.micro"
@@ -189,6 +194,7 @@ module "rds-s3-exporter" {
   source = "../../modules/rds-s3-exporter"
 
   env                          = var.environment
+  app                          = var.app
   db_instance_identifier       = module.rds.db_identifier
   rds_export_bucket            = module.s3.bucket_name["rds_export_bucket_name"]
   rds_export_role_arn          = module.iam.roles["rds_export_role"]
@@ -212,6 +218,7 @@ module "iam-oidc" {
   for_each = toset(local.service_accounts)
 
   env                   = var.environment
+  app                   = var.app
   eks_oidc_provider_url = module.eks.oidc_provider_url
   namespace             = var.eks_namespace
   service_account_name  = each.value

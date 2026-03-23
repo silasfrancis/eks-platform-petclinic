@@ -13,3 +13,7 @@ variable "vpc_flow_log_role_arn" {
 variable "vpc_flow_log_destination" {
   type = string
 }
+
+variable "app" {
+  type = string
+}

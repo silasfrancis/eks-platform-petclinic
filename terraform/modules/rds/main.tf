@@ -1,5 +1,5 @@
 resource "aws_db_subnet_group" "main" {
-  name       = "${var.env}-rds-subnet-group"
+  name       = "${var.env}-${var.app}-rds-subnet-group"
   subnet_ids = var.private_subnet_ids
 
   tags = {
@@ -8,7 +8,7 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_parameter_group" "mysql" {
-  name   = "${var.env}-mysql-params"
+  name   = "${var.env}-${var.app}-mysql-params"
   family = "mysql8.0"
 
   parameter {
@@ -37,7 +37,7 @@ resource "aws_db_parameter_group" "mysql" {
 }
 
 resource "aws_db_instance" "main" {
-  identifier        = "${var.env}-mysql"
+  identifier        = "${var.env}-${var.app}-mysql"
   engine            = "mysql"
   engine_version    = var.mysql_version        
   instance_class    = var.db_instance_class   
@@ -89,7 +89,7 @@ resource "aws_db_instance" "main" {
 
 resource "aws_db_snapshot" "pre_deploy" {
   db_instance_identifier = aws_db_instance.main.identifier
-  db_snapshot_identifier = "${var.env}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
+  db_snapshot_identifier = "${var.env}-${var.app}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
 
   tags = {
     resource = "rds"

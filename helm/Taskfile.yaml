@@ -2,7 +2,7 @@ version: '3'
 
 env:
   ENV: "dev"
-  GATEWAY_API_VERSION: "v1.1.0"
+  GATEWAY_API_VERSION: "v1.5.0"
   ISTIO_VERSION: "1.29.1"
   ARGOCD_VERSION: "v3.3.2"
   ARGO_ROLLOUTS_VERSION: "v1.8.3"
@@ -49,30 +49,15 @@ tasks:
           --set global.proxy.resources.requests.memory=128Mi
       - kubectl get pods -n istio-system
 
-  install_istio_ingress:
-    desc: Install Istio Gateway API ingress gateway
-    cmds:
-      - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
-      - |
-        helm upgrade --install istio-ingressgateway istio/gateway \
-          -n istio-ingress \
-          --version {{.ISTIO_VERSION}} \
-          --wait \
-          --timeout 5m \
-          --atomic \
-          --set service.type=LoadBalancer
-      - kubectl get pods -n istio-ingress
-
   wait_for_istio:
     desc: Wait for Istio control plane to be ready
     cmd: kubectl wait --for=condition=available deployment --all -n istio-system --timeout=180s
 
   install_istio:
-    desc: Install full Istio stack — base + istiod + ingress gateway
+    desc: Install full Istio stack — base + istiod 
     cmds:
       - task: install_istio_base
       - task: install_istiod
-      - task: install_istio_ingress
       - task: wait_for_istio
 
   inject_envoy_petclinic:

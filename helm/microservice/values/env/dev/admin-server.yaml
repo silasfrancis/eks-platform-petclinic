@@ -26,6 +26,7 @@ image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
   tag: '6af97245'
   digest: sha256:fd0b2c33bb05c605712ebf21b42b76377923ce07008ffbe983e500cb98a9a84e
+  
 serviceAccount:
   enabled: false
 

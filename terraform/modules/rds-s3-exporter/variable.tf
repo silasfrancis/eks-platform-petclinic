@@ -34,3 +34,7 @@ variable "slack_webhook_url" {
 variable "slack_notify_lambda_role_arn" {
   type = string
 }
+
+variable "app" {
+  type = string
+}

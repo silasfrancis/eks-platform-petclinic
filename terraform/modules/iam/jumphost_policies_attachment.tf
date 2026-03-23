@@ -10,6 +10,6 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
 }
 
 resource "aws_iam_instance_profile" "jumphost_ec2_profile" {
-  name = "${var.tags}-jumphost-ec2-profile" 
+  name = "${var.env}-${var.app}-jumphost-profile" 
   role = aws_iam_role.jumphost_ec2_role.name
 }

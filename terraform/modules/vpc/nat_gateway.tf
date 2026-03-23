@@ -3,6 +3,7 @@ resource "aws_nat_gateway" "nat_1" {
   subnet_id = aws_subnet.public_subnet_1.id
   tags = {
     resource = "vpc"
+    Name = "${var.env}-${var.app}-nat-gateway-1"
   }
   depends_on = [aws_internet_gateway.igw]
 }
@@ -12,6 +13,7 @@ resource "aws_nat_gateway" "nat_2" {
   subnet_id = aws_subnet.public_subnet_2.id
   tags = {
     resource = "vpc"
+    Name = "${var.env}-${var.app}-nat-gateway-2"
   }
 
   depends_on = [aws_internet_gateway.igw]
@@ -27,6 +29,7 @@ resource "aws_route_table" "private_rt_1" {
 
   tags = { 
     resource = "vpc"
+    Name = "${var.env}-${var.app}-private-route-table-1"
     }
 }
 
@@ -40,6 +43,7 @@ resource "aws_route_table" "private_rt_2" {
 
   tags = { 
     resource = "vpc"
+    Name = "${var.env}-${var.app}-private-route-table-2"
     }
 }
 

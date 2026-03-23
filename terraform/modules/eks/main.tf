@@ -10,6 +10,10 @@ resource "aws_eks_cluster" "main_cluster" {
     endpoint_public_access  = false 
     }
 
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
   encryption_config {
     resources = ["secrets"]
     provider {

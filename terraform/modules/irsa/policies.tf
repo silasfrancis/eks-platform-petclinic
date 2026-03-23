@@ -1,6 +1,6 @@
-resource "aws_iam_policy" "pod_read_secrets_policy" {
+resource "aws_iam_policy" "irsa_secrets_policy" {
   name        = "${var.env}-${var.app}-${var.service_account_name}-pod-secrets-read"
-  description = "Allows reading of a specific secret from AWS Secrets Manager for pods in EKS using OIDC authentication"
+  description = "Allows reading of a specific secret from AWS Secrets Manager by service accounts in EKS using OIDC authentication"
 
   policy = jsonencode({
     Version = "2012-10-17"

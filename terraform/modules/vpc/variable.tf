@@ -17,3 +17,7 @@ variable "vpc_flow_log_destination" {
 variable "app" {
   type = string
 }
+
+variable "availability_zones" {
+  type = list(string)
+}

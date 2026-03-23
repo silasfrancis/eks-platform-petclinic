@@ -26,6 +26,10 @@ locals {
   ]
 }
 
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 module "app-registry" {
   source = "../../modules/app-registry"
 
@@ -106,6 +110,7 @@ module "vpc" {
   tags                     = var.application_tag
   app                      = var.app
   env                      = var.environment
+  availability_zones       = data.aws_availability_zones.available.names
   vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
   vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
 
@@ -156,6 +161,7 @@ module "eks" {
   instance_types        = ["t4g.medium"]
   kms_eks_secrets_arn   = module.kms.kms_key_arn["eks_secrets"]
   kms_eks_nodes_ebs_arn = module.kms.kms_key_arn["eks_nodes_ebs"]
+  # jumphost_ec2_role_arn = module.iam.roles["jumphost_ec2_role"]
 
   depends_on = [
     module.app-registry,
@@ -172,7 +178,7 @@ module "rds" {
   app                     = var.app
   private_subnet_ids      = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
   mysql_version           = "8.0"
-  db_instance_class       = "db.t3.micro"
+  db_instance_class       = "db.t3.medium"
   allocated_storage       = 20
   db_name                 = module.secret_manager.db_secrets["data_base"]
   db_username             = module.secret_manager.db_secrets["db_username"]
@@ -215,11 +221,25 @@ module "rds-s3-exporter" {
 
 module "iam-oidc" {
   source   = "../../modules/iam-oidc"
+
+  eks_oidc_provider_url = module.eks.oidc_provider_url
+
+  depends_on = [
+    module.app-registry,
+    module.eks,
+    module.secret_manager,
+  ]
+}
+
+
+module "irsa" {
+  source   = "../../modules/irsa"
   for_each = toset(local.service_accounts)
 
   env                   = var.environment
   app                   = var.app
-  eks_oidc_provider_url = module.eks.oidc_provider_url
+  oidc_url              = module.iam-oidc.oidc_url_stripped
+  oidc_arn              = module.iam-oidc.oidc_arn
   namespace             = var.eks_namespace
   service_account_name  = each.value
   secret_name           = module.secret_manager.secret_name
@@ -228,5 +248,6 @@ module "iam-oidc" {
     module.app-registry,
     module.eks,
     module.secret_manager,
+    module.iam-oidc,
   ]
 }

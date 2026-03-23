@@ -15,7 +15,3 @@ resource "aws_flow_log" "main_vpc_flow_log" {
     resource = "vpc"
   }
 }
-
-data "aws_availability_zones" "available"{
-    state = "available"
-}

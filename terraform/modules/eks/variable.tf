@@ -63,3 +63,7 @@ variable "kms_eks_nodes_ebs_arn" {
 variable "app" {
   type = string
 }
+
+# variable "jumphost_ec2_role_arn" {
+#   type = string
+# }

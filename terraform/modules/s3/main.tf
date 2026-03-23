@@ -11,7 +11,7 @@ resource "aws_s3_bucket" "tf_state_bucket" {
 
 resource "aws_s3_bucket" "alb_logs" {
   bucket = "${var.bucket_name}-alb-logs"
-  force_destroy = false
+  force_destroy = true
   tags = {
     resource = "s3"
   }

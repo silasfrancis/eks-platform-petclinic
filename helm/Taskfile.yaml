@@ -2,11 +2,15 @@ version: '3'
 
 env:
   ENV: "dev"
+  GATEWAY_API_VERSION: "v1.1.0"
+  ISTIO_VERSION: "1.29.1"
+  ARGOCD_VERSION: "v3.3.2"
+  ARGO_ROLLOUTS_VERSION: "v1.8.3"
 
 tasks:
   install_gateway_crds:
     desc: Install Kubernetes Gateway API CRDs
-    cmd: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
+    cmd: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/{{.GATEWAY_API_VERSION}}/standard-install.yaml
 
 # istio
   add_istio_repo:
@@ -23,8 +27,11 @@ tasks:
         helm upgrade --install istio-base istio/base \
           -n istio-system \
           --create-namespace \
+          --version {{.ISTIO_VERSION}} \
           --set defaultRevision=default \
-          --wait
+          --wait \
+          --timeout 5m \
+          --atomic
 
   install_istiod:
     desc: Install Istiod — Istio control plane
@@ -32,20 +39,33 @@ tasks:
       - |
         helm upgrade --install istiod istio/istiod \
           -n istio-system \
+          --version {{.ISTIO_VERSION}} \
+          --wait \
+          --timeout 5m \
+          --atomic \
           --set pilot.resources.requests.cpu=100m \
           --set pilot.resources.requests.memory=256Mi \
-          --wait
+          --set global.proxy.resources.requests.cpu=50m \
+          --set global.proxy.resources.requests.memory=128Mi
       - kubectl get pods -n istio-system
 
   install_istio_ingress:
-    desc: Install Istio Ingress Gateway in its own namespace
+    desc: Install Istio Gateway API ingress gateway
     cmds:
       - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
       - |
         helm upgrade --install istio-ingressgateway istio/gateway \
           -n istio-ingress \
-          --wait
+          --version {{.ISTIO_VERSION}} \
+          --wait \
+          --timeout 5m \
+          --atomic \
+          --set service.type=LoadBalancer
       - kubectl get pods -n istio-ingress
+
+  wait_for_istio:
+    desc: Wait for Istio control plane to be ready
+    cmd: kubectl wait --for=condition=available deployment --all -n istio-system --timeout=180s
 
   install_istio:
     desc: Install full Istio stack — base + istiod + ingress gateway
@@ -53,6 +73,7 @@ tasks:
       - task: install_istio_base
       - task: install_istiod
       - task: install_istio_ingress
+      - task: wait_for_istio
 
   inject_envoy_petclinic:
     desc: Enable Envoy sidecar injection for petclinic namespace and restart pods
@@ -61,17 +82,17 @@ tasks:
       - kubectl rollout restart deployment -n petclinic
       - kubectl get pods -n petclinic
 
-# argocd
+# argo cd
   install_argocd:
-    desc: Install ArgoCD — server-side apply required due to CRD size limits
+    desc: Install ArgoCD
     cmds:
       - kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       - |
         kubectl apply -n argocd \
           --server-side \
           --force-conflicts \
-          -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-      - kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=180s
+          -f https://raw.githubusercontent.com/argoproj/argo-cd/{{.ARGOCD_VERSION}}/manifests/install.yaml
+      - kubectl wait --for=condition=available deployment --all -n argocd --timeout=300s
 
   argocd_password:
     desc: Get the initial ArgoCD admin password
@@ -88,100 +109,91 @@ tasks:
       - kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
       - |
         kubectl apply -n argo-rollouts \
-          -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-      - kubectl wait --for=condition=available deployment/argo-rollouts -n argo-rollouts --timeout=180s
+          -f https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/install.yaml
+      - kubectl wait --for=condition=available deployment --all -n argo-rollouts --timeout=180s
 
   install_argo_rollouts_plugin:
     desc: Install Argo Rollouts kubectl plugin (Linux amd64)
     cmds:
       - |
-        curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+        curl -LO https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/kubectl-argo-rollouts-linux-amd64
       - chmod +x kubectl-argo-rollouts-linux-amd64
       - sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
       - kubectl argo rollouts version
 
 # microservices releases
   release_config_server:
-    desc: Helm release for config-server
     cmds:
       - |
         helm upgrade --install config-server ./helm/microservice \
           -n petclinic \
           --create-namespace \
           -f ./helm/microservice/values/env/{{.ENV}}/config-server.yaml \
-          --wait
+          --wait --timeout 5m --atomic
 
   release_discovery_server:
-    desc: Helm release for discovery-server
     cmds:
       - |
         helm upgrade --install discovery-server ./helm/microservice \
           -n petclinic \
           -f ./helm/microservice/values/env/{{.ENV}}/discovery-server.yaml \
-          --wait
-
-  release_api_gateway:
-    desc: Helm release for api-gateway
-    cmds:
-      - |
-        helm upgrade --install api-gateway ./helm/microservice \
-          -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/api-gateway.yaml \
-          --wait
-
-  release_customers_service:
-    desc: Helm release for customers-service
-    cmds:
-      - |
-        helm upgrade --install customers-service ./helm/microservice \
-          -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/customers-service.yaml \
-          --wait
-
-  release_visits_service:
-    desc: Helm release for visits-service
-    cmds:
-      - |
-        helm upgrade --install visits-service ./helm/microservice \
-          -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/visits-service.yaml \
-          --wait
-
-  release_vets_service:
-    desc: Helm release for vets-service
-    cmds:
-      - |
-        helm upgrade --install vets-service ./helm/microservice \
-          -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/vets-service.yaml \
-          --wait
-
-  release_genai_service:
-    desc: Helm release for genai-service
-    cmds:
-      - |
-        helm upgrade --install genai-service ./helm/microservice \
-          -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/genai-service.yaml \
-          --wait
-
-  release_admin_server:
-    desc: Helm release for admin-server
-    cmds:
-      - |
-        helm upgrade --install admin-server ./helm/microservice \
-          -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/admin-server.yaml \
-          --wait
+          --wait --timeout 5m --atomic
 
   release_db_migrations:
-    desc: Helm release for db-migrations
     cmds:
       - |
         helm upgrade --install db-migrations ./helm/microservice \
           -n petclinic \
           -f ./helm/microservice/values/env/{{.ENV}}/db-migrations.yaml \
-          --wait
+          --wait --timeout 5m --atomic
+
+  release_api_gateway:
+    cmds:
+      - |
+        helm upgrade --install api-gateway ./helm/microservice \
+          -n petclinic \
+          -f ./helm/microservice/values/env/{{.ENV}}/api-gateway.yaml \
+          --wait --timeout 5m --atomic
+
+  release_customers_service:
+    cmds:
+      - |
+        helm upgrade --install customers-service ./helm/microservice \
+          -n petclinic \
+          -f ./helm/microservice/values/env/{{.ENV}}/customers-service.yaml \
+          --wait --timeout 5m --atomic
+
+  release_visits_service:
+    cmds:
+      - |
+        helm upgrade --install visits-service ./helm/microservice \
+          -n petclinic \
+          -f ./helm/microservice/values/env/{{.ENV}}/visits-service.yaml \
+          --wait --timeout 5m --atomic
+
+  release_vets_service:
+    cmds:
+      - |
+        helm upgrade --install vets-service ./helm/microservice \
+          -n petclinic \
+          -f ./helm/microservice/values/env/{{.ENV}}/vets-service.yaml \
+          --wait --timeout 5m --atomic
+
+  release_genai_service:
+    cmds:
+      - |
+        helm upgrade --install genai-service ./helm/microservice \
+          -n petclinic \
+          -f ./helm/microservice/values/env/{{.ENV}}/genai-service.yaml \
+          --wait --timeout 5m --atomic
+
+  release_admin_server:
+    cmds:
+      - |
+        helm upgrade --install admin-server ./helm/microservice \
+          -n petclinic \
+          -f ./helm/microservice/values/env/{{.ENV}}/admin-server.yaml \
+          --wait --timeout 5m --atomic
 
   release_all:
     desc: Release all microservices in dependency order
@@ -197,7 +209,7 @@ tasks:
       - task: release_admin_server
 
   bootstrap:
-    desc: Full platform setup — Gateway CRDs, Istio, ArgoCD, Argo Rollouts, sidecar injection, all releases
+    desc: Full platform setup
     cmds:
       - task: install_gateway_crds
       - task: install_istio

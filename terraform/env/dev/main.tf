@@ -206,7 +206,7 @@ module "rds-s3-exporter" {
   rds_export_role_arn          = module.iam.roles["rds_export_role"]
   rds_export_lambda_role_arn   = module.iam.roles["rds_export_lambda_role"]
   slack_notify_lambda_role_arn = module.iam.roles["slack_notifier_lambda_role"]
-  rds_export_kms_key_arn       = module.kms.kms_key_arn["rds_data"]
+  rds_export_kms_key_arn       = module.kms.kms_key_arn["infra_logs"]
   rds_export_kms_key_id        = module.kms.kms_key_id["rds_data"]
   slack_webhook_url            = module.secret_manager.slack_secrets["slack_aws_alert_webhook_url"]
 

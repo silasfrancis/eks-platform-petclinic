@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: vets-service
   port: 8083
@@ -21,26 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: vets-service
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/vets-service
-  tag: '6af97245'
-  digest: sha256:dcaba36f32d31d5cfdaeb7ce21662e51e6017b5d2d7e81c99b950e9cc843d673
+  tag: 'd3c821db'
+  digest: sha256:b2771c673da198a731c7ab0c3f4e4338519d02c7a84e81de08c9d247974d541b
 serviceAccount:
   enabled: true
   name: vets-service-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
-
 secretStore:
   enabled: true
   kind: SecretStore
   name: vets-service-secret-store
   awsRegion: us-east-2
-
 externalSecret:
   enabled: true
   name: vets-service-external-secret
@@ -65,13 +60,10 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: MYSQL_DATABASE
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: false
-
 argoRollout:
   enabled: true
   name: vets-service-rollout
@@ -101,7 +93,6 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
-
 service:
   enabled: true
   name: vets-service
@@ -110,7 +101,6 @@ service:
     enabled: true
     stableService: vets-service-stable-service
     canaryService: vets-service-canary-service
-
 virtualService:
   enabled: true
   name: vets-service-vs

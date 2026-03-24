@@ -5,9 +5,9 @@ container:
   name: db-migration
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/migrations
+  tag: '92ea2f34'
+  digest: sha256:675b4d5cb7a43bb25e401a79487426e149fe625e114a2a435cf16188ecc7ec5e
 
 serviceAccount:
   enabled: true

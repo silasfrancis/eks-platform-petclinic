@@ -106,6 +106,7 @@ tasks:
       - sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
       - kubectl argo rollouts version
 
+# external secrets
   install_external_secrets_operator:
     desc: Install External Secrets Operator
     cmds:
@@ -120,74 +121,74 @@ tasks:
   release_config_server:
     cmds:
       - |
-        helm upgrade --install config-server ./helm/microservice \
+        helm upgrade --install config-server microservice \
           -n petclinic \
           --create-namespace \
-          -f ./helm/microservice/values/env/{{.ENV}}/config-server.yaml \
+          -f microservice/values/env/{{.ENV}}/config-server.yaml \
           --wait --timeout 5m --atomic
 
   release_discovery_server:
     cmds:
       - |
-        helm upgrade --install discovery-server ./helm/microservice \
+        helm upgrade --install discovery-server microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/discovery-server.yaml \
+          -f microservice/values/env/{{.ENV}}/discovery-server.yaml \
           --wait --timeout 5m --atomic
 
   release_db_migrations:
     cmds:
       - |
-        helm upgrade --install db-migrations ./helm/microservice \
+        helm upgrade --install db-migrations microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/db-migrations.yaml \
+          -f microservice/values/env/{{.ENV}}/db-migrations.yaml \
           --wait --timeout 5m --atomic
 
   release_api_gateway:
     cmds:
       - |
-        helm upgrade --install api-gateway ./helm/microservice \
+        helm upgrade --install api-gateway microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/api-gateway.yaml \
+          -f microservice/values/env/{{.ENV}}/api-gateway.yaml \
           --wait --timeout 5m --atomic
 
   release_customers_service:
     cmds:
       - |
-        helm upgrade --install customers-service ./helm/microservice \
+        helm upgrade --install customers-service microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/customers-service.yaml \
+          -f microservice/values/env/{{.ENV}}/customers-service.yaml \
           --wait --timeout 5m --atomic
 
   release_visits_service:
     cmds:
       - |
-        helm upgrade --install visits-service ./helm/microservice \
+        helm upgrade --install visits-service microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/visits-service.yaml \
+          -f microservice/values/env/{{.ENV}}/visits-service.yaml \
           --wait --timeout 5m --atomic
 
   release_vets_service:
     cmds:
       - |
-        helm upgrade --install vets-service ./helm/microservice \
+        helm upgrade --install vets-service microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/vets-service.yaml \
+          -f microservice/values/env/{{.ENV}}/vets-service.yaml \
           --wait --timeout 5m --atomic
 
   release_genai_service:
     cmds:
       - |
-        helm upgrade --install genai-service ./helm/microservice \
+        helm upgrade --install genai-service microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/genai-service.yaml \
+          -f microservice/values/env/{{.ENV}}/genai-service.yaml \
           --wait --timeout 5m --atomic
 
   release_admin_server:
     cmds:
       - |
-        helm upgrade --install admin-server ./helm/microservice \
+        helm upgrade --install admin-server microservice \
           -n petclinic \
-          -f ./helm/microservice/values/env/{{.ENV}}/admin-server.yaml \
+          -f microservice/values/env/{{.ENV}}/admin-server.yaml \
           --wait --timeout 5m --atomic
 
   release_all:

@@ -125,7 +125,8 @@ tasks:
           -n petclinic \
           --create-namespace \
           -f microservice/values/env/{{.ENV}}/config-server.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_discovery_server:
     cmds:

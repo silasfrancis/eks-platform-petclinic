@@ -41,7 +41,7 @@ deployment:
   env:
     plain:
       SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server
+      CONFIG_SERVER_URL: http://config-server:8888
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:

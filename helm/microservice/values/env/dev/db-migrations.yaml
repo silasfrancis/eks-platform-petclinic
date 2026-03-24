@@ -56,21 +56,21 @@ databaseMigration:
     helm.sh/hook-weight: "-5"
     helm.sh/hook-delete-policy: before-hook-creation
   env:
-  secrets:
-    - name: MYSQL_HOST
-      secretName: db-migration-secrets
-      secretKey: MYSQL_HOST
-    - name: MYSQL_DATABASE
-      secretName: db-migration-secrets
-      secretKey: MYSQL_DATABASE
-    - name: FLYWAY_USER
-      secretName: db-migration-secrets
-      secretKey: MYSQL_USER
-    - name: FLYWAY_PASSWORD
-      secretName: db-migration-secrets
-      secretKey: MYSQL_PASSWORD
-  plain:
-    FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
+    secrets:
+      - name: MYSQL_HOST
+        secretName: db-migration-secrets
+        secretKey: MYSQL_HOST
+      - name: MYSQL_DATABASE
+        secretName: db-migration-secrets
+        secretKey: MYSQL_DATABASE
+      - name: FLYWAY_USER
+        secretName: db-migration-secrets
+        secretKey: MYSQL_USER
+      - name: FLYWAY_PASSWORD
+        secretName: db-migration-secrets
+        secretKey: MYSQL_PASSWORD
+    plain:
+      FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
 
 deployment:
   enabled: false
@@ -80,6 +80,9 @@ argoRollout:
 
 service:
   enabled: false
+  port: 8761
+  rolloutServices:
+    enabled: false
 
 virtualService:
   enabled: false

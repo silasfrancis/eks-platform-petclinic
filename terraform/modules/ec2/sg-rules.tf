@@ -9,3 +9,14 @@ resource "aws_vpc_security_group_egress_rule" "ec2_egress_rule" {
   resource = "vpc"
   }
 }
+resource "aws_vpc_security_group_egress_rule" "ec2_to_rds" {
+  security_group_id            = aws_security_group.ec2.id
+  referenced_security_group_id = aws_security_group.rds.id
+  from_port                    = 3306
+  to_port                      = 3306
+  ip_protocol                  = "tcp"
+  description                  = "Allow outbound MySQL to RDS"
+  tags = { 
+    resource = "vpc" 
+  }
+}

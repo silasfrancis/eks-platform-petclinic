@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: api-gateway
   port: 8080
@@ -21,29 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: api-gateway
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
-  tag: '6af97245'
-  digest: sha256:6f77d3932f556c392bc3c84e7f0624165e6d68587f3873ca19d8ae241c197793
+  tag: 'd3c821db'
+  digest: sha256:c01eb7433be508608d7fc13151563c2d15e219a6e844b0a08ab53edbe727611f
 serviceAccount:
   enabled: false
-
 secretStore:
   enabled: false
-
 externalSecret:
   enabled: false
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: false
-
 argoRollout:
   enabled: true
   name: api-gateway-rollout
@@ -60,7 +52,6 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
-
 service:
   enabled: true
   name: api-gateway
@@ -69,7 +60,6 @@ service:
     enabled: false
     stableService: api-gateway-stable-service
     canaryService: api-gateway-canary-service
-
 virtualService:
   enabled: true
   name: api-gateway-vs

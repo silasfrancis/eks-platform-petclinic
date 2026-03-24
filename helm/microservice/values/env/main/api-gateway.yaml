@@ -1,3 +1,4 @@
+createNamespace: false
 namespace: petclinic
 
 container:
@@ -25,9 +26,9 @@ selectorLabels:
   app: api-gateway
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
+  tag: 'c84d2ef1'
+  digest: sha256:85387b676751d39ead9de1a74a2acc29ca0a60acb782a686bf16bf8a87675376
 
 serviceAccount:
   enabled: false
@@ -51,7 +52,7 @@ argoRollout:
   env:
     plain:
       SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server
+      CONFIG_SERVER_URL: http://config-server:8888
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:
@@ -69,7 +70,7 @@ service:
     enabled: false
     stableService: api-gateway-stable-service
     canaryService: api-gateway-canary-service
-
+    
 virtualService:
   enabled: true
   name: api-gateway-vs

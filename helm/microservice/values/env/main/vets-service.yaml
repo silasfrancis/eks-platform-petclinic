@@ -1,3 +1,4 @@
+createNamespace: false
 namespace: petclinic
 
 container:
@@ -25,9 +26,9 @@ selectorLabels:
   app: vets-service
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/vets-service
+  tag: 'c84d2ef1'
+  digest: sha256:ee5c1fa9374790b70852f288aa45d1cab274183ad0d36a4e9d0455c1398328ba
 
 serviceAccount:
   enabled: true
@@ -37,6 +38,7 @@ serviceAccount:
 
 secretStore:
   enabled: true
+  kind: SecretStore
   name: vets-service-secret-store
   awsRegion: us-east-2
 
@@ -91,7 +93,7 @@ argoRollout:
         secretKey: MYSQL_DATABASE
     plain:
       SPRING_PROFILES_ACTIVE: docker,mysql
-      CONFIG_SERVER_URL: http://config-server
+      CONFIG_SERVER_URL: http://config-server:8888
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:

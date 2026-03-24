@@ -1,5 +1,6 @@
 createNamespace: false
 namespace: petclinic
+
 container:
   name: visits-service
   port: 8082
@@ -20,22 +21,27 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
+
 selectorLabels:
   app: visits-service
+
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
   tag: 'c84d2ef1'
   digest: sha256:645bd27097990ae8ba928f97ec6d954c4e166231ae8b381ecda2be4cf99b9862
+
 serviceAccount:
   enabled: true
   name: visits-service-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+
 secretStore:
   enabled: true
   kind: SecretStore
   name: visits-service-secret-store
   awsRegion: us-east-2
+
 externalSecret:
   enabled: true
   name: visits-service-external-secret
@@ -60,10 +66,13 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: MYSQL_DATABASE
+
 databaseMigration:
   enabled: false
+
 deployment:
   enabled: false
+
 argoRollout:
   enabled: true
   name: visits-service-rollout
@@ -84,7 +93,7 @@ argoRollout:
         secretKey: MYSQL_DATABASE
     plain:
       SPRING_PROFILES_ACTIVE: docker,mysql
-      CONFIG_SERVER_URL: http://config-server
+      CONFIG_SERVER_URL: http://config-server:8888
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:
@@ -93,6 +102,7 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
+
 service:
   enabled: true
   name: visits-service
@@ -101,6 +111,7 @@ service:
     enabled: true
     stableService: visits-service-stable-service
     canaryService: visits-service-canary-service
+    
 virtualService:
   enabled: true
   name: visits-service-vs

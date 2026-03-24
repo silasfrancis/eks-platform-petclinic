@@ -1,3 +1,4 @@
+createNamespace: false
 namespace: petclinic
 
 container:
@@ -23,10 +24,11 @@ container:
 
 selectorLabels:
   app: genai-service
+
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
+  tag: 'c84d2ef1'
+  digest: sha256:cda8f4c5ae6b4b90398938988997b0a78692c8aca63df6f61f643f5e249101a8
 
 serviceAccount:
   enabled: true
@@ -36,6 +38,7 @@ serviceAccount:
 
 secretStore:
   enabled: true
+  kind: SecretStore
   name: genai-service-secret-store
   awsRegion: us-east-2
 
@@ -69,7 +72,7 @@ argoRollout:
         secretKey: OPENAI_API_KEY
     plain:
       SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server
+      CONFIG_SERVER_URL: http://config-server:8888
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:

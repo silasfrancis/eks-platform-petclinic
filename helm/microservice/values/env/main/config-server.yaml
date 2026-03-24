@@ -1,3 +1,4 @@
+createNamespace: false
 namespace: petclinic
 
 container:
@@ -23,20 +24,21 @@ container:
 
 selectorLabels:
   app: config-server
-
+  
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/config-server
+  tag: 'fe28f628'
+  digest: sha256:dc5bf22c307c68224fc42504a8a0e6d72322f8c60c42f6aba901f33de9fa2efa
 
 serviceAccount:
   enabled: true
   name: config-server-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true
+  kind: SecretStore
   name: config-server-secret-store
   awsRegion: us-east-2
 
@@ -105,7 +107,6 @@ service:
   port: 8888
   rolloutServices:
     enabled: false
-
+    
 virtualService:
   enabled: false
-

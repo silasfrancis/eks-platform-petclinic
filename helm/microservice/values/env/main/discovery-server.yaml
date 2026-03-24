@@ -1,4 +1,6 @@
+createNamespace: false
 namespace: petclinic
+
 container:
   name: discovery-server
   port: 8761
@@ -19,13 +21,14 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
+
 selectorLabels:
   app: discovery-server
 
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/discovery-server
-  tag: '81ba4e5e'
-  digest: sha256:86a9f0ff87f474730548bc2771faf56f95585217d56d5be1ef176e0b6341b0af
+  tag: 'c84d2ef1'
+  digest: sha256:9fbc532bfa7447a9217c280f7a65fbfda8ba46bbe5f625c19aa01172dbbb252e
 
 serviceAccount:
   enabled: false
@@ -46,7 +49,7 @@ deployment:
   env:
     plain:
       SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server
+      CONFIG_SERVER_URL: http://config-server:8888
   minReadySeconds: 30
   revisionHistoryLimit: 5
   strategy:
@@ -54,12 +57,15 @@ deployment:
       maxSurge: 25%
       maxUnavailable: 0
 
+argoRollout:
+  enabled: false
+
 service:
   enabled: true
   name: discovery-server
   port: 8761
   rolloutServices:
     enabled: false
-
+    
 virtualService:
   enabled: false

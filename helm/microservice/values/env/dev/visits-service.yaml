@@ -24,8 +24,8 @@ selectorLabels:
   app: visits-service
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
-  tag: 'd3c821db'
-  digest: sha256:d1cac08d413a51e980cdc254ff18209f8e071f6bb762e449be0455d683fb7a23
+  tag: 'c84d2ef1'
+  digest: sha256:645bd27097990ae8ba928f97ec6d954c4e166231ae8b381ecda2be4cf99b9862
 serviceAccount:
   enabled: true
   name: visits-service-sa

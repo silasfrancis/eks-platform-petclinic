@@ -32,7 +32,7 @@ serviceAccount:
   enabled: true
   name: config-server-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true

@@ -130,7 +130,7 @@ module "ec2" {
   instance_type         = "t3.micro"
   vpc_id                = module.vpc.vpc_id
   private_subnet_id     = module.vpc.subnets["private_subnet_1"]
-  ec2_security_group_id = [module.vpc.security_group["ec2"]]
+  ec2_security_group_id = module.vpc.security_group["ec2"]
   iam_instance_profile  = module.iam.iam_instance_profile
 
   depends_on = [
@@ -155,7 +155,8 @@ module "eks" {
     max_size     = 3
     min_size     = 1
   }
-  security_group_id     = [module.vpc.security_group["eks"]]
+  eks_security_group_id     = module.vpc.security_group["eks"]
+  ec2_security_group_id = module.vpc.security_group["ec2"]
   ami_type              = "AL2023_ARM_64_STANDARD"
   disk_size             = "20"
   instance_types        = ["t4g.medium"]
@@ -183,7 +184,9 @@ module "rds" {
   db_name                 = module.secret_manager.db_secrets["data_base"]
   db_username             = module.secret_manager.db_secrets["db_username"]
   db_password             = module.secret_manager.db_secrets["db_password"]
-  rds_security_group_id   = [module.vpc.security_group["rds"]]
+  rds_security_group_id   = module.vpc.security_group["rds"]
+  cluster_sg_id           = module.eks.cluster_sg_id
+  ec2_security_group_id   = module.vpc.security_group["ec2"]
   rds_data_kms_arn        = module.kms.kms_key_arn["rds_data"]
   rds_monitoring_role_arn = module.iam.roles["rds_monitoring_role"]
 
@@ -214,6 +217,19 @@ module "rds-s3-exporter" {
     module.app-registry,
     module.rds,
     module.s3,
+    module.iam,
+    module.kms,
+  ]
+}
+
+module "alb" {
+  source = "../../modules/alb"
+  
+  alb_security_group_id = module.vpc.security_group["alb"]
+
+  depends_on = [
+    module.app-registry,
+    module.vpc,
     module.iam,
     module.kms,
   ]

@@ -1,19 +1,18 @@
-resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http" {
+resource "aws_vpc_security_group_ingress_rule" "allow_http" {
   description       = "Allow HTTP traffic from internet"
-  security_group_id = aws_security_group.alb.id
+  security_group_id = var.alb_security_group_id
   from_port = 80
   to_port = 80
   ip_protocol = "tcp"
   cidr_ipv4 = "0.0.0.0/0"
-  depends_on = [ aws_security_group.alb ]
   tags = {
     resource = "vpc"
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "alb_ingress_https" {
+resource "aws_vpc_security_group_ingress_rule" "allow_https" {
   description       = "Allow HTTPS traffic from internet"
-  security_group_id = aws_security_group.alb.id
+  security_group_id = var.alb_security_group_id
   from_port = 443
   to_port = 443
   ip_protocol = "tcp"
@@ -21,16 +20,14 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_https" {
     tags = {
     resource = "vpc"
   }
-  depends_on = [ aws_security_group.alb ]
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_egress" {
   description       = "Allow all outbound traffic to internet"
-  security_group_id = aws_security_group.alb.id
+  security_group_id = var.alb_security_group_id
   ip_protocol = "-1"
   cidr_ipv4 = "0.0.0.0/0"
     tags = {
     resource = "vpc"
   }
-  depends_on = [ aws_security_group.alb ]
 }

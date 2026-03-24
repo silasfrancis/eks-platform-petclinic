@@ -33,9 +33,8 @@ variable "node_scaling_config" {
   
 }
 
-variable "security_group_id" {
-    type = list(string)
-  
+variable "eks_security_group_id" {
+    type = string
 }
 
 variable "ami_type" {
@@ -65,5 +64,9 @@ variable "app" {
 }
 
 variable "jumphost_ec2_role_arn" {
+  type = string
+}
+
+variable "ec2_security_group_id" {
   type = string
 }

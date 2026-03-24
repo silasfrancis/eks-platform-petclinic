@@ -31,7 +31,15 @@ variable "db_password" {
 }
 
 variable "rds_security_group_id" {
-  type = list(string)
+  type = string
+}
+
+variable "cluster_sg_id" {
+  type = string
+}
+
+variable "ec2_security_group_id" {
+  type = string
 }
 
 variable "rds_data_kms_arn" {

@@ -5,7 +5,7 @@ resource "aws_eks_cluster" "main_cluster" {
 
   vpc_config {
     subnet_ids              = var.subnet_ids_for_cluster
-    security_group_ids      = var.security_group_id
+    security_group_ids      = [var.eks_security_group_id]
     endpoint_private_access = true
     endpoint_public_access  = false 
     }
@@ -41,7 +41,6 @@ resource "aws_eks_cluster" "main_cluster" {
 resource "aws_launch_template" "eks_nodes" {
   name = "${var.env}-${var.app}-eks-node-template"
   description = "EKS node launch template for ${var.env}"
-  vpc_security_group_ids = var.security_group_id
   
   metadata_options {
     http_endpoint               = "enabled"

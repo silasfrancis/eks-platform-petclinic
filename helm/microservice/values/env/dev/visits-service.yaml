@@ -1,3 +1,4 @@
+createNamespace: false
 namespace: petclinic
 
 container:

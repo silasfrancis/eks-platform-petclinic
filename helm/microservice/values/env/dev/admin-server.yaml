@@ -1,4 +1,6 @@
+createNamespace: false
 namespace: petclinic
+
 container:
   name: admin-server
   port: 9090
@@ -19,6 +21,7 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
+      
 selectorLabels:
   app: admin-server
 

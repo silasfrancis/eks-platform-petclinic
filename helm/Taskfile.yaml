@@ -133,7 +133,8 @@ tasks:
         helm upgrade --install discovery-server microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/discovery-server.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_db_migrations:
     cmds:
@@ -141,7 +142,8 @@ tasks:
         helm upgrade --install db-migrations microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/db-migrations.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_api_gateway:
     cmds:
@@ -149,7 +151,8 @@ tasks:
         helm upgrade --install api-gateway microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/api-gateway.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_customers_service:
     cmds:
@@ -157,7 +160,8 @@ tasks:
         helm upgrade --install customers-service microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/customers-service.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_visits_service:
     cmds:
@@ -165,7 +169,8 @@ tasks:
         helm upgrade --install visits-service microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/visits-service.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_vets_service:
     cmds:
@@ -173,7 +178,8 @@ tasks:
         helm upgrade --install vets-service microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/vets-service.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_genai_service:
     cmds:
@@ -181,7 +187,8 @@ tasks:
         helm upgrade --install genai-service microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/genai-service.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_admin_server:
     cmds:
@@ -189,7 +196,8 @@ tasks:
         helm upgrade --install admin-server microservice \
           -n petclinic \
           -f microservice/values/env/{{.ENV}}/admin-server.yaml \
-          --wait --timeout 5m --atomic
+          --wait --timeout 5m 
+          # --atomic
 
   release_all:
     desc: Release all microservices in dependency order

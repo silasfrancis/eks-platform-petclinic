@@ -12,7 +12,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- toYaml .Values.selectorLabels | nindent 6 }} 
+        {{- toYaml .Values.selectorLabels | nindent 8 }} 
     spec:
       {{- if .Values.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.serviceAccount.name }}

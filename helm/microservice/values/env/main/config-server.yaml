@@ -37,12 +37,12 @@ serviceAccount:
 
 secretStore:
   enabled: true
-  name: config-server-secretStore
+  name: config-server-secret-store
   awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: config-server-externalSecret
+  name: config-server-external-secret
   refreshInterval: "5m"
   target:
     name: config-server-secrets

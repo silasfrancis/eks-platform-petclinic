@@ -36,12 +36,12 @@ serviceAccount:
 secretStore:
   enabled: true
   kind: SecretStore
-  name: genai-service-secretStore
+  name: genai-service-secret-store
   awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: genai-service-externalSecret
+  name: genai-service-external-secret
   refreshInterval: "5m"
   target:
     name: genai-service-secrets

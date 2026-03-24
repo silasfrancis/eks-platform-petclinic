@@ -37,12 +37,12 @@ serviceAccount:
 
 secretStore:
   enabled: true
-  name: visits-service-secretStore
+  name: visits-service-secret-store
   awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: visits-service-externalSecret
+  name: visits-service-external-secret
   refreshInterval: "5m"
   target:
     name: visits-service-secrets

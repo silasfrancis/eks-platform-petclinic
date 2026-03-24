@@ -37,12 +37,12 @@ serviceAccount:
 secretStore:
   enabled: true
   kind: SecretStore
-  name: vets-service-secretStore
+  name: vets-service-secret-store
   awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: vets-service-externalSecret
+  name: vets-service-external-secret
   refreshInterval: "5m"
   target:
     name: vets-service-secrets

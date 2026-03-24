@@ -16,12 +16,12 @@ serviceAccount:
 secretStore:
   enabled: true
   kind: SecretStore
-  name: db-migration-secretStore
+  name: db-migration-secret-store
   awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: db-migration-externalSecret
+  name: db-migration-external-secret
   refreshInterval: "5m"
   target:
     name: db-migration-secrets

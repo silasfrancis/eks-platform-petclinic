@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: visits-service
   port: 8082
@@ -21,26 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: visits-service
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
-  tag: '6af97245'
-  digest: sha256:f2c46e92bacb30f8a9a9b07cb2b7e9144ead02356a85f77cc7ce4cfa87300b56
+  tag: 'd3c821db'
+  digest: sha256:d1cac08d413a51e980cdc254ff18209f8e071f6bb762e449be0455d683fb7a23
 serviceAccount:
   enabled: true
   name: visits-service-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
-
 secretStore:
   enabled: true
   kind: SecretStore
   name: visits-service-secret-store
   awsRegion: us-east-2
-
 externalSecret:
   enabled: true
   name: visits-service-external-secret
@@ -65,13 +60,10 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: MYSQL_DATABASE
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: false
-
 argoRollout:
   enabled: true
   name: visits-service-rollout
@@ -101,7 +93,6 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
-
 service:
   enabled: true
   name: visits-service
@@ -110,7 +101,6 @@ service:
     enabled: true
     stableService: visits-service-stable-service
     canaryService: visits-service-canary-service
-
 virtualService:
   enabled: true
   name: visits-service-vs

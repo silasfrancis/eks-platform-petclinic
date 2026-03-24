@@ -24,8 +24,8 @@ selectorLabels:
   app: api-gateway
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
-  tag: 'd3c821db'
-  digest: sha256:c01eb7433be508608d7fc13151563c2d15e219a6e844b0a08ab53edbe727611f
+  tag: 'c84d2ef1'
+  digest: sha256:85387b676751d39ead9de1a74a2acc29ca0a60acb782a686bf16bf8a87675376
 serviceAccount:
   enabled: false
 secretStore:

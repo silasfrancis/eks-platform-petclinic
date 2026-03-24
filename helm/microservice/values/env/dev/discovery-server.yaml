@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: discovery-server
   port: 8761
@@ -21,26 +20,20 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-      
 selectorLabels:
   app: discovery-server
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/discovery-server
-  tag: '6af97245'
-  digest: sha256:6549de6995eb7b6c7c54f16073210620bc5d9d442a97d8cd99fab863e8f73cf5
+  tag: 'd3c821db'
+  digest: sha256:d1e5de2c2e5c9565844944106eb15cf0bc445a6c8650136f41f452f812480873
 serviceAccount:
   enabled: false
-
 secretStore:
   enabled: false
-
 externalSecret:
   enabled: false
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: true
   name: discovery-server-deployment
@@ -55,13 +48,11 @@ deployment:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
-
 service:
   enabled: true
   name: discovery-server
   port: 8761
   rolloutServices:
     enabled: false
-
 virtualService:
   enabled: false

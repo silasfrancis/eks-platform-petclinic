@@ -24,8 +24,8 @@ selectorLabels:
   app: config-server
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/config-server
-  tag: 'c84d2ef1'
-  digest: sha256:3e87b8c72eb759db46e74eec39c2abdf486cd1b65050a2a7726d315f86243898
+  tag: 'fe28f628'
+  digest: sha256:dc5bf22c307c68224fc42504a8a0e6d72322f8c60c42f6aba901f33de9fa2efa
 serviceAccount:
   enabled: true
   name: config-server-sa

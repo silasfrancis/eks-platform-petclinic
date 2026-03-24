@@ -14,17 +14,28 @@ serviceAccount:
   name: db-migration-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-db-migration-sa-pod-secrets-reader"
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
 
 secretStore:
   enabled: true
   kind: SecretStore
   name: db-migration-secret-store
   awsRegion: us-east-2
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-9" 
+    helm.sh/hook-delete-policy: before-hook-creation
 
 externalSecret:
   enabled: true
   name: db-migration-external-secret
   refreshInterval: "5m"
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-8"
+    helm.sh/hook-delete-policy: before-hook-creation
   target:
     name: db-migration-secrets
     creationPolicy: Owner

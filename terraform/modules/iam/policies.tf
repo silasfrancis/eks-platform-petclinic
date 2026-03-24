@@ -1,16 +1,75 @@
-resource "aws_iam_policy" "read_secrets_policy" {
-  name        = "${var.env}-${var.app}-jumphost-secrets-read"
-  description = "Allows reading of a specific secret from AWS Secrets Manager for jumphosts"
+resource "aws_iam_role_policy" "jumphost_eks_policy" {
+  name = "${var.env}-${var.app}-jumphost-policy"
+  role = aws_iam_role.jumphost_ec2_role.name
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = [
-        "secretsmanager:GetSecretValue"
-      ]
-      Resource = "arn:aws:secretsmanager:*:*:secret:${var.secret_name}*"
-    }]
+    Statement = [
+      {
+        Sid    = "AllowEKSAccess"
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:AccessKubernetesApi"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowECRAccess"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:DescribeRepositories",
+          "ecr:ListImages"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowSecretsManagerAccess"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:*:*:secret:${var.secret_name}*"
+      },
+      {
+        Sid    = "AllowSSMAccess"
+        Effect = "Allow"
+        Action = [
+          "ssm:StartSession",
+          "ssm:TerminateSession",
+          "ssm:DescribeSessions"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowS3TerraformState"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.environment}-petclinic-*",
+          "arn:aws:s3:::${var.environment}-petclinic-*/*"
+        ]
+      },
+      {
+        Sid    = "AllowKMSAccess"
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = "*"
+      }
+    ]
   })
   tags = {
     resource = "iam"

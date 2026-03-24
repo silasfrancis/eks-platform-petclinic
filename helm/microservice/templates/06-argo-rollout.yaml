@@ -88,7 +88,7 @@ spec:
       trafficRouting:
         istio:
           virtualServices:
-            - name: {{ .Values.virtualService.strategy.name }}
+            - name: {{ .Values.virtualService.name }}
               routes:
                 - {{ .Values.virtualService.http.route }}
       steps:

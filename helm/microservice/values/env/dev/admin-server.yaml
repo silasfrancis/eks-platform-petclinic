@@ -24,8 +24,8 @@ selectorLabels:
   app: admin-server
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: 'd3c821db'
-  digest: sha256:a05b991e2827ac02d85565648d50000b2c2a05d7d7f28ed26f4d1967bb0d555a
+  tag: 'c84d2ef1'
+  digest: sha256:84f9ec014d75b55392305baa32b39beecf5667b036ec91b4b6a57f6c34ab4c51
 serviceAccount:
   enabled: false
 secretStore:

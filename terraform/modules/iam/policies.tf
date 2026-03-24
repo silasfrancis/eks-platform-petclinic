@@ -1,6 +1,5 @@
-resource "aws_iam_role_policy" "jumphost_eks_policy" {
+resource "aws_iam_policy" "jumphost_eks_policy" {
   name = "${var.env}-${var.app}-jumphost-policy"
-  role = aws_iam_role.jumphost_ec2_role.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -45,20 +44,6 @@ resource "aws_iam_role_policy" "jumphost_eks_policy" {
           "ssm:DescribeSessions"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "AllowS3TerraformState"
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket",
-          "s3:DeleteObject"
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.environment}-petclinic-*",
-          "arn:aws:s3:::${var.environment}-petclinic-*/*"
-        ]
       },
       {
         Sid    = "AllowKMSAccess"

@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: admin-server
   port: 9090
@@ -21,27 +20,20 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-      
 selectorLabels:
   app: admin-server
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: '6af97245'
-  digest: sha256:fd0b2c33bb05c605712ebf21b42b76377923ce07008ffbe983e500cb98a9a84e
-  
+  tag: 'd3c821db'
+  digest: sha256:a05b991e2827ac02d85565648d50000b2c2a05d7d7f28ed26f4d1967bb0d555a
 serviceAccount:
   enabled: false
-
 secretStore:
   enabled: false
-
 externalSecret:
   enabled: false
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: true
   name: admin-server-deployment
@@ -56,13 +48,11 @@ deployment:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
-
 service:
   enabled: true
   name: admin-server
   port: 9090
   rolloutServices:
     enabled: false
-
 virtualService:
   enabled: false

@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: customers-service
   port: 8081
@@ -21,26 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: customers-service
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service
-  tag: '6af97245'
-  digest: sha256:ef4fa32c0d9a6aa278b47039fc43dd6658570cc8a02dcc8d48fed803263476dd
+  tag: 'd3c821db'
+  digest: sha256:6bab8dcc6b925f46b7176ca6226875ad9b3a957965403967663f96c8ec44f55d
 serviceAccount:
   enabled: true
   name: customers-service-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
-
 secretStore:
   enabled: true
   kind: SecretStore
   name: customers-service-secret-store
   awsRegion: us-east-2
-
 externalSecret:
   enabled: true
   name: customers-service-external-secret
@@ -65,13 +60,10 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: MYSQL_DATABASE
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: false
-
 argoRollout:
   enabled: true
   name: customers-service-rollout
@@ -101,7 +93,6 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
-
 service:
   enabled: true
   name: customers-service
@@ -110,7 +101,6 @@ service:
     enabled: true
     stableService: customers-service-stable-service
     canaryService: customers-service-canary-service
-
 virtualService:
   enabled: true
   name: customers-service-vs

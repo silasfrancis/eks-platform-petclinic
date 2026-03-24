@@ -24,8 +24,8 @@ selectorLabels:
   app: customers-service
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service
-  tag: 'd3c821db'
-  digest: sha256:6bab8dcc6b925f46b7176ca6226875ad9b3a957965403967663f96c8ec44f55d
+  tag: 'c84d2ef1'
+  digest: sha256:8283c6b7289dcbaa385ee9e3cc2bbd341f619a54407bd649b0257d140efa840d
 serviceAccount:
   enabled: true
   name: customers-service-sa

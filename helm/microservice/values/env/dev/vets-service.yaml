@@ -24,8 +24,8 @@ selectorLabels:
   app: vets-service
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/vets-service
-  tag: 'd3c821db'
-  digest: sha256:b2771c673da198a731c7ab0c3f4e4338519d02c7a84e81de08c9d247974d541b
+  tag: 'c84d2ef1'
+  digest: sha256:ee5c1fa9374790b70852f288aa45d1cab274183ad0d36a4e9d0455c1398328ba
 serviceAccount:
   enabled: true
   name: vets-service-sa

@@ -64,6 +64,6 @@ variable "app" {
   type = string
 }
 
-# variable "jumphost_ec2_role_arn" {
-#   type = string
-# }
+variable "jumphost_ec2_role_arn" {
+  type = string
+}

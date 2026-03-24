@@ -161,7 +161,7 @@ module "eks" {
   instance_types        = ["t4g.medium"]
   kms_eks_secrets_arn   = module.kms.kms_key_arn["eks_secrets"]
   kms_eks_nodes_ebs_arn = module.kms.kms_key_arn["eks_nodes_ebs"]
-  # jumphost_ec2_role_arn = module.iam.roles["jumphost_ec2_role"]
+  jumphost_ec2_role_arn = module.iam.roles["jumphost_ec2_role"]
 
   depends_on = [
     module.app-registry,

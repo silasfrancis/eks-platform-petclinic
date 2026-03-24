@@ -7,7 +7,7 @@ container:
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/migrations
   tag: '92ea2f34'
-  digest: sha256:675b4d5cb7a43bb25e401a79487426e149fe625e114a2a435cf16188ecc7ec5e
+  digest: sha256:54b12d351eaf80042e6f97157faaf93d81bc12eec8b933eb5ad5310286320535
 
 serviceAccount:
   enabled: true

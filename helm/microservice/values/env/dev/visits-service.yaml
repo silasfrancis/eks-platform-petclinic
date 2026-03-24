@@ -34,7 +34,7 @@ serviceAccount:
   enabled: true
   name: visits-service-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-visits-service-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true

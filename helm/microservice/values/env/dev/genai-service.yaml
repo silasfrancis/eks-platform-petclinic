@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: genai-service
   port: 8084
@@ -21,25 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: genai-service
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
-  tag: '6af97245'
-  digest: sha256:2497981a898654d88ccfb08a37ca7da2cacb6a70e7a47cab8e7684a5392a04db
+  tag: 'd3c821db'
+  digest: sha256:837c03a42ccf9b9e0a4c2e32e569ff6460a4aa71b8ade8371cd03f0b8a46a51c
 serviceAccount:
   enabled: true
   name: genai-service
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
-
 secretStore:
   enabled: true
   kind: SecretStore
   name: genai-service-secret-store
   awsRegion: us-east-2
-
 externalSecret:
   enabled: true
   name: genai-service-external-secret
@@ -52,13 +48,10 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: OPENAI_API_KEY
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: false
-
 argoRollout:
   enabled: true
   name: admin-server-rollout
@@ -79,7 +72,6 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
-
 service:
   enabled: true
   name: genai-service-service
@@ -88,7 +80,6 @@ service:
     enabled: false
     stableService: genai-service-stable-service
     canaryService: genai-service-canary-service
-
 virtualService:
   enabled: true
   name: genai-service-vs

@@ -24,8 +24,8 @@ selectorLabels:
   app: genai-service
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
-  tag: 'd3c821db'
-  digest: sha256:837c03a42ccf9b9e0a4c2e32e569ff6460a4aa71b8ade8371cd03f0b8a46a51c
+  tag: 'c84d2ef1'
+  digest: sha256:cda8f4c5ae6b4b90398938988997b0a78692c8aca63df6f61f643f5e249101a8
 serviceAccount:
   enabled: true
   name: genai-service

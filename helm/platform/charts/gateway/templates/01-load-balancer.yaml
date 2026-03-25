@@ -1,0 +1,24 @@
+{{- if .Values.loadbalancer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.loadbalancer.name }}
+  namespace: {{ .Values.namespace }}
+  {{- with .Values.loadbalancer.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  {{- with .Values.selectorLabels }}
+  selector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.loadbalancer.istioTargetPorts.http }}
+    - name: https
+      port: 443
+      targetPort: {{ .Values.loadbalancer.istioTargetPorts.https }}
+{{- end }}

@@ -199,6 +199,16 @@ tasks:
           --wait --timeout 5m 
           # --atomic
 
+# gateway
+  realease_gateway:
+    cmds:
+      - |
+        helm upgrade --install istio-ingressgateway platform/charts/gateway \
+          -n istio-system \
+          -f platform/charts/gateway/values/env/{{.ENV}}/gateway.yaml \
+          --wait --timeout 5m \
+          # --atomic
+          
   release_all:
     desc: Release all microservices in dependency order
     cmds:

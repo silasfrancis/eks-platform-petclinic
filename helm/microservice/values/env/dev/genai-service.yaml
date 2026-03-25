@@ -32,7 +32,7 @@ image:
 
 serviceAccount:
   enabled: true
-  name: genai-service
+  name: genai-service-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-genai-service-sa-pod-secrets-reader"
 

@@ -37,7 +37,6 @@ deployment:
   annotations:
     inject.istio.io/templates: gateway
   labels:
-    istio: ingressgateway
     sidecar.istio.io/inject: "true"
 
 horizontalPodAutoscaler:

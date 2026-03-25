@@ -256,7 +256,7 @@ module "irsa" {
   app                   = var.app
   oidc_url              = module.iam-oidc.oidc_url_stripped
   oidc_arn              = module.iam-oidc.oidc_arn
-  namespace             = var.eks_namespace
+  namespace             = var.app_namespace
   service_account_name  = each.value
   secret_name           = module.secret_manager.secret_name
 
@@ -264,6 +264,23 @@ module "irsa" {
     module.app-registry,
     module.eks,
     module.secret_manager,
+    module.iam-oidc,
+  ]
+}
+
+module "irsa-alb-controller" {
+  source = "../../modules/irsa-alb-controller"
+
+  env = var.environment
+  app = var.app
+  oidc_url = module.iam-oidc.oidc_url_stripped
+  oidc_arn = module.iam-oidc.oidc_arn
+  namespace = var.alb_controller_namespace
+  service_account_name = "aws-load-balancer-controller"
+
+  depends_on = [
+    module.app-registry,
+    module.eks,
     module.iam-oidc,
   ]
 }

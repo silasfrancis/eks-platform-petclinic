@@ -18,9 +18,14 @@ variable "application_tag" {
   default = "petclinic-dev"
 }
 
-variable "eks_namespace" {
+variable "app_namespace" {
   type = string
   default = "petclinic"
+}
+
+variable "alb_controller_namespace" {
+  type = string
+  default = "kube-system"
 }
 
 variable "appregistry_application_tag" {

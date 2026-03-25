@@ -63,7 +63,7 @@ deployment:
 
 argoRollout:
   enabled: true
-  name: admin-server-rollout
+  name: genai-service-rollout
   replicas: 2
   env:
     secrets:

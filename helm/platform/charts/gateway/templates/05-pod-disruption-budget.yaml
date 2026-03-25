@@ -4,10 +4,14 @@ kind: PodDisruptionBudget
 metadata:
   name: {{ .Values.podDisruptionBudget.name }}
   namespace: {{ .Values.namespace }}
+  {{- with .Values.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
-    {{- with .Values.selectorLabels }}
+    {{- with .Values.selectors }}
     matchLabels:
       {{- toYaml . | nindent 6 }}
     {{- end }}

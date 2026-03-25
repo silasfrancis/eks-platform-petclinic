@@ -4,9 +4,15 @@ kind: Gateway
 metadata:
   name: {{ .Values.gateway.name }}
   namespace: {{ .Values.namespace }}
+  {{- with .Values.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
+  {{- with .Values.selectors }}
   selector:
-    {{- toYaml .Values.gateway.selector | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   servers:
     {{- toYaml .Values.gateway.servers | nindent 4 }}
 {{- end }}

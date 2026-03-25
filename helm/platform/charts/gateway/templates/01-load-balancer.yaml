@@ -4,21 +4,31 @@ kind: Service
 metadata:
   name: {{ .Values.loadbalancer.name }}
   namespace: {{ .Values.namespace }}
+  {{- with .Values.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with .Values.loadbalancer.annotations }}
   annotations:
     {{- toYaml . | nindent 4}}
   {{- end }}
 spec:
   type: LoadBalancer
-  {{- with .Values.selectorLabels }}
+  {{- with .Values.selectors }}
   selector:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   ports:
+    - name: status-port
+      port: 15021
+      protocol: TCP
+      targetPort: 15021
     - name: http
       port: 80
-      targetPort: {{ .Values.loadbalancer.istioTargetPorts.http }}
+      protocol: TCP
+      targetPort: 80
     - name: https
       port: 443
-      targetPort: {{ .Values.loadbalancer.istioTargetPorts.https }}
+      protocol: TCP
+      targetPort: 443
 {{- end }}

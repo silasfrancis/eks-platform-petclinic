@@ -1,6 +1,11 @@
-namespace: istio-system
+namespace: istio-ingress
 
-selectorLabels:
+labels:
+  app: istio-ingressgateway
+  istio: ingressgateway
+  "istio.io/dataplane-mode": "none"
+
+selectors:
   app: istio-ingressgateway
   istio: ingressgateway
 
@@ -9,7 +14,7 @@ serviceAccount:
   enabled: true
 
 role:
-  name: istio-ingressgateway-sds
+  name: istio-ingressgateway
   enabled: true
   rules:
   - apiGroups: [""]
@@ -17,46 +22,41 @@ role:
     verbs: ["get", "watch", "list"]
 
 roleBinding:
-  name: istio-ingressgateway-sds
+  name: istio-ingressgateway
   enabled: true
 
-containers:
-  name: istio-ingressgateway
-  image: docker.io/istio/proxyv2:1.29.1
-  command:
-    - pilot-agent
-    - proxy
-    - router
-    - --domain
-    - $(POD_NAMESPACE).svc.cluster.local
-    - --proxyLogLevel=warning
-    - --proxyComponentLogLevel=misc:error
-    - --log_output_level=default:info
+container:
+  name: istio-proxy
+  image: auto
   env:
-    - name: POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
   resources:
     requests:
       cpu: 100m
       memory: 128Mi
     limits:
-      cpu: 500m
+      cpu: 1000m
       memory: 512Mi
+  ports:
+    - containerPort: 15090
+      protocol: TCP
+      name: http-envoy-prom
 
 deployment:
   enabled: true
   name: istio-ingressgateway
   annotations:
     inject.istio.io/templates: gateway
+    sidecar.istio.io/inject: "true"
+    prometheus.io/path: /stats/prometheus
+    prometheus.io/port: "15020"
+    prometheus.io/scrape: "true"
   labels:
-    sidecar.istio.io/inject: "false"
+    sidecar.istio.io/inject: "true"
 
 horizontalPodAutoscaler:
   enabled: true
   name: istio-ingressgateway
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 5
   metrics:
     - type: Resource
@@ -80,15 +80,10 @@ loadbalancer:
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-021845a2ee47579d9,subnet-0d277d84a61c8d17e"
     service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0cad46885e6fd10d6"
-  istioTargetPorts:
-    http: 8080
-    https: 8080
 
 gateway:
   name: petclinic-gateway
   enabled: true
-  selector:
-    istio: ingressgateway
   servers:
     - port:
         number: 80

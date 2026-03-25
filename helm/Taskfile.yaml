@@ -226,9 +226,11 @@ tasks:
 # gateway
   realease_gateway:
     cmds:
+      - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl label namespace istio-ingress istio-injection=enabled --overwrite
       - |
         helm upgrade --install istio-ingressgateway platform/charts/gateway \
-          -n istio-system \
+          -n istio-ingress \
           -f platform/charts/gateway/values/env/{{.ENV}}/gateway.yaml \
           --wait --timeout 5m \
           # --atomic

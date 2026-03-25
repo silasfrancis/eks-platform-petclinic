@@ -5,13 +5,13 @@ container:
   name: genai-service
   port: 8084
   readinessProbe:
-    path: /
-    initialDelaySeconds: 60
+    path: /actuator/health
+    initialDelaySeconds: 120
     periodSeconds: 10
     failureThreshold: 3
   livenessProbe:
-    path: /
-    initialDelaySeconds: 60
+    path: /actuator/health
+    initialDelaySeconds: 120
     periodSeconds: 10
     failureThreshold: 3
   resources:

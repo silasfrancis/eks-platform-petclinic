@@ -67,7 +67,7 @@ service:
   name: api-gateway
   port: 8080
   rolloutServices:
-    enabled: false
+    enabled: true
     stableService: api-gateway-stable-service
     canaryService: api-gateway-canary-service
     

@@ -87,7 +87,7 @@ service:
   name: genai-service-service
   port: 8084
   rolloutServices:
-    enabled: false
+    enabled: true
     stableService: genai-service-stable-service
     canaryService: genai-service-canary-service
 

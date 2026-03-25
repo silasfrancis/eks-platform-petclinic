@@ -1,5 +1,5 @@
 {{- if .Values.gateway.enabled }}
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1
 kind: Gateway 
 metadata:
   name: {{ .Values.gateway.name }}

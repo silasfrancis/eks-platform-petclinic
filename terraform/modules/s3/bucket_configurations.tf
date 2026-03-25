@@ -12,12 +12,6 @@ locals {
       exp_days     = var.bucket_exp_days
       versioning   = true
     }
-    alb_logs = {
-      id           = aws_s3_bucket.alb_logs.id
-      rule_id      = var.bucket_rule_id
-      exp_days     = var.bucket_exp_days
-      versioning   = false   
-    }
   }
 }
 

@@ -66,7 +66,6 @@ module "s3" {
   env             = var.environment
   bucket_name     = "${var.application_tag}-silas-${var.environment}"
   bucket_key      = "${var.environment}/terraform.tfstate"
-  bucket_prefix   = "alb-logs"
   bucket_rule_id  = "${var.application_tag}${var.environment}"
   bucket_exp_days = 60
   bucket_tag_name = var.application_tag

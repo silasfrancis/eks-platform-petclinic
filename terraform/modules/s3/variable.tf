@@ -7,10 +7,6 @@ variable "bucket_key" {
   
 }
 
-variable "bucket_prefix" {
-  type = string
-}
-
 variable "bucket_rule_id" {
   type = string
 }

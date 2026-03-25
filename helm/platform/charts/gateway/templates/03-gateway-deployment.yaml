@@ -30,6 +30,14 @@ spec:
       containers:
       - name: {{ .Values.containers.name }}
         image: {{ .Values.containers.image }}
+        {{- with .Values.containers.command }}
+        command:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        {{- with .Values.containers.env }}
+        env:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
         resources:
           requests:
             {{- toYaml .Values.containers.resources.requests | nindent 12 }}

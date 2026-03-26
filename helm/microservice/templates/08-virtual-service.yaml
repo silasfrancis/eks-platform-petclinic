@@ -9,7 +9,7 @@ spec:
   hosts:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.virtualService.spec.gatewayRef.enabled }}      
+  {{- if .Values.virtualService.spec.gatewayRef.enabled }}      
   gateways:
     {{- toYaml .Values.virtualService.spec.gatewayRef.gateway | nindent 4 }}
   {{- end }} 

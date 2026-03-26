@@ -70,3 +70,7 @@ variable "jumphost_ec2_role_arn" {
 variable "ec2_security_group_id" {
   type = string
 }
+
+variable "nlb_security_group_id" {
+  type = string
+}

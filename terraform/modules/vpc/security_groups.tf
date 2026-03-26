@@ -6,9 +6,9 @@ resource "aws_default_security_group" "default" {
   }
 }
 
-resource "aws_security_group" "alb" {
-  description = "Security group for ALB with restricted access"
-  name = "${var.env}-alb-security_group"
+resource "aws_security_group" "nlb" {
+  description = "Security group for NLB with restricted access"
+  name = "${var.env}-nlb-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = { 
     resource = "vpc"

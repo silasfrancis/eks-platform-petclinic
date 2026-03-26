@@ -9,3 +9,40 @@ resource "aws_vpc_security_group_ingress_rule" "eks_from_jumphost" {
     resource = "vpc"
   }
 }
+
+resource "aws_vpc_security_group_ingress_rule" "nlb_to_node_http" {
+    description = "Allow NLB to reach node port for HTTP"
+    security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
+    from_port = 32207
+    to_port = 32207
+    ip_protocol = "tcp"
+    referenced_security_group_id = var.nlb_security_group_id
+    tags = {
+    resource = "vpc"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "nlb_to_node_https" {
+    description = "Allow NLB to reach node port for HTTP"
+    security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
+    from_port = 31436
+    to_port = 31436
+    ip_protocol = "tcp"
+    referenced_security_group_id = var.nlb_security_group_id
+    tags = {
+    resource = "vpc"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "nlb_to_nodes_healthcheck" {
+    description = "Allow NLB to reach node port for Istio health check"
+    security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
+    from_port = 32319
+    to_port = 32319
+    ip_protocol = "tcp"
+    referenced_security_group_id = var.nlb_security_group_id
+    tags = {
+    resource = "vpc"
+  }
+}
+    

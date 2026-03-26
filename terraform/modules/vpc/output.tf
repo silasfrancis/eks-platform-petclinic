@@ -27,7 +27,7 @@ output "private_subnets" {
 
 output "security_group" {
   value = {
-    alb = aws_security_group.alb.id
+    nlb = aws_security_group.nlb.id
     ec2 = aws_security_group.ec2.id
     eks = aws_security_group.eks.id
     rds = aws_security_group.rds.id

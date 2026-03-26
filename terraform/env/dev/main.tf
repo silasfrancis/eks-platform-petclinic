@@ -156,6 +156,7 @@ module "eks" {
   }
   eks_security_group_id     = module.vpc.security_group["eks"]
   ec2_security_group_id = module.vpc.security_group["ec2"]
+  nlb_security_group_id = module.vpc.security_group["nlb"]
   ami_type              = "AL2023_ARM_64_STANDARD"
   disk_size             = "20"
   instance_types        = ["t4g.medium"]
@@ -221,10 +222,10 @@ module "rds-s3-exporter" {
   ]
 }
 
-module "alb" {
-  source = "../../modules/alb"
+module "nlb" {
+  source = "../../modules/nlb"
   
-  alb_security_group_id = module.vpc.security_group["alb"]
+  nlb_security_group_id = module.vpc.security_group["nlb"]
 
   depends_on = [
     module.app-registry,

@@ -79,7 +79,7 @@ loadbalancer:
     service.beta.kubernetes.io/aws-load-balancer-type: "external"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-021845a2ee47579d9,subnet-0d277d84a61c8d17e"
-    service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0cad46885e6fd10d6"
+    service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0aa67a44e2bb7187c"
 
 gateway:
   name: petclinic-gateway
@@ -90,4 +90,4 @@ gateway:
         name: http
         protocol: HTTP
       hosts:
-        - "petclinic.lefrancis.org"
+        - "petclinic-dev.lefrancis.org"

@@ -81,4 +81,4 @@ virtualService:
   http:
     route: primary
   hosts:
-    - petclinic.lefrancis.org
+    - petclinic-dev.lefrancis.org

@@ -109,8 +109,8 @@ service:
   port: 8083
   rolloutServices:
     enabled: true
-    stableService: vets-service-stable-service
-    canaryService: vets-service-canary-service
+    stableService: vets-service
+    canaryService: vets-service-canary
 
 virtualService:
   enabled: true
@@ -120,4 +120,4 @@ virtualService:
   http:
     route: primary
   hosts:
-    - vets-service-stable-service
+    - vets-service

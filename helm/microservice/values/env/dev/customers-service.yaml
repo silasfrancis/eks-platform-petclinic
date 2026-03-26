@@ -109,8 +109,8 @@ service:
   port: 8081
   rolloutServices:
     enabled: true
-    stableService: customers-service-stable-service
-    canaryService: customers-service-canary-service
+    stableService: customers-service
+    canaryService: customers-service-canary
     
 virtualService:
   enabled: true
@@ -120,4 +120,4 @@ virtualService:
   http:
     route: primary
   hosts:
-    - customers-service-stable-service
+    - customers-service

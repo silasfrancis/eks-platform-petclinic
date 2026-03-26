@@ -109,8 +109,8 @@ service:
   port: 8082
   rolloutServices:
     enabled: true
-    stableService: visits-service-stable-service
-    canaryService: visits-service-canary-service
+    stableService: visits-service
+    canaryService: visits-service-canary
     
 virtualService:
   enabled: true
@@ -120,4 +120,4 @@ virtualService:
   http:
     route: primary
   hosts:
-    - visits-service-stable-service
+    - visits-service

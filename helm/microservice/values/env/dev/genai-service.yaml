@@ -88,8 +88,8 @@ service:
   port: 8084
   rolloutServices:
     enabled: true
-    stableService: genai-service-stable-service
-    canaryService: genai-service-canary-service
+    stableService: genai-service
+    canaryService: genai-service-canary
 
 virtualService:
   enabled: true
@@ -99,4 +99,4 @@ virtualService:
   http:
     route: primary
   hosts:
-    - genai-service-stable-service
+    - genai-service

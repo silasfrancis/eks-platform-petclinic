@@ -61,13 +61,6 @@ tasks:
       - task: install_istio_base
       - task: install_istiod
       - task: wait_for_istio
-
-  inject_envoy_petclinic:
-    desc: Enable Envoy sidecar injection for petclinic namespace and restart pods
-    cmds:
-      - kubectl label namespace petclinic istio-injection=enabled --overwrite
-      - kubectl rollout restart deployment -n petclinic
-      - kubectl get pods -n petclinic
   
 # aws load balancer controller
   install_aws_load_balancer_controller:
@@ -132,6 +125,15 @@ tasks:
             --create-namespace 
 
 # microservices releases
+
+  inject_envoy:
+    desc: Enable Envoy sidecar injection for petclinic namespace and restart pods
+    cmds:
+      - kubectl create namespace petclinic --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl label namespace petclinic istio-injection=enabled --overwrite
+      - kubectl label namespace istio-ingress istio-injection=enabled --overwrite
+
   release_config_server:
     cmds:
       - |

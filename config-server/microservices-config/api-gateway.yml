@@ -1,11 +1,31 @@
-zuul:
-  prefix: /api
-  ignoredServices: '*'
-  routes:
-    vets-service: /vet/**
-    visits-service: /visit/**
-    customers-service: /customer/**
-    api-gateway: /gateway/**
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: vets-service
+          uri: lb://vets-service
+          predicates:
+            - Path=/api/vet/**
+          filters:
+            - StripPrefix=2
+        - id: visits-service
+          uri: lb://visits-service
+          predicates:
+            - Path=/api/visit/**
+          filters:
+            - StripPrefix=2
+        - id: customers-service
+          uri: lb://customers-service
+          predicates:
+            - Path=/api/customer/**
+          filters:
+            - StripPrefix=2
+        - id: genai-service
+          uri: lb://genai-service
+          predicates:
+            - Path=/api/genai/**
+          filters:
+            - StripPrefix=2
 
 server:
   port: 8080
@@ -14,7 +34,6 @@ server:
     mime-types: application/json,text/css,application/javascript
     min-response-size: 2048
 
-# Internationalization
 spring.messages.basename: messages/messages
 
 ---
@@ -22,6 +41,33 @@ spring:
   config:
     activate:
       on-profile: docker
+  cloud:
+    gateway:
+      routes:
+        - id: vets-service
+          uri: lb://vets-service
+          predicates:
+            - Path=/api/vet/**
+          filters:
+            - StripPrefix=2
+        - id: visits-service
+          uri: lb://visits-service
+          predicates:
+            - Path=/api/visit/**
+          filters:
+            - StripPrefix=2
+        - id: customers-service
+          uri: lb://customers-service
+          predicates:
+            - Path=/api/customer/**
+          filters:
+            - StripPrefix=2
+        - id: genai-service
+          uri: lb://genai-service
+          predicates:
+            - Path=/api/genai/**
+          filters:
+            - StripPrefix=2
 eureka:
   client:
     serviceUrl:

@@ -76,7 +76,7 @@ virtualService:
   name: api-gateway-vs
   gatewayRef:
     enabled: true
-    namespace: istio-system
+    namespace: istio-ingress
     name: petclinic-gateway
   http:
     route: primary

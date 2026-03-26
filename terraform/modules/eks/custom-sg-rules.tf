@@ -10,23 +10,11 @@ resource "aws_vpc_security_group_ingress_rule" "eks_from_jumphost" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "nlb_to_node_http" {
+resource "aws_vpc_security_group_ingress_rule" "nlb_to_node" {
     description = "Allow NLB to reach node port for HTTP"
     security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
-    from_port = 32207
-    to_port = 32207
-    ip_protocol = "tcp"
-    referenced_security_group_id = var.nlb_security_group_id
-    tags = {
-    resource = "vpc"
-  }
-}
-
-resource "aws_vpc_security_group_ingress_rule" "nlb_to_node_https" {
-    description = "Allow NLB to reach node port for HTTP"
-    security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
-    from_port = 31436
-    to_port = 31436
+    from_port = 30000
+    to_port = 32767
     ip_protocol = "tcp"
     referenced_security_group_id = var.nlb_security_group_id
     tags = {

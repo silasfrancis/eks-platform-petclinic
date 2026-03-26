@@ -76,7 +76,7 @@ deployment:
 argoRollout:
   enabled: true
   name: customers-service-rollout
-  replicas: 2
+  replicas: 1
   env:
     secrets:
       - name: MYSQL_HOST

@@ -64,7 +64,7 @@ deployment:
 argoRollout:
   enabled: true
   name: genai-service-rollout
-  replicas: 2
+  replicas: 1
   env:
     secrets:
       - name: OPENAI_API_KEY

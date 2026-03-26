@@ -45,7 +45,7 @@ databaseMigration:
 deployment:
   enabled: true
   name: admin-server-deployment
-  replicas: 2
+  replicas: 1
   env:
     plain:
       SPRING_PROFILES_ACTIVE: docker

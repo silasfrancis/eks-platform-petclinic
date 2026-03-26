@@ -65,7 +65,7 @@ databaseMigration:
 deployment:
   enabled: true
   name: config-server-deployment
-  replicas: 2
+  replicas: 1
   env:
     secrets:
       - name: MYSQL_HOST

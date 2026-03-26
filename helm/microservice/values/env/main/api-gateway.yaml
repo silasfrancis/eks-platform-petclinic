@@ -67,18 +67,74 @@ service:
   name: api-gateway
   port: 8080
   rolloutServices:
-    enabled: false
-    stableService: api-gateway-stable-service
-    canaryService: api-gateway-canary-service
+    enabled: true
+    stableService: api-gateway
+    canaryService: api-gateway-canary
     
 virtualService:
   enabled: true
   name: api-gateway-vs
   gatewayRef:
     enabled: true
-    namespace: istio-system
+    namespace: istio-ingress
     name: petclinic-gateway
-  http:
-    route: primary
-  hosts:
-    - petclinic.lefrancis.org
+  spec:
+    hosts:
+      - petclinic.lefrancis.org
+    http:
+    - name: customers-route
+      match:
+        - uri:
+            prefix: /api/customer/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: customers-service
+            port:
+              number: 8081
+    - name: visits-route
+      match:
+        - uri:
+            prefix: /api/visit/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: visits-service
+            port:
+              number: 8082
+    - name: vets-route
+      match:
+        - uri:
+            prefix: /api/vet/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: vets-service
+            port:
+              number: 8083
+    - name: genai-route
+      match:
+        - uri:
+            prefix: /api/genai/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: genai-service
+            port:
+              number: 8084
+    - name: primary
+      route:
+        - destination:
+            host: api-gateway
+            port:
+              number: 8080
+          weight: 100
+        - destination:
+            host: api-gateway-canary
+            port:
+              number: 8080
+          weight: 0

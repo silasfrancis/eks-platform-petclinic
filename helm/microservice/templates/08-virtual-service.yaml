@@ -5,23 +5,16 @@ metadata:
   name: {{ .Values.virtualService.name }}   
   namespace: {{ .Values.namespace }}
 spec:
+  {{- with .Values.virtualService.spec.hosts }}
   hosts:
-    {{- toYaml .Values.virtualService.hosts | nindent 4 }} 
-  {{- if .Values.virtualService.gatewayRef.enabled }}      
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.virtualService.spec.gatewayRef.enabled }}      
   gateways:
-    -  "{{ .Values.virtualService.gatewayRef.namespace }}/{{ .Values.virtualService.gatewayRef.name }}"    
-  {{- end }}              
+    {{- toYaml .Values.virtualService.spec.gatewayRef.gateway | nindent 4 }}
+  {{- end }} 
+  {{- with .Values.virtualService.spec.http }}
   http:
-    - name: {{ .Values.virtualService.http.route }}
-      route:
-        - destination:
-            host: {{ .Values.service.rolloutServices.stableService }}
-            port:
-              number: {{ .Values.service.port }}
-          weight: 100
-        - destination:
-            host: {{ .Values.service.rolloutServices.canaryService }}
-            port:
-              number: {{ .Values.service.port }}
-          weight: 0
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end }}

@@ -115,9 +115,21 @@ service:
 virtualService:
   enabled: true
   name: visits-service-vs
-  gatewayRef:
-    enabled: false
-  http:
-    route: primary
-  hosts:
-    - visits-service
+  spec:
+    hosts:
+      - visits-service
+    gatewayRef:
+      enabled: false
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: visits-service
+            port:
+              number: 8082
+          weight: 100
+        - destination:
+            host: visits-service-canary
+            port:
+              number: 8082
+          weight: 0

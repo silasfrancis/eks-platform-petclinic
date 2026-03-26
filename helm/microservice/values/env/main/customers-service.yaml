@@ -34,7 +34,7 @@ serviceAccount:
   enabled: true
   name: customers-service-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-customers-service-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true
@@ -76,7 +76,7 @@ deployment:
 argoRollout:
   enabled: true
   name: customers-service-rollout
-  replicas: 2
+  replicas: 1
   env:
     secrets:
       - name: MYSQL_HOST
@@ -109,15 +109,27 @@ service:
   port: 8081
   rolloutServices:
     enabled: true
-    stableService: customers-service-stable-service
-    canaryService: customers-service-canary-service
+    stableService: customers-service
+    canaryService: customers-service-canary
     
 virtualService:
   enabled: true
   name: customers-service-vs
   gatewayRef:
     enabled: false
-  http:
-    route: primary
-  hosts:
-    - customers-service-stable-service
+  spec:
+    hosts:
+      - customers-service
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: customers-service
+            port:
+              number: 8081
+          weight: 100
+        - destination:
+            host: customers-service-canary
+            port:
+              number: 8081
+          weight: 0

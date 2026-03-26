@@ -94,9 +94,21 @@ service:
 virtualService:
   enabled: true
   name: genai-service-vs
-  gatewayRef:
-    enabled: false
-  http:
-    route: primary
-  hosts:
-    - genai-service
+  spec:
+    hosts:
+      - genai-service
+    gatewayRef:
+      enabled: false
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: genai-service
+            port:
+              number: 8084
+          weight: 100
+        - destination:
+            host: genai-service-canary
+            port:
+              number: 8084
+          weight: 0

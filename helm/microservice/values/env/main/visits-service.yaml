@@ -34,7 +34,7 @@ serviceAccount:
   enabled: true
   name: visits-service-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-visits-service-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true
@@ -76,7 +76,7 @@ deployment:
 argoRollout:
   enabled: true
   name: visits-service-rollout
-  replicas: 2
+  replicas: 1
   env:
     secrets:
       - name: MYSQL_HOST
@@ -109,15 +109,27 @@ service:
   port: 8082
   rolloutServices:
     enabled: true
-    stableService: visits-service-stable-service
-    canaryService: visits-service-canary-service
+    stableService: visits-service
+    canaryService: visits-service-canary
     
 virtualService:
   enabled: true
   name: visits-service-vs
   gatewayRef:
     enabled: false
-  http:
-    route: primary
-  hosts:
-    - visits-service-stable-service
+  spec:
+    hosts:
+      - visits-service
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: visits-service
+            port:
+              number: 8082
+          weight: 100
+        - destination:
+            host: visits-service-canary
+            port:
+              number: 8082
+          weight: 0

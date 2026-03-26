@@ -115,9 +115,21 @@ service:
 virtualService:
   enabled: true
   name: vets-service-vs
-  gatewayRef:
-    enabled: false
-  http:
-    route: primary
-  hosts:
-    - vets-service
+  spec:
+    hosts:
+      - vets-service
+    gatewayRef:
+      enabled: false
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: vets-service
+            port:
+              number: 8083
+          weight: 100
+        - destination:
+            host: vets-service-canary
+            port:
+              number: 8083
+          weight: 0

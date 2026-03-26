@@ -34,7 +34,7 @@ serviceAccount:
   enabled: true
   name: vets-service-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-vets-service-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true
@@ -76,7 +76,7 @@ deployment:
 argoRollout:
   enabled: true
   name: vets-service-rollout
-  replicas: 2
+  replicas: 1
   env:
     secrets:
       - name: MYSQL_HOST
@@ -109,15 +109,27 @@ service:
   port: 8083
   rolloutServices:
     enabled: true
-    stableService: vets-service-stable-service
-    canaryService: vets-service-canary-service
+    stableService: vets-service
+    canaryService: vets-service-canary
 
 virtualService:
   enabled: true
   name: vets-service-vs
   gatewayRef:
     enabled: false
-  http:
-    route: primary
-  hosts:
-    - vets-service-stable-service
+  spec:
+    hosts:
+      - vets-service
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: vets-service
+            port:
+              number: 8083
+          weight: 100
+        - destination:
+            host: vets-service-canary
+            port:
+              number: 8083
+          weight: 0

@@ -5,13 +5,13 @@ container:
   name: genai-service
   port: 8084
   readinessProbe:
-    path: /
-    initialDelaySeconds: 60
+    path: /actuator/health
+    initialDelaySeconds: 120
     periodSeconds: 10
     failureThreshold: 3
   livenessProbe:
-    path: /
-    initialDelaySeconds: 60
+    path: /actuator/health
+    initialDelaySeconds: 120
     periodSeconds: 10
     failureThreshold: 3
   resources:
@@ -32,9 +32,9 @@ image:
 
 serviceAccount:
   enabled: true
-  name: genai-service
+  name: genai-service-sa
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789:role/prod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-genai-service-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true
@@ -63,8 +63,8 @@ deployment:
 
 argoRollout:
   enabled: true
-  name: admin-server-rollout
-  replicas: 2
+  name: genai-service-rollout
+  replicas: 1
   env:
     secrets:
       - name: OPENAI_API_KEY
@@ -87,16 +87,28 @@ service:
   name: genai-service-service
   port: 8084
   rolloutServices:
-    enabled: false
-    stableService: genai-service-stable-service
-    canaryService: genai-service-canary-service
+    enabled: true
+    stableService: genai-service
+    canaryService: genai-service-canary
 
 virtualService:
   enabled: true
   name: genai-service-vs
   gatewayRef:
     enabled: false
-  http:
-    route: primary
-  hosts:
-    - genai-service-stable-service
+  spec:
+    hosts:
+      - genai-service
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: genai-service
+            port:
+              number: 8084
+          weight: 100
+        - destination:
+            host: genai-service-canary
+            port:
+              number: 8084
+          weight: 0

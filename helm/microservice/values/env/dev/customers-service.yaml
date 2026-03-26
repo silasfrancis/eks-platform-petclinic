@@ -115,9 +115,21 @@ service:
 virtualService:
   enabled: true
   name: customers-service-vs
-  gatewayRef:
-    enabled: false
-  http:
-    route: primary
-  hosts:
-    - customers-service
+  spec:
+    hosts:
+      - customers-service
+    gatewayRef:
+      enabled: false
+    http:
+    - name: primary
+      route:
+        - destination:
+            host: customers-service
+            port:
+              number: 8081
+          weight: 100
+        - destination:
+            host: customers-service-canary
+            port:
+              number: 8081
+          weight: 0

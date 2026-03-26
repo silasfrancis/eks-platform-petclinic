@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: config-server
   port: 8888
@@ -21,26 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: config-server
-  
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/config-server
-  tag: '4df6d6db'
-  digest: sha256:20f70bee8da19c721578e84a4ebd707e3129846df7a448815dec56fa4d93fb6f
+  tag: '82585603'
+  digest: sha256:b2eedaafa66a9a3b3b164fb51c03e5497d2962fd52adc7dc33e087d5e082b4b6
 serviceAccount:
   enabled: true
   name: config-server-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
-
 secretStore:
   enabled: true
   kind: SecretStore
   name: config-server-secret-store
   awsRegion: us-east-2
-
 externalSecret:
   enabled: true
   name: config-server-external-secret
@@ -65,10 +60,8 @@ externalSecret:
       remoteRef:
         key: dev/springboot-microservices
         property: MYSQL_DATABASE
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: true
   name: config-server-deployment
@@ -96,16 +89,13 @@ deployment:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
-
 argoRollout:
   enabled: false
-
 service:
   enabled: true
   name: config-server
   port: 8888
   rolloutServices:
     enabled: false
-    
 virtualService:
   enabled: false

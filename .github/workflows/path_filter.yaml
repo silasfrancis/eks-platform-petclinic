@@ -15,9 +15,12 @@ jobs:
     steps:
         - name: Checkout code
           uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+          with: 
+            fetch-depth: 0
 
         - name: Filter changed files
           id: filter_files
           uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
           with:
                 filters: .github/workflows/utils/filefilter.yaml
+                base: ${{ github.ref }}

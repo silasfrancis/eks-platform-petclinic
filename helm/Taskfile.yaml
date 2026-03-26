@@ -256,16 +256,21 @@ tasks:
       - kubectl rollout restart deployment/discovery-server-deployment -n petclinic
       - kubectl rollout restart deployment/admin-server-deployment -n petclinic
       - kubectl rollout status deployment/discovery-server-deployment -n petclinic
-      - kubectl rollout status deployment/config-server-deployment -n petclinic
+      # - kubectl rollout status deployment/config-server-deployment -n petclinic
       - kubectl rollout status deployment/admin-server-deployment -n petclinic
 
   restart_rollouts:
     cmds:
-      - kubectl rollout restart rollout/api-gateway-rollout -n petclinic
-      - kubectl rollout restart rollout/customers-service-rollout -n petclinic
-      - kubectl rollout restart rollout/visits-service-rollout -n petclinic
-      - kubectl rollout restart rollout/vets-service-rollout -n petclinic
-      - kubectl rollout restart rollout/genai-service-rollout -n petclinic
+    - kubectl argo rollouts restart api-gateway-rollout -n petclinic
+    - kubectl argo rollouts restart customers-service-rollout -n petclinic
+    - kubectl argo rollouts restart visits-service-rollout -n petclinic
+    - kubectl argo rollouts restart vets-service-rollout -n petclinic
+    - kubectl argo rollouts restart genai-service-rollout -n petclinic
+    - kubectl argo rollouts status api-gateway-rollout -n petclinic
+    - kubectl argo rollouts status customers-service-rollout -n petclinic
+    - kubectl argo rollouts status visits-service-rollout -n petclinic
+    - kubectl argo rollouts status vets-service-rollout -n petclinic
+    - kubectl argo rollouts status genai-service-rollout -n petclinic
 
   restart_all:
     cmds:

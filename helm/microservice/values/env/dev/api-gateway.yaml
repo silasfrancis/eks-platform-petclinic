@@ -1,6 +1,5 @@
 createNamespace: false
 namespace: petclinic
-
 container:
   name: api-gateway
   port: 8080
@@ -21,30 +20,22 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
 selectorLabels:
   app: api-gateway
-
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
-  tag: 'c84d2ef1'
-  digest: sha256:85387b676751d39ead9de1a74a2acc29ca0a60acb782a686bf16bf8a87675376
-
+  tag: 'c9f9f2f9'
+  digest: sha256:f173d4372e2887928f8586635d79c93a3177df2ed6778425d063b06741e67fd3
 serviceAccount:
   enabled: false
-
 secretStore:
   enabled: false
-
 externalSecret:
   enabled: false
-
 databaseMigration:
   enabled: false
-
 deployment:
   enabled: false
-
 argoRollout:
   enabled: true
   name: api-gateway-rollout
@@ -61,7 +52,6 @@ argoRollout:
       maxUnavailable: 0
       dynamicStableScale: true
       abortScaleDownDelaySeconds: 600
-
 service:
   enabled: true
   name: api-gateway
@@ -70,7 +60,6 @@ service:
     enabled: true
     stableService: api-gateway
     canaryService: api-gateway-canary
-    
 virtualService:
   enabled: true
   name: api-gateway-vs
@@ -79,62 +68,62 @@ virtualService:
       - petclinic-dev.lefrancis.org
     gatewayRef:
       enabled: true
-      gateway: 
+      gateway:
         - istio-ingress/petclinic-gateway
     http:
-    - name: customers-route
-      match:
-        - uri:
-            prefix: /api/customer/
-      rewrite:
-        uri: /
-      route:
-        - destination:
-            host: customers-service
-            port:
-              number: 8081
-    - name: visits-route
-      match:
-        - uri:
-            prefix: /api/visit/
-      rewrite:
-        uri: /
-      route:
-        - destination:
-            host: visits-service
-            port:
-              number: 8082
-    - name: vets-route
-      match:
-        - uri:
-            prefix: /api/vet/
-      rewrite:
-        uri: /
-      route:
-        - destination:
-            host: vets-service
-            port:
-              number: 8083
-    - name: genai-route
-      match:
-        - uri:
-            prefix: /api/genai/
-      rewrite:
-        uri: /
-      route:
-        - destination:
-            host: genai-service
-            port:
-              number: 8084
-    - name: primary
-      route:
-        - destination:
-            host: api-gateway
-            port:
-              number: 8080
-          weight: 100
-        - destination:
-            host: api-gateway-canary
-            port:
-              number: 8080
-          weight: 0
+      - name: customers-route
+        match:
+          - uri:
+              prefix: /api/customer/
+        rewrite:
+          uri: /
+        route:
+          - destination:
+              host: customers-service
+              port:
+                number: 8081
+      - name: visits-route
+        match:
+          - uri:
+              prefix: /api/visit/
+        rewrite:
+          uri: /
+        route:
+          - destination:
+              host: visits-service
+              port:
+                number: 8082
+      - name: vets-route
+        match:
+          - uri:
+              prefix: /api/vet/
+        rewrite:
+          uri: /
+        route:
+          - destination:
+              host: vets-service
+              port:
+                number: 8083
+      - name: genai-route
+        match:
+          - uri:
+              prefix: /api/genai/
+        rewrite:
+          uri: /
+        route:
+          - destination:
+              host: genai-service
+              port:
+                number: 8084
+      - name: primary
+        route:
+          - destination:
+              host: api-gateway
+              port:
+                number: 8080
+            weight: 100
+          - destination:
+              host: api-gateway-canary
+              port:
+                number: 8080
+            weight: 0

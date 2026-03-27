@@ -61,6 +61,10 @@ tasks:
       - task: install_istio_base
       - task: install_istiod
       - task: wait_for_istio
+
+# cert manager
+  install_cert_manager:
+    cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
   
 # aws load balancer controller
   install_aws_load_balancer_controller:

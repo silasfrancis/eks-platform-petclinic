@@ -81,6 +81,17 @@ loadbalancer:
     service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-021845a2ee47579d9,subnet-0d277d84a61c8d17e"
     service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0aa67a44e2bb7187c"
 
+certificate:
+  name: petclinic-dev-tls
+  enabled: true
+  spec: 
+    secretName: petclinic-dev-ingress-certs
+    issuerRef:
+      name: letsencrypt-cloudflare
+      kind: ClusterIssuer
+  dnsNames:
+    - petclinic-dev.lefrancis.org
+
 gateway:
   name: petclinic-gateway
   enabled: true
@@ -91,3 +102,20 @@ gateway:
         protocol: HTTP
       hosts:
         - "petclinic-dev.lefrancis.org"
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "petclinic-dev.lefrancis.org"
+      tls:
+        httpsRedirect: true 
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "petclinic-dev.lefrancis.org"
+      tls:
+        mode: SIMPLE
+        credentialName: petclinic-dev-ingress-certs

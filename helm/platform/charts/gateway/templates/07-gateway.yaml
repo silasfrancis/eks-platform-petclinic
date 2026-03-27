@@ -13,6 +13,8 @@ spec:
   selector:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with .Values.gateway.servers }}
   servers:
-    {{- toYaml .Values.gateway.servers | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end }}

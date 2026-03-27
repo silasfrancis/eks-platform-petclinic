@@ -129,7 +129,6 @@ tasks:
             --create-namespace 
 
 # microservices releases
-
   inject_envoy:
     desc: Enable Envoy sidecar injection for petclinic namespace and restart pods
     cmds:
@@ -219,6 +218,8 @@ tasks:
           --wait --timeout 5m 
           # --atomic
 
+# cluster configs
+
 # alb controller irsa
   release_alb_controller_irsa:
     cmds:
@@ -226,8 +227,19 @@ tasks:
         helm upgrade --install irsa-alb-controller cluster-config/charts/cluster-config \
           -n kube-system \
           -f cluster-config/charts/cluster-config/values/env/{{.ENV}}/alb-controller.yaml \
-          --wait --timeout 5m \
+          --wait --timeout 5m 
           # --atomic
+
+# cluster issuer
+  release_cluster_issuer:
+    cmds:
+      - |
+        helm upgrade --install cluster-issuer cluster-config/charts/cluster-config \
+          -f cluster-config/charts/cluster-config/values/env/{{.ENV}}/cluster-issuer.yaml \
+          --wait --timeout 5m 
+          # --atomic
+
+# platform
 
 # gateway
   realease_gateway:
@@ -238,7 +250,7 @@ tasks:
         helm upgrade --install istio-ingressgateway platform/charts/gateway \
           -n istio-ingress \
           -f platform/charts/gateway/values/env/{{.ENV}}/gateway.yaml \
-          --wait --timeout 5m \
+          --wait --timeout 5m 
           # --atomic
           
   release_all:

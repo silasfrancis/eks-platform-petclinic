@@ -3,6 +3,7 @@ namespace: petclinic
 
 container:
   name: visits-service
+  imagePullPolicy: IfNotPresent
   port: 8082
   readinessProbe:
     path: /actuator/health

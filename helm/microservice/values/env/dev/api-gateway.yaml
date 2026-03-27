@@ -2,6 +2,7 @@ createNamespace: false
 namespace: petclinic
 container:
   name: api-gateway
+  imagePullPolicy: IfNotPresent
   port: 8080
   readinessProbe:
     path: /actuator/health

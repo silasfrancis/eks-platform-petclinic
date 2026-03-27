@@ -3,6 +3,7 @@ namespace: petclinic
 
 container:
   name: admin-server
+  imagePullPolicy: IfNotPresent
   port: 9090
   readinessProbe:
     path: /

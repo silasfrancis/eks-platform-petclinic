@@ -3,6 +3,7 @@ namespace: petclinic
 
 container:
   name: discovery-server
+  imagePullPolicy: IfNotPresent
   port: 8761
   readinessProbe:
     path: /

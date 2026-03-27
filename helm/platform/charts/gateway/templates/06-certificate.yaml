@@ -9,8 +9,8 @@ spec:
   issuerRef:
     name: {{ .Values.certificate.spec.issuerRef.name }}
     kind:  {{ .Values.certificate.spec.issuerRef.kind }}
-  {{-with .Values.certificate.dnsNames }}
+  {{- with .Values.certificate.dnsNames }}
   dnsNames:
-    {{- toYaml . | nindent 8 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}

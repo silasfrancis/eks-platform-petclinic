@@ -102,12 +102,6 @@ gateway:
         protocol: HTTP
       hosts:
         - "petclinic-dev.lefrancis.org"
-    - port:
-        number: 80
-        name: http
-        protocol: HTTP
-      hosts:
-        - "petclinic-dev.lefrancis.org"
       tls:
         httpsRedirect: true 
     - port:

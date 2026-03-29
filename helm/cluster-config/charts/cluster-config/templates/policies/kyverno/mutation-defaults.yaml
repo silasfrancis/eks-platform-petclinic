@@ -38,30 +38,39 @@ spec:
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-
-          Object{
+            Object{
             spec: Object.spec{
-              containers: object.spec.containers.map(c,
+                containers: object.spec.containers.map(c,
                 Object.spec.containers{
-                  name: c.name,
-                  securityContext:
-                    has(c.securityContext)
-                    ? c.securityContext
-                    : Object.spec.containers.securityContext{
-                        runAsNonRoot: true,
-                        privileged: false,
-                        allowPrivilegeEscalation: false,
-                        readOnlyRootFilesystem: true,
-                        capabilities: Object.spec.containers.securityContext.capabilities{
-                          drop: ["ALL"]
-                        },
-                        seccompProfile: Object.spec.containers.securityContext.seccompProfile{
-                          type: "RuntimeDefault"
+                    name: c.name,
+                    securityContext:
+                    (has(c.securityContext) ? c.securityContext : {})
+                    + {
+                        "runAsNonRoot": true,
+                        "privileged": false,
+                        "allowPrivilegeEscalation": false,
+                        "readOnlyRootFilesystem": true,
+
+                        "capabilities":
+                            (has(c.securityContext) && has(c.securityContext.capabilities)
+                            ? c.securityContext.capabilities
+                            : {})
+                            + {
+                                "drop": ["ALL"]
+                            },
+
+                        "seccompProfile":
+                            (has(c.securityContext) && has(c.securityContext.seccompProfile)
+                            ? c.securityContext.seccompProfile
+                            : {})
+                            + {
+                                "type": "RuntimeDefault"
+                            }
                         }
-                      }
                 }
-              )
+                )
             }
-          }
+            }
 
     # Pod-level defaults
     - patchType: ApplyConfiguration

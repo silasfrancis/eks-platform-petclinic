@@ -34,7 +34,7 @@ spec:
             }
           : object
 
-    # Container security defaults
+    # Container level security defaults
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-
@@ -72,7 +72,7 @@ spec:
             }
             }
 
-    # Pod-level defaults
+    # Pod-level security defaults
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-
@@ -81,14 +81,16 @@ spec:
               hostNetwork: false,
               hostPID: false,
               hostIPC: false,
-              securityContext:
-                has(object.spec.securityContext)
-                ? object.spec.securityContext
-                : Object.spec.securityContext{
-                    runAsNonRoot: true,
-                    seccompProfile: Object.spec.securityContext.seccompProfile{
-                      type: "RuntimeDefault"
-                    }
-                  }
+              securityContext: 
+              has(object.spec.securityContext) ? object.spec.securityContext : {}
+              + {
+                "runAsNonRoot": true,
+                "seccompProfile":
+                  (has(object.spec.securityContext) && has(object.spec.securityContext.seccompProfile)
+                  ? object.spec.securityContext.seccompProfile : {})
+                  + {
+                    "type": "RuntimeDefault"
+                  }  
+              }
             }
           }

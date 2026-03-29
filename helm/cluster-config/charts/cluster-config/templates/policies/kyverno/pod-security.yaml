@@ -1,0 +1,84 @@
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: pod-security
+  namespace: petclinic
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    admission:
+      enabled: false
+    background:
+      enabled: false
+    mode: Kubernetes
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+  validations:
+    - message: 'Privileged containers are not allowed'
+      expression: >-
+        object.spec.containers.all(c,
+          !has(c.securityContext) ||
+          !has(c.securityContext.privileged) ||
+          c.securityContext.privileged == false
+        )
+
+    - message: 'Containers must run as non-root'
+      expression: >-
+        object.spec.containers.all(c,
+          has(c.securityContext) &&
+          has(c.securityContext.runAsNonRoot) &&
+          c.securityContext.runAsNonRoot == true
+        )
+
+    - message: 'hostPath volumes are not allowed'
+      expression: >-
+        !has(object.spec.volumes) ||
+        object.spec.volumes.all(v, !has(v.hostPath))
+
+    - message: 'latest tag is not allowed, use a specific image tag'
+      expression: >-
+        object.spec.containers.all(c,
+          !c.image.endsWith(':latest') &&
+          c.image.contains(':')
+        )
+
+# only image disgest
+
+    - message: 'Default service account must not be used'
+      expression: >-
+        !has(object.spec.serviceAccountName) ||
+        object.spec.serviceAccountName != 'default'
+
+    - message: 'CPU and memory requests and limits are required'
+      expression: >-
+        object.spec.containers.all(c,
+          has(c.resources) &&
+          has(c.resources.requests) &&
+          has(c.resources.requests.memory) &&
+          has(c.resources.requests.cpu) &&
+          has(c.resources.limits) &&
+          has(c.resources.limits.memory)
+        )
+
+    - message: 'Pods must have Istio sidecar injection enabled'
+      expression: >-
+        has(object.metadata.labels) &&
+        has(object.metadata.labels["sidecar.istio.io/inject"]) &&
+        object.metadata.labels["sidecar.istio.io/inject"] == "true"
+
+    - message: 'Host network access is not allowed'
+      expression: >-
+        !has(object.spec.hostNetwork) ||
+        object.spec.hostNetwork == false
+
+    - message: 'Host PID access is not allowed'
+      expression: >-
+        !has(object.spec.hostPID) ||
+        object.spec.hostPID == false

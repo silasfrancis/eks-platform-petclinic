@@ -64,6 +64,7 @@ tasks:
 
 # cert manager
   install_cert_manager:
+    desc: Install cert manager for gateway TLS termination
     cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
   
 # aws load balancer controller
@@ -128,6 +129,18 @@ tasks:
             -n external-secrets \
             --create-namespace 
 
+# install kyverno
+  install_kyverno:
+    desc: Install kyverno for cluster polcies
+    cmds: 
+      - |
+        helm install kyverno kyverno/kyverno -n kyverno --create-namespace \
+          --set admissionController.replicas=3 \
+          --set backgroundController.replicas=2 \
+          --set cleanupController.replicas=1 \
+          --set reportsController.replicas=1
+
+
 # microservices releases
   inject_envoy:
     desc: Enable Envoy sidecar injection for petclinic namespace and restart pods
@@ -136,6 +149,11 @@ tasks:
       - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
       - kubectl label namespace petclinic istio-injection=enabled --overwrite
       - kubectl label namespace istio-ingress istio-injection=enabled --overwrite
+
+  label_policy_eligible_namespaces:
+    desc: Label namespaces where the cluster policies will be enforced
+    cmds:
+      - kubectl label namespace petclinic security=enforced --overwrite
 
   release_config_server:
     cmds:

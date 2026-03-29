@@ -1,0 +1,74 @@
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedImageValidatingPolicy
+metadata:
+  name: validate-image-signatures
+  namespace: petclinic
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  validationActions: [Deny]
+  failurePolicy: Fail
+  validationConfigurations:
+    mutateDigest: true
+    required: true
+    verifyDigest: true
+  matchConstraints:                          # fixed typo
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']                  # fixed case + value
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+  credentials:
+    allowInsecureRegistry: false
+    providers:
+      - amazon
+  matchImageReferences:
+    - glob: '509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/*'
+  attestors:
+    - name: cosign-app-build-attestor
+      cosign:
+        keyless:
+          identities:
+            - subject: 'https://github.com/silasfrancis/spring_boot_micro_services/.github/workflows/build*.yaml@refs/heads/dev'
+              issuer: 'https://token.actions.githubusercontent.com'
+        ctlog:
+          url: 'https://rekor.sigstore.dev'
+    - name: cosign-migration-build-attestor
+      cosign:
+        keyless:
+          identities:
+            - subject: 'https://github.com/silasfrancis/spring_boot_micro_services/.github/workflows/build-migrations.yaml@refs/heads/dev'
+              issuer: 'https://token.actions.githubusercontent.com'
+        ctlog:
+          url: 'https://rekor.sigstore.dev'
+
+  # attestations:                             
+  #   - name: cosignAttestation
+  #     intoto:
+  #       type: cosign.sigstore.dev/attestation/vuln/v1
+
+  validations:
+    - message: 'Container image must be signed by either the app or migration build workflow'
+      expression: >-
+        images.containers.map(image,
+          verifyImageSignatures(image, [attestors["cosign-app-build-attestor"]]) > 0 ||
+          verifyImageSignatures(image, [attestors["cosign-migration-build-attestor"]]) > 0
+        ).all(e, e)
+
+    - message: 'Init container image must be signed by either the app or migration build workflow'
+      expression: >-
+        !has(object.spec.initContainers) ||
+        images.initContainers.map(image,
+          verifyImageSignatures(image, [attestors["cosign-app-build-attestor"]]) > 0 ||
+          verifyImageSignatures(image, [attestors["cosign-migration-build-attestor"]]) > 0
+        ).all(e, e)
+
+    # - message: 'Image must have a valid vulnerability scan attestation'
+    #   expression: >-
+    #     images.containers.map(image,
+    #       verifyAttestationSignatures(image, attestations.cosignAttestation,
+    #         [attestors["cosign-app-build-attestor"]])
+    #     ).all(e, e > 0)

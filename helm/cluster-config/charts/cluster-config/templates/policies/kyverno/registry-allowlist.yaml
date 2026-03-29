@@ -1,0 +1,42 @@
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: restrict-image-registries
+  namespace: petclinic
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    admission:
+      enabled: false
+    background:
+      enabled: false
+    mode: Kubernetes
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+  variables:
+    - name: allowedRegistries
+      value: "[
+        '509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/', 
+        'docker.io/istio/', 
+        'gcr.io/istio-release/'
+        ]"
+  validations:
+    - message: '"image must be from registry: " + string(variables.allowedRegistries)'
+      expression: >-
+        object.spec.containers.all(c,
+          c.image.startsWith(variables.allowedRegistries))
+        )
+
+    - message: '"image for init containers must be from registry: " + string(variables.allowedRegistries)'
+      expression: >-
+        !has(object.spec.initContainers) ||
+        object.spec.initContainers.all(c,
+          c.image.startsWith(variables.allowedRegistries))
+        )

@@ -1,0 +1,85 @@
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedMutatingPolicy
+metadata:
+  name: mutation-defaults
+  namespace: petclinic
+
+spec:
+  evaluation:
+    admission:
+      enabled: true
+    mutateExisting:
+      enabled: false
+  webhookConfiguration:
+    timeoutSeconds: 15
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+
+  mutations:
+
+    # Add environment label
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          !has(object.metadata.labels) || !has(object.metadata.labels.environment)
+          ? Object{
+              metadata: Object.metadata{
+                labels: (has(object.metadata.labels) ? object.metadata.labels : {})
+                  + {"environment": "dev"}
+              }
+            }
+          : object
+
+    # Container security defaults
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object.spec{
+              containers: object.spec.containers.map(c,
+                Object.spec.containers{
+                  name: c.name,
+                  securityContext:
+                    has(c.securityContext)
+                    ? c.securityContext
+                    : Object.spec.containers.securityContext{
+                        runAsNonRoot: true,
+                        privileged: false,
+                        allowPrivilegeEscalation: false,
+                        readOnlyRootFilesystem: true,
+                        capabilities: Object.spec.containers.securityContext.capabilities{
+                          drop: ["ALL"]
+                        },
+                        seccompProfile: Object.spec.containers.securityContext.seccompProfile{
+                          type: "RuntimeDefault"
+                        }
+                      }
+                }
+              )
+            }
+          }
+
+    # Pod-level defaults
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object.spec{
+              hostNetwork: false,
+              hostPID: false,
+              hostIPC: false,
+              securityContext:
+                has(object.spec.securityContext)
+                ? object.spec.securityContext
+                : Object.spec.securityContext{
+                    runAsNonRoot: true,
+                    seccompProfile: Object.spec.securityContext.seccompProfile{
+                      type: "RuntimeDefault"
+                    }
+                  }
+            }
+          }

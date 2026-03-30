@@ -1,0 +1,58 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-netpol
+  namespace: petclinic
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # only from istio ingress gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-ingress
+          podSelector:
+            matchLabels:
+              app: istio-ingressgateway
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: customers-service
+      ports:
+        - port: 8081
+    - to:
+        - podSelector:
+            matchLabels:
+              app: visits-service
+      ports:
+        - port: 8082
+    - to:
+        - podSelector:
+            matchLabels:
+              app: vets-service
+      ports:
+        - port: 8083
+    - to:
+        - podSelector:
+            matchLabels:
+              app: genai-service
+      ports:
+        - port: 8084
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888

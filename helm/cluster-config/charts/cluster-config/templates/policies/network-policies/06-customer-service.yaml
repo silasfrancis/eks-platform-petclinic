@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: customers-service-netpol
+  namespace: petclinic
+spec:
+  podSelector:
+    matchLabels:
+      app: customers-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app: admin-server
+      ports:
+        - port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+    - to:
+        - ipBlock:
+            cidr: <your-rds-endpoint-ip>/32
+      ports:
+        - port: 3306

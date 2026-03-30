@@ -1,34 +1,8 @@
 createNamespace: false
 namespace: petclinic
 
-container:
-  name: visits-service
-  port: 8082
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-
 selectorLabels:
   app: visits-service
-
-image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
-  tag: 'c84d2ef1'
-  digest: sha256:645bd27097990ae8ba928f97ec6d954c4e166231ae8b381ecda2be4cf99b9862
 
 serviceAccount:
   enabled: true
@@ -70,13 +44,41 @@ externalSecret:
 databaseMigration:
   enabled: false
 
-deployment:
-  enabled: false
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
+  tag: 'c84d2ef1'
+  digest: sha256:645bd27097990ae8ba928f97ec6d954c4e166231ae8b381ecda2be4cf99b9862
 
-argoRollout:
-  enabled: true
-  name: visits-service-rollout
-  replicas: 1
+container:
+  name: visits-service
+  imagePullPolicy: IfNotPresent
+  port: 8082
+  readinessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    priviledged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
   env:
     secrets:
       - name: MYSQL_HOST
@@ -94,14 +96,31 @@ argoRollout:
     plain:
       SPRING_PROFILES_ACTIVE: docker,mysql
       CONFIG_SERVER_URL: http://config-server:8888
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    canary:
-      maxSurge: 25%
-      maxUnavailable: 0
-      dynamicStableScale: true
-      abortScaleDownDelaySeconds: 600
+
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: true
+  name: visits-service-rollout
+  spec: 
+    replicas: 1
+    hostPID: false
+    hostIPC: false
+    hostNetwork: false
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+    minReadySeconds: 30
+    revisionHistoryLimit: 5
+    strategy:
+      canary:
+        maxSurge: 25%
+        maxUnavailable: 0
+        dynamicStableScale: true
+        abortScaleDownDelaySeconds: 600
 
 service:
   enabled: true
@@ -115,11 +134,11 @@ service:
 virtualService:
   enabled: true
   name: visits-service-vs
-  gatewayRef:
-    enabled: false
   spec:
     hosts:
       - visits-service
+    gatewayRef:
+      enabled: false
     http:
     - name: primary
       route:

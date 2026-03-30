@@ -2,11 +2,11 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: visits-service-netpol
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   podSelector:
     matchLabels:
-      app: visits-service
+      app: {{ .Values.matchLabels.visitsService }}
   policyTypes:
     - Ingress
     - Egress
@@ -14,30 +14,30 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app: api-gateway
+              app: {{ .Values.matchLabels.apiGateway }}
       ports:
-        - port: 8082
+        - port: {{ .Values.ports.visitsService }}
     - from:
         - podSelector:
             matchLabels:
-              app: admin-server
+              app: {{ .Values.matchLabels.adminServer }}
       ports:
-        - port: 8082
+        - port: {{ .Values.ports.visitsService }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app: config-server
+              app: {{ .Values.matchLabels.configServer }}
       ports:
-        - port: 8888
+        - port: {{ .Values.ports.configServer }}
     - to:
         - podSelector:
             matchLabels:
-              app: discovery-server
+              app: {{ .Values.matchLabels.discoveryServer }}
       ports:
-        - port: 8761
+        - port: {{ .Values.ports.discoveryServer }}
     - to:
         - ipBlock:
-            cidr: <your-rds-endpoint-ip>/32
+            cidr: {{ .Values.rds.cidr }}
       ports:
-        - port: 3306
+        - port: {{ .Values.ports.rdsMysql }}

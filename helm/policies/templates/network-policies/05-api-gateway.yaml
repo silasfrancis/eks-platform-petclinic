@@ -2,57 +2,56 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: api-gateway-netpol
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   podSelector:
     matchLabels:
-      app: api-gateway
+      app: {{ .Values.matchLabels.apiGateway }}
   policyTypes:
     - Ingress
     - Egress
   ingress:
-    # only from istio ingress gateway
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: istio-ingress
+              kubernetes.io/metadata.name: {{ .Values.namespaces.istioIngress }}
           podSelector:
             matchLabels:
-              app: istio-ingressgateway
+              app: {{ .Values.matchLabels.istioIngressGateway }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app: customers-service
+              app: {{ .Values.matchLabels.customersService }}
       ports:
-        - port: 8081
+        - port: {{ .Values.ports.customersService }}
     - to:
         - podSelector:
             matchLabels:
-              app: visits-service
+              app: {{ .Values.matchLabels.visitsService }}
       ports:
-        - port: 8082
+        - port: {{ .Values.ports.visitsService }}
     - to:
         - podSelector:
             matchLabels:
-              app: vets-service
+              app: {{ .Values.matchLabels.vetsService }}
       ports:
-        - port: 8083
+        - port: {{ .Values.ports.vetsService }}
     - to:
         - podSelector:
             matchLabels:
-              app: genai-service
+              app: {{ .Values.matchLabels.genaiService }}
       ports:
-        - port: 8084
+        - port: {{ .Values.ports.genaiService }}
     - to:
         - podSelector:
             matchLabels:
-              app: discovery-server
+              app: {{ .Values.matchLabels.discoveryServer }}
       ports:
-        - port: 8761
+        - port: {{ .Values.ports.discoveryServer }}
     - to:
         - podSelector:
             matchLabels:
-              app: config-server
+              app: {{ .Values.matchLabels.configServer }}
       ports:
-        - port: 8888
+        - port: {{ .Values.ports.configServer }}

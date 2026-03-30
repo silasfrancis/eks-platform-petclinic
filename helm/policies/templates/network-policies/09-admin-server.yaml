@@ -2,29 +2,29 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: admin-server-netpol
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   podSelector:
     matchLabels:
-      app: admin-server
+      app: {{ .Values.matchLabels.adminServer }}
   policyTypes:
-    - Ingress
+    - Ingress 
     - Egress
   ingress:
     - from:
         - podSelector: {}
       ports:
-        - port: 8085
+        - port: {{ .Values.ports.adminServer }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app: config-server
+              app: {{ .Values.matchLabels.configServer }}
       ports:
-        - port: 8888
+        - port: {{ .Values.ports.configServer }}
     - to:
         - podSelector:
             matchLabels:
-              app: discovery-server
+              app: {{ .Values.matchLabels.discoveryServer }}
       ports:
-        - port: 8761
+        - port: {{ .Values.ports.discoveryServer }}

@@ -2,29 +2,27 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-istio-controlplane
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   podSelector: {}
   policyTypes:
     - Egress
     - Ingress
   egress:
-    # Envoy sidecar phones home to istiod for xDS config and telemetry
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: istio-system
+              kubernetes.io/metadata.name: {{ .Values.namespaces.istioSystem }}
       ports:
         - port: 15012    # xDS - Envoy gets routing rules from istiod
         - port: 15014    # istiod monitoring
         - port: 15017    # istiod webhook
         - port: 443      # istio webhook
   ingress:
-    # istiod reaches into pods to scrape metrics and manage sidecars
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: istio-system
+              kubernetes.io/metadata.name: {{ .Values.namespaces.istioSystem }}
       ports:
         - port: 15090    # Envoy metrics scraping
         - port: 15000    # Envoy admin port

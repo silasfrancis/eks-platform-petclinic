@@ -1,0 +1,25 @@
+environment: dev
+
+namespaces:
+  app: petclinic
+  istioSystem: istio-system
+  kubeSystem: kube-system
+
+spec:
+  webhook:
+    timeoutSeconds: 15
+  validationActions: ["Deny"]
+
+ecr:
+  accountId: "509194952955"
+  region: "us-east-2"
+  prefix: "springboot"
+
+github:
+  org: "silasfrancis"
+  repo: "spring_boot_micro_services"
+  branch: "dev"
+  workflowRef:
+    buildPush: build-push.yaml
+    buildMigrations: build-migrations.yaml
+  tokenIssuer: https://token.actions.githubusercontent.com

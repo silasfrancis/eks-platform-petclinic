@@ -2,8 +2,7 @@ apiVersion: policies.kyverno.io/v1
 kind: NamespacedMutatingPolicy
 metadata:
   name: mutation-defaults
-  namespace: petclinic
-
+  namespace: {{ .Values.namespaces.app }}
 spec:
   evaluation:
     admission:
@@ -11,7 +10,7 @@ spec:
     mutateExisting:
       enabled: false
   webhookConfiguration:
-    timeoutSeconds: 15
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
   matchConstraints:
     resourceRules:
       - apiGroups: [""]
@@ -20,7 +19,6 @@ spec:
         resources: ["pods"]
 
   mutations:
-
     # Add environment label
     - patchType: ApplyConfiguration
       applyConfiguration:
@@ -29,7 +27,7 @@ spec:
           ? Object{
               metadata: Object.metadata{
                 labels: (has(object.metadata.labels) ? object.metadata.labels : {})
-                  + {"environment": "dev"}
+                  + {"environment": "{{ .Values.environment }}"}
               }
             }
           : object

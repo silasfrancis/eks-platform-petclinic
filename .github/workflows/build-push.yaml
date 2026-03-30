@@ -16,7 +16,7 @@ on:
 
 jobs:
   filter-updated-directories:
-    uses: ./.github/workflows/path_filter.yaml
+    uses: ./.github/workflows/path-filter.yaml
 
   build-scan-push:
     runs-on: ubuntu-24.04

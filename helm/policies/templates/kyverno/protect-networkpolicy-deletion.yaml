@@ -2,11 +2,11 @@ apiVersion: policies.kyverno.io/v1
 kind: NamespacedValidatingPolicy
 metadata:
   name: protect-networkpolicy-deletion
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: 15
-  validationActions: [Audit]
+    timeoutSeconds: {{ .Values.spec.webhook.timeoutSeconds }}
+  validationActions: {{ .Values.spec.validationActions }}
   matchConstraints:
     resourceRules:
       - apiGroups: ['networking.k8s.io']

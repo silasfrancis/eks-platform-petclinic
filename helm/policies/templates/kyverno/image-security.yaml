@@ -2,23 +2,23 @@ apiVersion: policies.kyverno.io/v1
 kind: NamespacedImageValidatingPolicy
 metadata:
   name: validate-image-signatures
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: 15
+    timeoutSeconds: {{ .Values.spec.webhook.timeoutSeconds }}
   evaluation:
     background:
       enabled: false
-  validationActions: [Deny]
+  validationActions: {{ .Values.spec.validationActions }}
   failurePolicy: Fail
   validationConfigurations:
     mutateDigest: true
     required: true
     verifyDigest: true
-  matchConstraints:                          # fixed typo
+  matchConstraints:                          
     resourceRules:
       - apiGroups: ['']
-        apiVersions: ['v1']                  # fixed case + value
+        apiVersions: ['v1']                 
         operations: ['CREATE', 'UPDATE']
         resources: ['pods']
   credentials:
@@ -26,22 +26,22 @@ spec:
     providers:
       - amazon
   matchImageReferences:
-    - glob: '509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/*'
+    - glob: '{{ .Values.ecr.accountId }}.dkr.ecr.{{ .Values.ecr.region }}.amazonaws.com/{{ .Values.ecr.prefix }}/*'
   attestors:
     - name: cosign-app-build-attestor
       cosign:
         keyless:
           identities:
-            - subject: 'https://github.com/silasfrancis/spring_boot_micro_services/.github/workflows/build*.yaml@refs/heads/dev'
-              issuer: 'https://token.actions.githubusercontent.com'
+            - subject: 'https://github.com/{{ .Values.github.org   }}/{{ .Values.github.repo }}/.github/workflows/{{ .Values.github.workflowRef.buildPush }}@refs/heads/{{ .Values.github.branch }}'
+              issuer: '{{ .Values.github.tokenIssuer }}'
         ctlog:
           url: 'https://rekor.sigstore.dev'
     - name: cosign-migration-build-attestor
       cosign:
         keyless:
           identities:
-            - subject: 'https://github.com/silasfrancis/spring_boot_micro_services/.github/workflows/build-migrations.yaml@refs/heads/dev'
-              issuer: 'https://token.actions.githubusercontent.com'
+            - subject: 'https://github.com/{{ .Values.github.org   }}/{{ .Values.github.repo }}/.github/workflows/{{ .Values.github.workflowRef.buildMigrations }}@refs/heads/{{ .Values.github.branch }}'
+              issuer: '{{ .Values.github.tokenIssuer }}'
         ctlog:
           url: 'https://rekor.sigstore.dev'
 

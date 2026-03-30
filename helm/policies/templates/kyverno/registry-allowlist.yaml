@@ -2,17 +2,17 @@ apiVersion: policies.kyverno.io/v1
 kind: NamespacedValidatingPolicy
 metadata:
   name: restrict-image-registries
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: 15
+    timeoutSeconds: {{ .Values.spec.webhook.timeoutSeconds }}
   evaluation:
     admission:
       enabled: true
     background:
       enabled: false
     mode: Kubernetes
-  validationActions: [Deny]
+  validationActions: {{ .Values.spec.validationActions }}
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
@@ -25,7 +25,7 @@ spec:
     - name: allowedRegistries
       expression: >-
         [
-          "509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/",
+          "{{ .Values.ecr.accountId }}.dkr.ecr.{{ .Values.ecr.region }}.amazonaws.com/{{ .Values.ecr.prefix }}/",
           "docker.io/istio/",
           "gcr.io/istio-release/"
         ]

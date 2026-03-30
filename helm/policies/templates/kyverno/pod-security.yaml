@@ -2,17 +2,17 @@ apiVersion: policies.kyverno.io/v1
 kind: NamespacedValidatingPolicy
 metadata:
   name: pod-security
-  namespace: petclinic
+  namespace: {{ .Values.namespaces.app }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: 15
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
   evaluation:
     admission:
       enabled: true
     background:
       enabled: false
     mode: Kubernetes
-  validationActions: [Deny]
+  validationActions: {{ .Values.spec.validationActions }}
   failurePolicy: Fail
   matchConstraints:
     resourceRules:

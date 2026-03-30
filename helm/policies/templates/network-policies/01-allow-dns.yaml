@@ -3,6 +3,8 @@ kind: NetworkPolicy
 metadata:
   name: allow-dns
   namespace: {{ .Values.namespaces.app }}
+  labels:
+    protected: true
 spec:
   podSelector: {}
   policyTypes:

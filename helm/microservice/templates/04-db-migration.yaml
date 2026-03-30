@@ -9,27 +9,53 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  backoffLimit: {{ .Values.databaseMigration.backoffLimit }}
+  backoffLimit: {{ .Values.databaseMigration.spec.backoffLimit }}
+  hostPID: {{ .Values.databaseMigration.spec.hostPID }}
+  hostIPC: {{ .Values.databaseMigration.spec.hostIPC }}
+  hostNetwork: {{ .Values.databaseMigration.spec.hostNetwork }}
+  {{- with .Values.databaseMigration.spec.securityContext }}
+  securityContext:
+    runAsNonRoot: {{ .runAsNonRoot }}
+    seccompProfile:
+      {{- toYaml .seccompProfile.type | nindent 6 }}
+  {{- end }}
   template:
     spec:
-      restartPolicy: {{ .Values.databaseMigration.restartPolicy }}
+      restartPolicy: {{ .Values.databaseMigration.spec.restartPolicy }}
       {{- if .Values.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
       containers:
         - name: {{ .Values.container.name }}
           image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          imagePullPolicy: {{ .Values.container.imagePullPolicy }}
+          resources:
+            limits:
+              memory: {{ .Values.container.resources.limits.memory }}
+              cpu: {{ .Values.container.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.container.resources.requests.memory }}
+              cpu: {{ .Values.container.resources.requests.cpu }}
+          securityContext:
+            runAsNonRoot: {{ .Values.container.securityContext.runAsNonRoot }}
+            runAsUser: {{ .Values.container.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.container.securityContext.runAsGroup }}
+            priviledged: {{ .Values.container.securityContext.priviledged }}
+            allowPrivilegeEscalation: {{ .Values.container.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.container.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: {{ .Values.container.securityContext.capabilities.drop }}
           args:
             - migrate
           env:
-          {{- range .Values.databaseMigration.env.secrets }}
+          {{- range .Values.container.env.secrets }}
           - name: {{ .name }}
             valueFrom:
               secretKeyRef:
                 name: {{ .secretName }}
                 key: {{ .secretKey }}
           {{- end }}
-          {{- range $key, $val := .Values.databaseMigration.env.plain }}
+          {{- range $key, $val := .Values.container.env.plain }}
           - name: {{ $key }}
             value: {{ $val | quote }}
           {{- end }}

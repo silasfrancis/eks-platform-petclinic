@@ -1,35 +1,8 @@
 createNamespace: false
 namespace: petclinic
 
-container:
-  name: genai-service
-  imagePullPolicy: IfNotPresent
-  port: 8084
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 120
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 120
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-
 selectorLabels:
   app: genai-service
-
-image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
-  tag: 'c84d2ef1'
-  digest: sha256:cda8f4c5ae6b4b90398938988997b0a78692c8aca63df6f61f643f5e249101a8
 
 serviceAccount:
   enabled: true
@@ -59,13 +32,41 @@ externalSecret:
 databaseMigration:
   enabled: false
 
-deployment:
-  enabled: false
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
+  tag: 'c84d2ef1'
+  digest: sha256:cda8f4c5ae6b4b90398938988997b0a78692c8aca63df6f61f643f5e249101a8
 
-argoRollout:
-  enabled: true
-  name: genai-service-rollout
-  replicas: 1
+container:
+  name: genai-service
+  imagePullPolicy: IfNotPresent
+  port: 8084
+  readinessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 120
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 120
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    priviledged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
   env:
     secrets:
       - name: OPENAI_API_KEY
@@ -74,14 +75,30 @@ argoRollout:
     plain:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    canary:
-      maxSurge: 25%
-      maxUnavailable: 0
-      dynamicStableScale: true
-      abortScaleDownDelaySeconds: 600
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: true
+  name: genai-service-rollout
+  spec:
+    replicas: 1
+    hostPID: false
+    hostIPC: false
+    hostNetwork: false
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+    minReadySeconds: 30
+    revisionHistoryLimit: 5
+    strategy:
+      canary:
+        maxSurge: 25%
+        maxUnavailable: 0
+        dynamicStableScale: true
+        abortScaleDownDelaySeconds: 600
 
 service:
   enabled: true

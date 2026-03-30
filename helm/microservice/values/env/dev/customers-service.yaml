@@ -1,35 +1,8 @@
 createNamespace: false
 namespace: petclinic
 
-container:
-  name: customers-service
-  imagePullPolicy: IfNotPresent
-  port: 8081
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-
 selectorLabels:
   app: customers-service
-
-image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service
-  tag: 'c84d2ef1'
-  digest: sha256:8283c6b7289dcbaa385ee9e3cc2bbd341f619a54407bd649b0257d140efa840d
 
 serviceAccount:
   enabled: true
@@ -71,13 +44,41 @@ externalSecret:
 databaseMigration:
   enabled: false
 
-deployment:
-  enabled: false
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service
+  tag: 'c84d2ef1'
+  digest: sha256:8283c6b7289dcbaa385ee9e3cc2bbd341f619a54407bd649b0257d140efa840d
 
-argoRollout:
-  enabled: true
-  name: customers-service-rollout
-  replicas: 1
+container:
+  name: customers-service
+  imagePullPolicy: IfNotPresent
+  port: 8081
+  readinessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    priviledged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
   env:
     secrets:
       - name: MYSQL_HOST
@@ -95,14 +96,30 @@ argoRollout:
     plain:
       SPRING_PROFILES_ACTIVE: docker,mysql
       CONFIG_SERVER_URL: http://config-server:8888
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    canary:
-      maxSurge: 25%
-      maxUnavailable: 0
-      dynamicStableScale: true
-      abortScaleDownDelaySeconds: 600
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: true
+  name: customers-service-rollout
+  spec:
+    replicas: 1
+    hostPID: false
+    hostIPC: false
+    hostNetwork: false
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+    minReadySeconds: 30
+    revisionHistoryLimit: 5
+    strategy:
+      canary:
+        maxSurge: 25%
+        maxUnavailable: 0
+        dynamicStableScale: true
+        abortScaleDownDelaySeconds: 600
 
 service:
   enabled: true

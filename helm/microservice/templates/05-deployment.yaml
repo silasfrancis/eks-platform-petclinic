@@ -5,7 +5,16 @@ metadata:
   name: {{ .Values.deployment.name }}
   namespace: {{ .Values.namespace }}
 spec:
-  replicas: {{ .Values.deployment.replicas }}
+  replicas: {{ .Values.deployment.spec.replicas }}
+  hostPID: {{ .Values.deployment.spec.hostPID }}
+  hostIPC: {{ .Values.deployment.spec.hostIPC }}
+  hostNetwork: {{ .Values.deployment.spec.hostNetwork }}
+  {{- with .Values.deployment.spec.securityContext }}
+  securityContext:
+    runAsNonRoot: {{ .runAsNonRoot }}
+    seccompProfile:
+      {{- toYaml .seccompProfile.type | nindent 6 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- toYaml .Values.selectorLabels | nindent 6 }} 
@@ -24,7 +33,7 @@ spec:
           ports:
             - containerPort: {{ .Values.container.port }}
           env:
-          {{- with .Values.deployment.env.secrets }}
+          {{- with .Values.container.env.secrets }}
           {{- range . }}
           - name: {{ .name }}
             valueFrom:
@@ -33,7 +42,7 @@ spec:
                 key: {{ .secretKey }}
           {{- end }}
           {{- end }}
-          {{- with .Values.deployment.env.plain }}
+          {{- with .Values.container.env.plain }}
           {{- range $key, $val := . }}
           - name: {{ $key }}
             value: {{ $val | quote }}
@@ -60,6 +69,17 @@ spec:
             requests:
               memory: {{ .Values.container.resources.requests.memory }}
               cpu: {{ .Values.container.resources.requests.cpu }}
+          {{- with .Values.container.securityContext }}
+          securityContext:
+            runAsNonRoot: {{ .runAsNonRoot }}
+            runAsUser: {{ .runAsUser }}
+            runAsGroup: {{ .runAsGroup }}
+            priviledged: {{ .priviledged }}
+            allowPrivilegeEscalation: {{ .allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .readOnlyRootFilesystem }}
+            capabilities:
+              drop: {{ .capabilities.drop | toYaml | nindent 14 }}
+          {{- end }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -69,11 +89,11 @@ spec:
                   matchLabels:
                     {{- toYaml .Values.selectorLabels | nindent 20 }}  
                 topologyKey: kubernetes.io/hostname
-  minReadySeconds: {{ .Values.deployment.minReadySeconds }}
-  revisionHistoryLimit: {{ .Values.deployment.revisionHistoryLimit }}
+  minReadySeconds: {{ .Values.deployment.spec.minReadySeconds }}
+  revisionHistoryLimit: {{ .Values.deployment.spec.revisionHistoryLimit }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: {{ .Values.deployment.strategy.rollingUpdate.maxSurge }}
-      maxUnavailable: {{ .Values.deployment.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.deployment.spec.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.deployment.spec.strategy.rollingUpdate.maxUnavailable }}
 {{- end }}

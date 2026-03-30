@@ -5,7 +5,16 @@ metadata:
   name: {{ .Values.argoRollout.name }}
   namespace: {{ .Values.namespace }}
 spec:
-  replicas: {{ .Values.argoRollout.replicas }}
+  replicas: {{ .Values.argoRollout.spec.replicas }}
+  hostPID: {{ .Values.argoRollout.spec.hostPID }}
+  hostIPC: {{ .Values.argoRollout.spec.hostIPC }}
+  hostNetwork: {{ .Values.argoRollout.spec.hostNetwork }}
+  {{- with .Values.argoRollout.spec.securityContext }}
+  securityContext:
+    runAsNonRoot: {{ .runAsNonRoot }}
+    seccompProfile:
+      {{- toYaml .seccompProfile.type | nindent 6 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- toYaml .Values.selectorLabels | nindent 6 }}
@@ -24,7 +33,7 @@ spec:
           ports:
             - containerPort: {{ .Values.container.port }}
           env:
-          {{- with .Values.argoRollout.env.secrets }}
+          {{- with .Values.container.env.secrets }}
           {{- range . }}
           - name: {{ .name }}
             valueFrom:
@@ -33,7 +42,7 @@ spec:
                 key: {{ .secretKey }}
           {{- end }}
           {{- end }}
-          {{- with .Values.argoRollout.env.plain }}
+          {{- with .Values.container.env.plain }}
           {{- range $key, $val := . }}
           - name: {{ $key }}
             value: {{ $val | quote }}
@@ -60,6 +69,17 @@ spec:
             requests:
               memory: {{ .Values.container.resources.requests.memory }}
               cpu: {{ .Values.container.resources.requests.cpu }}
+          {{- with .Values.container.securityContext }}
+          securityContext:
+            runAsNonRoot: {{ .runAsNonRoot }}
+            runAsUser: {{ .runAsUser }}
+            runAsGroup: {{ .runAsGroup }}
+            priviledged: {{ .priviledged }}
+            allowPrivilegeEscalation: {{ .allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .readOnlyRootFilesystem }}
+            capabilities:
+              drop: {{ .capabilities.drop | toYaml | nindent 14 }}
+          {{- end }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -69,14 +89,14 @@ spec:
                   matchLabels:
                     {{- toYaml .Values.selectorLabels | nindent 20 }}  
                 topologyKey: kubernetes.io/hostname
-  minReadySeconds: {{ .Values.argoRollout.minReadySeconds }}
-  revisionHistoryLimit: {{ .Values.argoRollout.revisionHistoryLimit }}
+  minReadySeconds: {{ .Values.argoRollout.spec.minReadySeconds }}
+  revisionHistoryLimit: {{ .Values.argoRollout.spec.revisionHistoryLimit }}
   strategy:
     canary:
-      maxSurge: {{ .Values.argoRollout.strategy.canary.maxSurge }}
-      maxUnavailable: {{ .Values.argoRollout.strategy.canary.maxUnavailable }}
-      dynamicStableScale: {{ .Values.argoRollout.strategy.canary.dynamicStableScale }}
-      abortScaleDownDelaySeconds: {{ .Values.argoRollout.strategy.canary.abortScaleDownDelaySeconds }}
+      maxSurge: {{ .Values.argoRollout.spec.strategy.canary.maxSurge }}
+      maxUnavailable: {{ .Values.argoRollout.spec.strategy.canary.maxUnavailable }}
+      dynamicStableScale: {{ .Values.argoRollout.spec.strategy.canary.dynamicStableScale }}
+      abortScaleDownDelaySeconds: {{ .Values.argoRollout.spec.strategy.canary.abortScaleDownDelaySeconds }}
       canaryService: {{ .Values.service.rolloutServices.canaryService }}
       stableService: {{ .Values.service.rolloutServices.stableService }}
     #   analysis:

@@ -1,5 +1,26 @@
 createNamespace: false
 namespace: petclinic
+
+selectorLabels:
+  app: api-gateway
+
+serviceAccount:
+  enabled: false
+
+secretStore:
+  enabled: false
+
+externalSecret:
+  enabled: false
+
+databaseMigration:
+  enabled: false
+
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
+  tag: 'c9f9f2f9'
+  digest: sha256:f173d4372e2887928f8586635d79c93a3177df2ed6778425d063b06741e67fd3
+
 container:
   name: api-gateway
   imagePullPolicy: IfNotPresent
@@ -21,38 +42,44 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-selectorLabels:
-  app: api-gateway
-image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
-  tag: 'c9f9f2f9'
-  digest: sha256:f173d4372e2887928f8586635d79c93a3177df2ed6778425d063b06741e67fd3
-serviceAccount:
-  enabled: false
-secretStore:
-  enabled: false
-externalSecret:
-  enabled: false
-databaseMigration:
-  enabled: false
-deployment:
-  enabled: false
-argoRollout:
-  enabled: true
-  name: api-gateway-rollout
-  replicas: 2
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    priviledged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
   env:
     plain:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    canary:
-      maxSurge: 25%
-      maxUnavailable: 0
-      dynamicStableScale: true
-      abortScaleDownDelaySeconds: 600
+
+deployment:
+  enabled: false
+
+argoRollout:
+  enabled: true
+  name: api-gateway-rollout
+  spec: 
+    replicas: 2
+    hostPID: false
+    hostIPC: false
+    hostNetwork: false
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+    minReadySeconds: 30
+    revisionHistoryLimit: 5
+    strategy:
+      canary:
+        maxSurge: 25%
+        maxUnavailable: 0
+        dynamicStableScale: true
+        abortScaleDownDelaySeconds: 600
+
 service:
   enabled: true
   name: api-gateway
@@ -61,6 +88,7 @@ service:
     enabled: true
     stableService: api-gateway
     canaryService: api-gateway-canary
+
 virtualService:
   enabled: true
   name: api-gateway-vs

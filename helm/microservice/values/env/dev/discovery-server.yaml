@@ -1,6 +1,26 @@
 createNamespace: false
 namespace: petclinic
 
+selectorLabels:
+  app: discovery-server
+
+serviceAccount:
+  enabled: false
+
+secretStore:
+  enabled: false
+
+externalSecret:
+  enabled: false
+
+databaseMigration:
+  enabled: false
+
+image:
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/discovery-server
+  tag: 'c84d2ef1'
+  digest: sha256:9fbc532bfa7447a9217c280f7a65fbfda8ba46bbe5f625c19aa01172dbbb252e
+
 container:
   name: discovery-server
   imagePullPolicy: IfNotPresent
@@ -22,39 +42,36 @@ container:
     requests:
       memory: 256Mi
       cpu: 100m
-
-selectorLabels:
-  app: discovery-server
-
-image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/discovery-server
-  tag: 'c84d2ef1'
-  digest: sha256:9fbc532bfa7447a9217c280f7a65fbfda8ba46bbe5f625c19aa01172dbbb252e
-
-serviceAccount:
-  enabled: false
-
-secretStore:
-  enabled: false
-
-externalSecret:
-  enabled: false
-
-databaseMigration:
-  enabled: false
-
-deployment:
-  enabled: true
-  name: discovery-server-deployment
-  replicas: 1
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    priviledged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
   env:
     plain:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  strategy:
-    rollingUpdate:
+
+deployment:
+  enabled: true
+  name: discovery-server-deployment
+  spec:
+    replicas: 1
+    hostPID: false
+    hostIPC: false
+    hostNetwork: false
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+    minReadySeconds: 30
+    revisionHistoryLimit: 5
+    strategy:
+      rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
 

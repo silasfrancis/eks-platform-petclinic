@@ -1,0 +1,21 @@
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: protect-networkpolicy-deletion
+  namespace: petclinic
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  validationActions: [Audit]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['networking.k8s.io']
+        apiVersions: ['v1']
+        operations: ['DELETE']
+        resources: ['networkpolicies']
+  validations:
+    - message: 'Protected NetworkPolicies cannot be deleted'
+      expression: >-
+        !has(object.metadata.labels) ||
+        !has(object.metadata.labels.protected) ||
+        object.metadata.labels.protected != "true"

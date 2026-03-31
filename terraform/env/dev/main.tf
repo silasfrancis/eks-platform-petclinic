@@ -126,7 +126,7 @@ module "ec2" {
   env                   = var.environment
   app                   = var.app
   ami                   = "ami-0b0b78dcacbab728f"
-  instance_type         = "t3.micro"
+  instance_type         = "t4g.micro"
   vpc_id                = module.vpc.vpc_id
   private_subnet_id     = module.vpc.subnets["private_subnet_1"]
   ec2_security_group_id = module.vpc.security_group["ec2"]

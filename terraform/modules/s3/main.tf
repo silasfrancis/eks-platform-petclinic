@@ -1,11 +1,12 @@
 resource "aws_s3_bucket" "tf_state_bucket" {
   bucket = "${var.bucket_name}-tf-state"
   force_destroy = false
-  lifecycle {
-    prevent_destroy = true
-  }
+
   tags = {
     resource = "s3"
+  }
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -19,7 +20,7 @@ resource "aws_s3_bucket" "alb_logs" {
 
 resource "aws_s3_bucket" "rds_export" {
   bucket        = "${var.bucket_name}-rds-export"
-  force_destroy = false
+  force_destroy = true
   tags = {
     resource = "s3"
   }

@@ -2,7 +2,7 @@ variable "env" {
   type = string
 }
 
-variable "k8_version" {
+variable "cluster_version" {
     type = string
     default = "1.35"
   
@@ -46,8 +46,8 @@ variable "disk_size" {
   
 }
 
-variable "instance_types" {
-    type = list(string)
+variable "instance_type" {
+    type = string
   
 }
 

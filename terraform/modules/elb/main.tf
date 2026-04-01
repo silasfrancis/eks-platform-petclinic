@@ -1,5 +1,5 @@
-resource "aws_iam_role" "irsa_alb_controller" {
-  name = "${var.env}-${var.app}-alb-controller"
+resource "aws_iam_role" "irsa_lb_controller" {
+  name = "${var.env}-${var.app}-lb-controller"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

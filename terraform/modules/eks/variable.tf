@@ -74,3 +74,15 @@ variable "ec2_security_group_id" {
 variable "nlb_security_group_id" {
   type = string
 }
+
+variable "app" {
+  type = string
+}
+
+variable "service_account_name" {
+  type = string
+}
+
+variable "namespace" {
+  type = string
+}

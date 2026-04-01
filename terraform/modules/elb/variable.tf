@@ -25,3 +25,7 @@ variable "app" {
 variable "oidc_arn" {
   type = string
 }
+
+variable "nlb_security_group_id" {
+    type = string
+}

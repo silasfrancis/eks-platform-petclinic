@@ -1,0 +1,10 @@
+namespace: kube-system
+
+serviceAccount:
+  name: aws-node
+  enabled: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-petclinic-vpc-cni"
+
+clusterIssuer:
+  enabled: false

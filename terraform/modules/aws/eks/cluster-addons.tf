@@ -25,9 +25,7 @@ data "aws_eks_addon_version" "pod_identity" {
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name = aws_eks_cluster.main_cluster.name
   addon_name   = "vpc-cni"
-
   addon_version = data.aws_eks_addon_version.vpc_cni.version
-
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
 

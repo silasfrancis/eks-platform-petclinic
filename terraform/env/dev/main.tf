@@ -1,20 +1,3 @@
-terraform {
-  #   backend "s3" {
-  #     bucket       = ""${var.application_tag}-silas-${var.environment}""
-  #     key          = "${var.environment}/terraform.tfstate"
-  #     region       = "var.aws_region"
-  #     use_lockfile = true
-  #     encrypt      = true
-  #   }
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "6.37.0"
-    }
-  }
-}
-
 locals {
   service_accounts = [
     "config-server-sa",

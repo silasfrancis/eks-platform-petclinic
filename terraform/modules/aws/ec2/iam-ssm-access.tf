@@ -37,7 +37,11 @@ resource "aws_iam_policy" "ssm_jumphost_access" {
   })
 }
 
+data "aws_iam_group" "platform_engineers" {
+  group_name = var.platform_engineers_group_name
+}
+
 resource "aws_iam_group_policy_attachment" "ssm_jumphost" {
-  group      = var.platform_engineers_group_name
+  group      = data.aws_iam_group.platform_engineers.group_name
   policy_arn = aws_iam_policy.ssm_jumphost_access.arn
 }

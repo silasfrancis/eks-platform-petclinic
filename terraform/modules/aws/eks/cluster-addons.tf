@@ -22,29 +22,35 @@ data "aws_eks_addon_version" "pod_identity" {
   most_recent        = true
 }
 
+data "aws_eks_addon_version" "ebs_csi" {
+  addon_name         = "aws-ebs-csi-driver"
+  kubernetes_version = aws_eks_cluster.main_cluster.version
+  most_recent        = true
+}
+
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name = aws_eks_cluster.main_cluster.name
   addon_name   = "vpc-cni"
   addon_version = data.aws_eks_addon_version.vpc_cni.version
+  service_account_role_arn = aws_iam_role.vpc_cni.arn
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
 
   configuration_values = jsonencode({
+    enableNetworkPolicy = "false"
     env = {
       ENABLE_PREFIX_DELEGATION = "true"
       WARM_PREFIX_TARGET       = "1"
-      NETWORK_POLICY_ENFORCEMENT = "false"
       AWS_VPC_K8S_CNI_EXTERNALSNAT = "true"
     }
   })
 
-  service_account_role_arn = aws_iam_role.vpc_cni.arn
 
   tags = {
     resource    = "eks-addon-vpc-cni"
   }
 
-  depends_on = [aws_eks_cluster.main_cluster]
+  depends_on = [aws_eks_cluster.main_cluster, aws_iam_role.vpc_cni]
 
   lifecycle {
     ignore_changes = [
@@ -101,3 +107,19 @@ resource "aws_eks_addon" "pod_identity" {
   }
 }
 
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name             = aws_eks_cluster.main_cluster.name
+  addon_name               = "aws-ebs-csi-driver"
+  addon_version            = data.aws_eks_addon_version.ebs_csi.version
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "PRESERVE"
+
+  depends_on = [
+    aws_eks_node_group.main
+  ]
+
+  lifecycle {
+    ignore_changes = [addon_version]
+  }
+}

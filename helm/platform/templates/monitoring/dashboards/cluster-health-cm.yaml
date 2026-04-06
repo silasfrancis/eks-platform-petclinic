@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cluster-health
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  cluster-health.json: |-
+    {{ .Files.Get "dashboards/cluster-health.json" | indent 4 }}

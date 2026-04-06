@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-argocd-gitops
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  argocd-gitops.json: |-
+    {{ .Files.Get "dashboards/argocd-gitops.json" | indent 4 }}

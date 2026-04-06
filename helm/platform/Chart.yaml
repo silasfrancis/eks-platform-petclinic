@@ -1,0 +1,15 @@
+apiVersion: v2
+name: platform
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "82.16.0"
+    repository: https://prometheus-community.github.io/helm-charts
+
+  - name: prometheus-cloudwatch-exporter
+    version: "0.25.3"
+    repository: https://prometheus-community.github.io/helm-charts

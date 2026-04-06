@@ -1,5 +1,29 @@
+resource "aws_iam_role" "irsa_secrets_reader" {
+  name = "${var.env}-${var.application_service_account_name}-pod-secrets-reader"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = {
+        Federated = var.oidc_arn
+      }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${var.oidc_url}:sub" = "system:serviceaccount:${var.application_namespace}:${var.application_service_account_name}"
+          "${var.oidc_url}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+  tags = {
+    resource = "iam"
+  }
+}
+
 resource "aws_iam_policy" "irsa_secrets_policy" {
-  name        = "${var.env}-${var.app}-${var.service_account_name}-pod-secrets-read"
+  name        = "${var.env}-${var.app}-${var.application_service_account_name}-pod-secrets-read"
   description = "Allows reading of a specific secret from AWS Secrets Manager by service accounts in EKS using OIDC authentication"
 
   policy = jsonencode({

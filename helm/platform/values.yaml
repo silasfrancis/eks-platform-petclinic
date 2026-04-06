@@ -1,0 +1,100 @@
+kube-prometheus-stack:
+
+  crds:
+    upgradeJob:
+      enabled: true
+
+  kubeEtcd:
+    enabled: false
+
+  kubeControllerManager:
+    enabled: false
+
+  kubeScheduler:
+    enabled: false
+
+  kubeProxy:
+    enabled: false
+
+  prometheus:
+    prometheusSpec:
+
+      # Discover ServiceMonitors in any namespace
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+
+      # Discover PodMonitors in any namespace
+      podMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelector: {}
+      podMonitorNamespaceSelector: {}
+
+      # Discover PrometheusRules in any namespace
+      ruleSelectorNilUsesHelmValues: false
+      ruleSelector: {}
+      ruleNamespaceSelector: {}
+
+      # Retention
+      retention: 15d
+      retentionSize: "10GB"
+
+      # Persistent storage using EKS gp3
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+
+  grafana:
+    adminPassword: "changeme"  # override via ESO in production
+
+    persistence:
+      enabled: true
+      type: sts
+      storageClassName: gp3
+      accessModes:
+        - ReadWriteOnce
+      size: 5Gi
+
+    sidecar:
+      dashboards:
+        enabled: true
+        searchNamespace: ALL  
+        label: grafana_dashboard
+        labelValue: "1"
+      datasources:
+        enabled: true
+        uid: prometheus       
+
+  alertmanager:
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
+
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: ['namespace', 'alertname', 'severity']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+        receiver: 'null'
+        routes:
+          - receiver: 'null'
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: 'null'   # replace with Slack/email later
+
+prometheus-cloudwatch-exporter:
+  enabled: true

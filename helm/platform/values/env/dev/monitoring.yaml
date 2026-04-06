@@ -1,67 +1,19 @@
-crds:
-  upgradeJob:
-    enabled: true
+petclinic:
+  namespace: petclinic
 
-prometheus:
-  prometheusSpec:
-    # Allow Prometheus to discover ServiceMonitors in any namespace
-    serviceMonitorSelectorNilUsesHelmValues: false
-    serviceMonitorSelector: {}
-    serviceMonitorNamespaceSelector: {}
+  services:
+    - name: api-gateway
+      selectorLabels:
+        app: api-gateway
 
-    # Same for PodMonitors and Rules
-    podMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelector: {}
-    podMonitorNamespaceSelector: {}
+    - name: customers-service
+      selectorLabels:
+        app: customers-service
 
-    ruleSelectorNilUsesHelmValues: false
-    ruleSelector: {}
-    ruleNamespaceSelector: {}
+    - name: visits-service
+      selectorLabels:
+        app: visits-service
 
-    # Retention
-    retention: 15d
-
-    # Persistent storage on EKS using gp3
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: gp3
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 20Gi
-
-grafana:
-  adminPassword: "changeme"   # override via ESO secret in production
-  sidecar:
-    dashboards:
-      enabled: true           
-      searchNamespace: ALL    # discover dashboards from any namespace
-
-alertmanager:
-  config:
-    global:
-      resolve_timeout: 5m
-    route:
-      group_by: ['namespace', 'alertname']
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 12h
-      receiver: 'slack'
-    receivers:
-      - name: 'slack'
-        slack_configs:
-          - api_url: 'https://hooks.slack.com/...'
-            channel: '#alerts'
-
-kubeEtcd:
-  enabled: false
-
-kubeControllerManager:
-  enabled: false
-
-kubeScheduler:
-  enabled: false
-
-kubeProxy:
-  enabled: false 
+    - name: vets-service
+      selectorLabels:
+        app: vets-service

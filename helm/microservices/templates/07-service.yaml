@@ -8,9 +8,11 @@ spec:
   selector:
     {{- toYaml .Values.selectorLabels | nindent 4 }}
   ports:
-    - port: {{ .Values.service.port }}
+    - name: http          
+      port: {{ .Values.service.port }}
       targetPort: {{ .Values.container.port }}
 {{- end }}
+
 {{- if .Values.service.rolloutServices.enabled }}
 ---
 apiVersion: v1
@@ -22,7 +24,8 @@ spec:
   selector:
     {{- toYaml .Values.selectorLabels | nindent 4 }}
   ports:
-    - port: {{ .Values.service.port }}
+    - name: http         
+      port: {{ .Values.service.port }}
       targetPort: {{ .Values.container.port }}
 ---
 apiVersion: v1
@@ -32,8 +35,9 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   selector:
-    {{- toYaml .Values.selectorLabels | nindent 4 }} 
+    {{- toYaml .Values.selectorLabels | nindent 4 }}
   ports:
-    - port: {{ .Values.service.port }}
+    - name: http        
+      port: {{ .Values.service.port }}
       targetPort: {{ .Values.container.port }}
 {{- end }}

@@ -98,3 +98,91 @@ kube-prometheus-stack:
 
 prometheus-cloudwatch-exporter:
   enabled: true
+
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-cloudwatch-exporter"
+
+  aws:
+    region: us-east-2
+
+  config: |-
+    region: us-east-2
+    metrics:
+      - aws_namespace: AWS/RDS
+        aws_metric_name: CPUUtilization
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: DatabaseConnections
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: FreeableMemory
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: FreeStorageSpace
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: ReadLatency
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: WriteLatency
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: ReadIOPS
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: WriteIOPS
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: NetworkReceiveThroughput
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+      - aws_namespace: AWS/RDS
+        aws_metric_name: NetworkTransmitThroughput
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+        period_seconds: 60
+        range_seconds: 600
+
+  serviceMonitor:
+    enabled: true
+    interval: 60s           
+    namespace: monitoring
+    additionalLabels:
+      release: kube-prometheus-stack

@@ -5,7 +5,8 @@ locals {
     "visits-service-sa",
     "vets-service-sa",
     "genai-service-sa",
-    "db-migration-sa"
+    "db-migration-sa",
+    "cluster-config-sa"
   ]
 }
 

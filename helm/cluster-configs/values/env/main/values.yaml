@@ -1,7 +1,10 @@
-namespace: 
+namespace: kube-system
 
 serviceAccount:
-  enabled: false
+  name: aws-load-balancer-controller
+  enabled: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-petclinic-alb-controller"
 
 clusterIssuer:
   enabled: true

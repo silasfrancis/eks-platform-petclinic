@@ -84,7 +84,7 @@ kube-prometheus-stack:
       global:
         resolve_timeout: 5m
         # Email global config
-        smtp_smarthost: 'smtp.gmail.com:587'
+        smtp_smarthost: 'smtp.zoho.com:587'
         smtp_from: 'alerts@lefrancis.org'
         smtp_auth_username: 'alerts@lefrancis.org'
         smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-receivers-secret/email-password
@@ -105,7 +105,7 @@ kube-prometheus-stack:
         group_by: ['namespace', 'alertname', 'severity']
         group_wait: 30s
         group_interval: 5m
-        repeat_interval: 12h
+        repeat_interval: 3h
         receiver: 'null'
         routes:
           # Silence Watchdog — it's a heartbeat alert not a real alert
@@ -158,7 +158,7 @@ kube-prometheus-stack:
                 *Runbook:* {{ .Annotations.runbook_url }}
                 {{ end }}
           email_configs:
-            - to: 'francis@lefrancis.org'
+            - to: 'silas@lefrancis.org'
               send_resolved: true
               headers:
                 Subject: '[CRITICAL] {{ .CommonLabels.alertname }} - {{ .CommonLabels.namespace }}'

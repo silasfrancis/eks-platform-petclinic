@@ -1,51 +1,50 @@
-resource "aws_iam_role" "irsa_secrets_reader" {
-  name = "${var.env}-${var.application_service_account_name}-pod-secrets-reader"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = {
-        Federated = var.oidc_arn
+locals {
+  irsa_roles = {
+    app_secrets = {
+      namespace = "petclinic"
+      sas       = ["config-server-sa", "customers-service-sa", "visits-service-sa", "vets-service-sa", "genai-service-sa", "db-migration-sa"]
+      policy    = {
+        actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret", "secretsmanager:GetResourcePolicy", "secretsmanager:ListSecretVersionIds"]
+        resources = ["arn:aws:secretsmanager:*:*:secret:${var.app_secret_name}*"]
       }
-      Action    = "sts:AssumeRoleWithWebIdentity"
-      Condition = {
-        StringEquals = {
-          "${var.oidc_url}:sub" = "system:serviceaccount:${var.application_namespace}:${var.application_service_account_name}"
-          "${var.oidc_url}:aud" = "sts.amazonaws.com"
-        }
+    }
+
+    loki = {
+      namespace = "monitoring"
+      sas       = ["loki-sa"]
+      policy    = {
+        actions   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        resources = [var.loki_bucket_arn, "${var.loki_bucket_arn}/*"]
       }
-    }]
-  })
-  tags = {
-    resource = "iam"
-  }
-}
+      extra_statements = [{
+        Effect   = "Allow"
+        Action   = ["kms:GenerateDataKey", "kms:Decrypt"]
+        Resource = [var.data_storage_kms_key_arn]
+      }]
+    }
 
-resource "aws_iam_policy" "irsa_secrets_policy" {
-  name        = "${var.env}-${var.app}-${var.application_service_account_name}-pod-secrets-read"
-  description = "Allows reading of a specific secret from AWS Secrets Manager by service accounts in EKS using OIDC authentication"
+    cloudwatch_exporter = {
+      namespace = "monitoring"
+      sas       = ["cloudwatch-exporter-sa"]
+      policy    = {
+        actions   = ["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics", "tag:GetResources"]
+        resources = ["*"]
+      }
+    }
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = [
+  cluster_store = {
+    namespace = "external-secrets"
+    sas       = ["cluster-config-sa"]
+
+    policy = {
+      actions = [
         "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:GetResourcePolicy",
-        "secretsmanager:ListSecretVersionIds"
+        "secretsmanager:DescribeSecret"
       ]
-      Resource = "arn:aws:secretsmanager:*:*:secret:${var.secret_name}*"
-    }]
-  })
-  tags = {
-    resource = "iam"
+      resources = [
+        "arn:aws:secretsmanager:*:*:secret:${var.cluster_config_secret_name}*"
+      ]
+    }
+  }
   }
 }
-
-resource "aws_iam_role_policy_attachment" "irsa_secrets_policy_attachment" {
-  role       = aws_iam_role.irsa_secrets_reader.name
-  policy_arn = aws_iam_policy.irsa_secrets_policy.arn
-  depends_on = [ aws_iam_policy.irsa_secrets_policy]
-}   

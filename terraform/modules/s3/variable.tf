@@ -7,15 +7,6 @@ variable "bucket_key" {
   
 }
 
-variable "bucket_rule_id" {
-  type = string
-}
-
-variable "bucket_exp_days" {
-  type = number
-  default = 60
-}
-
 variable "bucket_tag_name" {
   type = string
 }

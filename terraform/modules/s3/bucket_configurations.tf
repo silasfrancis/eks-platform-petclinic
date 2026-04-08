@@ -2,14 +2,17 @@ locals {
   buckets = {
     rds_export = {
       id           = aws_s3_bucket.rds_export.id
-      rule_id      = var.bucket_rule_id
-      exp_days     = var.bucket_exp_days
+      exp_days     = 30
       versioning   = true
+    }
+    loki = {
+      id           = aws_s3_bucket.loki.id
+      exp_days     = 30
+      versioning   = false
     }
     tf_state = {
       id           = aws_s3_bucket.tf_state_bucket.id
-      rule_id      = var.bucket_rule_id
-      exp_days     = var.bucket_exp_days
+      exp_days     = 30
       versioning   = true
     }
   }
@@ -21,7 +24,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = each.value.id
 
   rule {
-    id     = each.value.rule_id
+    id     = "autoclean-${each.key}-${each.value.exp_days}-days"
     status = "Enabled"
 
     abort_incomplete_multipart_upload {
@@ -35,12 +38,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 }
 
 resource "aws_s3_bucket_versioning" "this" {
-  for_each = { for k, v in local.buckets : k => v if v.versioning }
+  for_each = local.buckets
 
   bucket = each.value.id
 
   versioning_configuration {
-    status = "Enabled"
+    status = each.value.versioning ? "Enabled" : "Suspended"
   }
 }
 

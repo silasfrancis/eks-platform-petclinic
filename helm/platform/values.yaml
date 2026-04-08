@@ -86,7 +86,7 @@ kube-prometheus-stack:
         # Email global config
         smtp_smarthost: 'smtp.zoho.com:587'
         smtp_from: 'alerts@lefrancis.org'
-        smtp_auth_username: 'alerts@lefrancis.org'
+        smtp_auth_username: 'silas@lefrancis.org'
         smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-receivers-secret/email-password
         smtp_require_tls: true
 

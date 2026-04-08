@@ -14,3 +14,7 @@ variable "bucket_tag_name" {
 variable "env" {
   type = string
 }
+
+variable "data_storage_kms_key_arn" {
+  type = string
+}

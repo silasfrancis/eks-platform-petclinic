@@ -333,24 +333,15 @@ loki:
 
 alloy:
   alloy:
-    mounts:
-      varlog: true
-
     configMap:
+      create: true
       content: |-
-        // ============================================================
-        // Discover Kubernetes pods
-        // ============================================================
         discovery.kubernetes "pods" {
           role = "pod"
         }
 
-        // ============================================================
-        // Relabel — filter petclinic namespace + add k8s labels
-        // ============================================================
         discovery.relabel "pods" {
           targets = discovery.kubernetes.pods.targets
-
           rule {
             source_labels = ["__meta_kubernetes_namespace"]
             target_label  = "namespace"
@@ -358,10 +349,6 @@ alloy:
           rule {
             source_labels = ["__meta_kubernetes_pod_name"]
             target_label  = "pod"
-          }
-          rule {
-            source_labels = ["__meta_kubernetes_pod_label_app"]
-            target_label  = "app"
           }
           rule {
             source_labels = ["__meta_kubernetes_pod_container_name"]
@@ -374,17 +361,11 @@ alloy:
           }
         }
 
-        // ============================================================
-        // Read logs from pod files
-        // ============================================================
         loki.source.kubernetes "pods" {
           targets    = discovery.relabel.pods.output
           forward_to = [loki.process.parse.receiver]
         }
 
-        // ============================================================
-        // Parse JSON logs from Spring Boot
-        // ============================================================
         loki.process "parse" {
           stage.json {
             expressions = {
@@ -392,40 +373,43 @@ alloy:
               message = "message",
             }
           }
-
           stage.labels {
             values = {
-              level = "",
+              level = "level",
             }
           }
-
           forward_to = [loki.write.default.receiver]
         }
 
-        // ============================================================
-        // Ship to Loki gateway
-        // ============================================================
         loki.write "default" {
           endpoint {
             url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
           }
         }
 
+    mounts:
+      varlog: true
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+
   controller:
-    type: daemonset
+    type: 'daemonset'
     tolerations:
       - effect: NoSchedule
         operator: Exists
+      - effect: NoExecute
+        operator: Exists
+
+  configReloader:
+    enabled: true
 
   serviceMonitor:
     enabled: true
     additionalLabels:
       release: kube-prometheus-stack
-
-  resources:
-    requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
-      memory: 128Mi

@@ -333,11 +333,9 @@ loki:
 
 alloy:
   alloy:
-    # Mount /var/log to read pod logs
     mounts:
       varlog: true
 
-    # Alloy HCL config
     configMap:
       content: |-
         // ============================================================
@@ -413,7 +411,6 @@ alloy:
           }
         }
 
-  # ---- Run as DaemonSet (default but be explicit) ----------
   controller:
     type: daemonset
     tolerations:
@@ -431,4 +428,4 @@ alloy:
       memory: 64Mi
     limits:
       cpu: 200m
-        memory: 128Mi
+      memory: 128Mi

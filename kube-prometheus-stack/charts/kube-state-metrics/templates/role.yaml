@@ -34,13 +34,13 @@ rules:
   verbs: ["list", "watch"]
 {{ end -}}
 {{ if has "daemonsets" $.Values.collectors }}
-- apiGroups: ["apps"]
+- apiGroups: ["extensions", "apps"]
   resources:
   - daemonsets
   verbs: ["list", "watch"]
 {{ end -}}
 {{ if has "deployments" $.Values.collectors }}
-- apiGroups: ["apps"]
+- apiGroups: ["extensions", "apps"]
   resources:
   - deployments
   verbs: ["list", "watch"]
@@ -64,7 +64,7 @@ rules:
   verbs: ["list", "watch"]
 {{ end -}}
 {{ if has "ingresses" $.Values.collectors }}
-- apiGroups: ["networking.k8s.io"]
+- apiGroups: ["extensions", "networking.k8s.io"]
   resources:
   - ingresses
   verbs: ["list", "watch"]
@@ -105,30 +105,6 @@ rules:
   - networkpolicies
   verbs: ["list", "watch"]
 {{ end -}}
-{{ if has "ingressclasses" $.Values.collectors }}
-- apiGroups: ["networking.k8s.io"]
-  resources:
-  - ingressclasses
-  verbs: ["list", "watch"]
-{{ end -}}
-{{ if has "clusterrolebindings" $.Values.collectors }}
-- apiGroups: ["rbac.authorization.k8s.io"]
-  resources:
-  - clusterrolebindings
-  verbs: ["list", "watch"]
-{{ end -}}
-{{ if has "clusterroles" $.Values.collectors }}
-- apiGroups: ["rbac.authorization.k8s.io"]
-  resources:
-  - clusterroles
-  verbs: ["list", "watch"]
-{{ end -}}
-{{ if has "roles" $.Values.collectors }}
-- apiGroups: ["rbac.authorization.k8s.io"]
-  resources:
-  - roles
-  verbs: ["list", "watch"]
-{{ end -}}
 {{ if has "nodes" $.Values.collectors }}
 - apiGroups: [""]
   resources:
@@ -160,7 +136,7 @@ rules:
   verbs: ["list", "watch"]
 {{ end -}}
 {{ if has "replicasets" $.Values.collectors }}
-- apiGroups: ["apps"]
+- apiGroups: ["extensions", "apps"]
   resources:
   - replicasets
   verbs: ["list", "watch"]

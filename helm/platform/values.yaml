@@ -70,9 +70,20 @@ kube-prometheus-stack:
         searchNamespace: ALL  
         label: grafana_dashboard
         labelValue: "1"
+
       datasources:
         enabled: true
-        uid: prometheus       
+        uid: prometheus     
+
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        uid: loki
+        url: http://loki-gateway.monitoring.svc.cluster.local
+        access: proxy
+        isDefault: false
+        jsonData:
+          maxLines: 1000  
 
   alertmanager:
     # Mount the ESO-synced secret into Alertmanager
@@ -236,6 +247,7 @@ prometheus-cloudwatch-exporter:
     fsGroup: 65534
 
 loki:
+  fullnameOverride: "loki"
   deploymentMode: SingleBinary
 
   loki:
@@ -332,6 +344,7 @@ loki:
     enabled: true
 
 alloy:
+  fullnameOverride: "alloy"
   alloy:
     configMap:
       create: true
@@ -413,3 +426,46 @@ alloy:
     enabled: true
     additionalLabels:
       release: kube-prometheus-stack
+
+external-dns:
+  provider: 
+    name: cloudflare
+
+  env:
+    - name: CF_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: cloudflare-api-token
+          key: cloudflare_api_token
+
+  domainFilters:
+    - lefrancis.org
+  
+  policy: sync
+  
+  sources:
+    - service
+    - ingress
+    - istio-gateway
+
+  annotationFilter: "external-dns.alpha.kubernetes.io/managed=true"
+
+  registry: txt
+  txtOwnerId: "eks-cluster-01"
+  txtPrefix: "external-dns-"
+
+  extraArgs:
+    - --cloudflare-dns-records-per-page=5000
+
+  logLevel: info
+  interval: 1m
+
+  rbac:
+    create: true
+  
+  serviceAccount:
+    create: true
+    name: external-dns
+
+  serviceMonitor:
+    enabled: true

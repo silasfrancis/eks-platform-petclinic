@@ -71,8 +71,6 @@ spec:
             - containerPort: {{ .Values.prometheusOperator.admissionWebhooks.deployment.tls.internalPort }}
               name: https
           {{- else }}
-            - "--web.enable-tls=false"
-            - "--web.listen-address=:8080"
           ports:
             - containerPort: 8080
               name: http
@@ -124,7 +122,7 @@ spec:
       securityContext:
 {{ toYaml .Values.prometheusOperator.admissionWebhooks.deployment.securityContext | indent 8 }}
 {{- end }}
-      serviceAccountName: {{ template "kube-prometheus-stack.operator.admissionWebhooks.serviceAccountName" . }}
+      serviceAccountName: {{ template "kube-prometheus-stack.operator.serviceAccountName" . }}-webhook
       automountServiceAccountToken: {{ .Values.prometheusOperator.admissionWebhooks.deployment.automountServiceAccountToken }}
 {{- if .Values.prometheusOperator.admissionWebhooks.deployment.hostNetwork }}
       hostNetwork: true

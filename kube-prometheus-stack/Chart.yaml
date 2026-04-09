@@ -5,11 +5,9 @@ annotations:
       url: https://github.com/prometheus-community/helm-charts
     - name: Upstream Project
       url: https://github.com/prometheus-operator/kube-prometheus
-    - name: Upgrade Process
-      url: https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md#upgrading-chart
   artifacthub.io/operator: "true"
 apiVersion: v2
-appVersion: v0.89.0
+appVersion: v0.80.0
 dependencies:
 - condition: crds.enabled
   name: crds
@@ -18,19 +16,19 @@ dependencies:
 - condition: kubeStateMetrics.enabled
   name: kube-state-metrics
   repository: https://prometheus-community.github.io/helm-charts
-  version: 7.2.2
+  version: 5.28.*
 - condition: nodeExporter.enabled
   name: prometheus-node-exporter
   repository: https://prometheus-community.github.io/helm-charts
-  version: 4.53.0
+  version: 4.43.*
 - condition: grafana.enabled
   name: grafana
-  repository: https://grafana-community.github.io/helm-charts
-  version: 11.3.7
+  repository: https://grafana.github.io/helm-charts
+  version: 8.8.*
 - condition: windowsMonitoring.enabled
   name: prometheus-windows-exporter
   repository: https://prometheus-community.github.io/helm-charts
-  version: 0.12.*
+  version: 0.7.*
 description: kube-prometheus-stack collects Kubernetes manifests, Grafana dashboards,
   and Prometheus rules combined with documentation and scripts to provide easy to
   operate end-to-end Kubernetes cluster monitoring with Prometheus using the Prometheus
@@ -41,7 +39,7 @@ keywords:
 - operator
 - prometheus
 - kube-prometheus
-kubeVersion: '>=1.25.0-0'
+kubeVersion: '>=1.19.0-0'
 maintainers:
 - email: andrew@quadcorps.co.uk
   name: andrewgkew
@@ -58,6 +56,9 @@ maintainers:
 - email: github@jkroepke.de
   name: jkroepke
   url: https://github.com/jkroepke
+- email: scott@r6by.com
+  name: scottrigby
+  url: https://github.com/scottrigby
 - email: miroslav.hadzhiev@gmail.com
   name: Xtigyro
   url: https://github.com/Xtigyro
@@ -69,4 +70,4 @@ sources:
 - https://github.com/prometheus-community/helm-charts
 - https://github.com/prometheus-operator/kube-prometheus
 type: application
-version: 82.18.0
+version: 69.0.0

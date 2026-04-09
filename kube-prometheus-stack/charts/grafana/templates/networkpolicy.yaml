@@ -52,10 +52,6 @@ spec:
         - namespaceSelector:
             {{- toYaml . | nindent 12 }}
         {{- end }}
-        {{- range .Values.networkPolicy.explicitIpBlocks }}
-        - ipBlock:
-            cidr: {{ . | quote }}
-        {{- end }}
         - podSelector:
             matchLabels:
               {{- include "grafana.labels" . | nindent 14 }}

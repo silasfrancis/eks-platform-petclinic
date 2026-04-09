@@ -1,10 +1,10 @@
 {{- $kubeTargetVersion := default .Capabilities.KubeVersion.GitVersion .Values.kubeTargetVersionOverride }}
-{{- if and .Values.alertmanager.enabled .Values.alertmanager.service.enabled }}
+{{- if .Values.alertmanager.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ template "kube-prometheus-stack.fullname" . }}-alertmanager
-  namespace: {{ template "kube-prometheus-stack-alertmanager.namespace" . }}
+  namespace: {{ template "kube-prometheus-stack.namespace" . }}
   labels:
     app: {{ template "kube-prometheus-stack.name" . }}-alertmanager
     self-monitor: {{ .Values.alertmanager.serviceMonitor.selfMonitor | quote }}

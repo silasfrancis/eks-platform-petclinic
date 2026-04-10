@@ -16,24 +16,11 @@ variable "node_role_arn" {
   type = string
 }
 
-variable "subnet_ids_for_cluster" {
+variable "private_subnets" {
   type = list(string)
 }
 
-variable "subnet_ids_node_group" {
-  type = list(string)
-}
-
-variable "node_scaling_config" {
-    type = object({
-      desired_size = number
-      max_size = number
-      min_size = number
-    })
-  
-}
-
-variable "eks_security_group_id" {
+variable "eks_node_sg_id" {
     type = string
 }
 

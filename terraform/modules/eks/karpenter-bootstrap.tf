@@ -2,7 +2,7 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
   cluster_name    = aws_eks_cluster.main_cluster.name
   node_group_name = "${var.env}-${var.app}-karpenter-bootstrap"
   node_role_arn   = var.node_role_arn
-  subnet_ids      = var.subnet_ids_node_group
+  subnet_ids      = var.private_subnets
   ami_type        = "CUSTOM"
 
   launch_template {
@@ -41,4 +41,17 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
   lifecycle {
     ignore_changes = [scaling_config[0].desired_size]
   }
+}
+
+resource "aws_ec2_tag" "karpenter_subnets" {
+  for_each    = toset(var.private_subnets)
+  resource_id = each.value
+  key         = "karpenter.sh/discovery"
+  value       = aws_eks_cluster.main_cluster.name
+}
+
+resource "aws_ec2_tag" "karpenter_sg" {
+  resource_id = var.eks_node_sg_id
+  key   = "karpenter.sh/discovery"
+  value = aws_eks_cluster.main_cluster.name
 }

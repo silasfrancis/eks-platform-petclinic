@@ -25,3 +25,18 @@ output "cluster_ca_cert" {
 output "oidc_arn" {
   value = aws_iam_openid_connect_provider.eks.arn
 }
+
+output "irsa_role_arns" {
+  description = "Map of IRSA role names to their ARNs"
+  value = {
+    for k, v in aws_iam_role.irsa : k => v.arn
+  }
+}
+
+output "karpenter_interruption_queue_name" {
+  value = aws_sqs_queue.karpenter_interruption.name
+}
+
+output "karpenter_interruption_queue_arn" {
+  value = aws_sqs_queue.karpenter_interruption.arn
+}

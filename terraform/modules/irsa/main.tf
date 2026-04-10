@@ -2,10 +2,24 @@ locals {
   irsa_roles = {
     app_secrets = {
       namespace = "petclinic"
-      sas       = ["config-server-sa", "customers-service-sa", "visits-service-sa", "vets-service-sa", "genai-service-sa", "db-migration-sa"]
+      sas       = [
+        "config-server-sa", 
+        "customers-service-sa", 
+        "visits-service-sa", 
+        "vets-service-sa", 
+        "genai-service-sa", 
+        "db-migration-sa"
+      ]
       policy    = {
-        actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret", "secretsmanager:GetResourcePolicy", "secretsmanager:ListSecretVersionIds"]
-        resources = ["arn:aws:secretsmanager:*:*:secret:${var.app_secret_name}*"]
+        actions   = [
+          "secretsmanager:GetSecretValue", 
+          "secretsmanager:DescribeSecret", 
+          "secretsmanager:GetResourcePolicy", 
+          "secretsmanager:ListSecretVersionIds"
+        ]
+        resources = [
+          "arn:aws:secretsmanager:*:*:secret:${var.app_secret_name}*"
+        ]
       }
     }
 
@@ -13,12 +27,23 @@ locals {
       namespace = "monitoring"
       sas       = ["loki-sa"]
       policy    = {
-        actions   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        resources = [var.loki_bucket_arn, "${var.loki_bucket_arn}/*"]
+        actions   = [
+          "s3:ListBucket", 
+          "s3:GetObject", 
+          "s3:PutObject", 
+          "s3:DeleteObject"
+        ]
+        resources = [
+          var.loki_bucket_arn, 
+          "${var.loki_bucket_arn}/*"
+        ]
       }
       extra_statements = [{
         Effect   = "Allow"
-        Action   = ["kms:GenerateDataKey", "kms:Decrypt"]
+        Action   = [
+          "kms:GenerateDataKey", 
+          "kms:Decrypt"
+        ]
         Resource = [var.data_storage_kms_key_arn]
       }]
     }
@@ -27,7 +52,12 @@ locals {
       namespace = "monitoring"
       sas       = ["cloudwatch-exporter-sa"]
       policy    = {
-        actions   = ["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics", "tag:GetResources"]
+        actions   = [
+          "cloudwatch:GetMetricData", 
+          "cloudwatch:GetMetricStatistics", 
+          "cloudwatch:ListMetrics", 
+          "tag:GetResources"
+        ]
         resources = ["*"]
       }
     }

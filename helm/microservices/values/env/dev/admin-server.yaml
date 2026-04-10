@@ -60,6 +60,13 @@ deployment:
   enabled: true
   name: admin-server-deployment
   spec:
+    tolerations:
+      - key: spot
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    nodeSelector:
+      node-type: spot
     replicas: 1
     hostPID: false
     hostIPC: false
@@ -75,6 +82,15 @@ deployment:
       maxSurge: 25%
       maxUnavailable: 0
 
+# affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#         - matchExpressions:
+#             - key: node-type
+#               operator: In
+#               values: ["on-demand"]
+              
 argoRollout:
   enabled: false
 

@@ -1,4 +1,3 @@
-# platform/templates/karpenter/ec2nodeclass.yaml
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:

@@ -9,48 +9,33 @@ spec:
     metadata:
       labels:
         node-type: spot
-        workload-tier: dev
-
+        workload-tier: {{ .Values.workloadTier }}
     spec:
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
-        name: default
-
-      # ---- Cilium startup taint --------------------------
+        name: ${ENV}-${APP}-node-class
       startupTaints:
         - key: node.cilium.io/agent-not-ready
           value: "true"
           effect: NoExecute
-
-      # ---- SPOT taint ------------------------------------
-      # Only pods that explicitly tolerate SPOT land here
       taints:
         - key: spot
           value: "true"
           effect: NoSchedule
-
-      # ---- Requirements ----------------------------------
       requirements:
         - key: kubernetes.io/arch
           operator: In
           values: ["arm64"]
-
         - key: kubernetes.io/os
           operator: In
           values: ["linux"]
-
-        # SPOT only
         - key: karpenter.sh/capacity-type
           operator: In
           values: ["spot"]
-
-        # Wider instance family selection for SPOT
-        # More diversity = better SPOT availability
         - key: karpenter.k8s.aws/instance-category
           operator: In
           values: ["t", "m", "c", "r"]
-
         - key: karpenter.k8s.aws/instance-family
           operator: In
           values:
@@ -59,46 +44,30 @@ spec:
             - m7g
             - c6g
             - c7g
-            - r6g     # memory optimized — good for JVM workloads
+            - r6g     
             - r7g
-
         - key: karpenter.k8s.aws/instance-generation
           operator: Gte
           values: ["6"]
-
         - key: karpenter.k8s.aws/instance-hypervisor
           operator: In
           values: ["nitro"]
-
         - key: topology.kubernetes.io/zone
           operator: In
           values:
             - us-east-2a
             - us-east-2b
             - us-east-2c
-
-      # ---- Node lifetime ---------------------------------
-      # Recycle SPOT nodes every 24h — reduces blast radius
-      # of long-running SPOT nodes getting interrupted
       expireAfter: 24h
-
       terminationGracePeriod: 24h
-
-  # ---- Disruption ----------------------------------------
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 5m    # more aggressive than ON_DEMAND
-
-    # No business hours protection — SPOT is interruptible anyway
+    consolidateAfter: 5m
     budgets:
-      - nodes: "20%"    # can disrupt up to 20% at once
-
-  # ---- Limits --------------------------------------------
+      - nodes: "20%"
   limits:
-    cpu: "10"
-    memory: 40Gi
-    nodes: 4         # max 4 SPOT nodes
+    cpu: "6"
+    memory: 12Gi
+    nodes: 3
 
-  # ---- Weight --------------------------------------------
-  # Lower weight = only used when pods explicitly target SPOT
   weight: 1

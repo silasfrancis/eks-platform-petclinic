@@ -1,0 +1,49 @@
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: karpenter-leader-election
+spec:
+  priorityLevelConfiguration:
+    name: exempt
+  matchingPrecedence: 1
+  rules:
+    - subjects:
+        - kind: ServiceAccount
+          serviceAccount:
+            name: karpenter
+            namespace: karpenter
+      resourceRules:
+        - verbs: ["*"]
+          apiGroups: ["*"]
+          resources: ["*"]
+          namespaces: ["*"]
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: karpenter-workload
+spec:
+  priorityLevelConfiguration:
+    name: workload-high
+  matchingPrecedence: 9000
+  rules:
+    - subjects:
+        - kind: ServiceAccount
+          serviceAccount:
+            name: karpenter
+            namespace: karpenter
+      resourceRules:
+        - verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          apiGroups:
+            - karpenter.sh
+            - karpenter.k8s.aws
+          resources: ["*"]
+          namespaces: ["*"]
+        - verbs: ["get", "list", "watch"]
+          apiGroups: [""]
+          resources:
+            - nodes
+            - pods
+            - persistentvolumeclaims
+            - persistentvolumes
+          namespaces: ["*"]

@@ -1,0 +1,109 @@
+# platform/templates/karpenter/nodepool-ondemand.yaml
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: on-demand
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    metadata:
+      labels:
+        node-type: on-demand
+        workload-tier: production
+
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+
+      # ---- Cilium startup taint --------------------------
+      # Cilium must configure networking before other pods start
+      # Karpenter removes this taint once Cilium agent is ready
+      startupTaints:
+        - key: node.cilium.io/agent-not-ready
+          value: "true"
+          effect: NoExecute
+
+      # ---- Requirements ----------------------------------
+      requirements:
+        # ARM64/Graviton only
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+
+        # ON_DEMAND only for production workloads
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+
+        # Graviton instance categories
+        # t = burstable, m = general purpose, c = compute optimized
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["t", "m", "c"]
+
+        # Graviton instance families
+        # Wide selection = better availability + cost optimization
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values:
+            - t4g      # burstable — dev/test workloads
+            - m6g      # general purpose — petclinic services
+            - m7g      # latest gen general purpose
+            - c6g      # compute optimized — api-gateway
+            - c7g      # latest gen compute
+
+        # Generation 6+ only — avoid old instance types
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gte
+          values: ["6"]
+
+        # Nitro hypervisor only — better performance + security
+        - key: karpenter.k8s.aws/instance-hypervisor
+          operator: In
+          values: ["nitro"]
+
+        # Your EKS zones in us-east-2
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values:
+            - us-east-2a
+            - us-east-2b
+            - us-east-2c
+
+      # ---- Node lifetime ---------------------------------
+      # ON_DEMAND nodes live forever — only removed when empty
+      expireAfter: Never
+
+      # Grace period for draining before force delete
+      terminationGracePeriod: 48h
+
+  # ---- Disruption ----------------------------------------
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 10m    # wait 10m before consolidating
+
+    # Don't disrupt nodes during business hours
+    # Protects production workloads from unnecessary churn
+    budgets:
+      - nodes: "10%"          # max 10% of nodes at once normally
+      - schedule: "0 9 * * mon-fri"
+        duration: 8h
+        nodes: "0"            # no disruption during business hours
+
+  # ---- Limits --------------------------------------------
+  # Right-sized for 8 microservices + platform tooling
+  limits:
+    cpu: "20"        # ~5 x t4g.large equivalent
+    memory: 80Gi     # comfortable headroom
+    nodes: 6         # max 6 ON_DEMAND nodes
+
+  # ---- Weight --------------------------------------------
+  # Higher weight = preferred over SPOT for production pods
+  weight: 10

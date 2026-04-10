@@ -11,7 +11,7 @@ metadata:
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
-    kind: Deployment
+    kind: Deployment #Rollout  
     name: {{ .Values.deployment.name }}
   minReplicas: {{ .Values.horizontalPodAutoscaler.minReplicas }}
   maxReplicas: {{ .Values.horizontalPodAutoscaler.maxReplicas }}

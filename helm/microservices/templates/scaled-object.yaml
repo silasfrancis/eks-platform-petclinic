@@ -1,0 +1,64 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: genai-service
+  namespace: petclinic
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: genai-service
+  minReplicaCount: 0    
+  maxReplicaCount: 5    
+  idleReplicaCount: 0
+  pollingInterval: 30       
+  cooldownPeriod: 300       
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        metricName: istio_requests_total
+        threshold: "10"
+        query: |
+          sum(rate(istio_requests_total{
+            destination_service_name="genai-service",
+            destination_service_namespace="petclinic"
+          }[2m]))
+
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        metricName: cpu_usage
+        threshold: "70"
+        query: |
+          sum(rate(container_cpu_usage_seconds_total{
+            namespace="petclinic",
+            pod=~"genai-service.*",
+            container="genai-service"
+          }[2m])) 
+          / 
+          sum(kube_pod_container_resource_requests{
+            namespace="petclinic",
+            pod=~"genai-service.*",
+            resource="cpu"
+          }) * 100
+
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        metricName: memory_usage
+        threshold: "80"
+        query: |
+          sum(container_memory_working_set_bytes{
+            namespace="petclinic",
+            pod=~"genai-service.*",
+            container="genai-service"
+          })
+          /
+          sum(kube_pod_container_resource_requests{
+            namespace="petclinic",
+            pod=~"genai-service.*",
+            resource="memory"
+          }) * 100

@@ -29,3 +29,7 @@ dependencies:
   - name: karpenter
     version: "1.0.0"
     repository: oci://public.ecr.aws/karpenter
+
+  - name: keda
+    version: "2.19.0"
+    repository: https://kedacore.github.io/charts

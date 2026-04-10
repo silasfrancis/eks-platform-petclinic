@@ -1,6 +1,6 @@
 resource "aws_instance" "ec2_instance" {
   ami = data.aws_ami.al2023_arm.id
-  instance_type = var.instance_type
+  instance_type = "t4g.micro"
   subnet_id = var.public_subnet_id
   vpc_security_group_ids  = [var.ec2_security_group_id]
   iam_instance_profile = var.iam_instance_profile 

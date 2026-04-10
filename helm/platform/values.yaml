@@ -469,3 +469,42 @@ external-dns:
 
   serviceMonitor:
     enabled: true
+
+karpenter:
+  replicas: 1
+
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-karpenter-controller"
+
+  settings:
+    clusterName: "<your-cluster-name>"
+    clusterEndpoint: ""
+    interruptionQueue: "<cluster-name>-karpenter-interruption"
+
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: karpenter-bootstrap
+
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: kube-prometheus-stack
+
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  logLevel: info

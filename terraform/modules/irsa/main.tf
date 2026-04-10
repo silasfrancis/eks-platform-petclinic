@@ -1,80 +1,54 @@
-locals {
-  irsa_roles = {
-    app_secrets = {
-      namespace = "petclinic"
-      sas       = [
-        "config-server-sa", 
-        "customers-service-sa", 
-        "visits-service-sa", 
-        "vets-service-sa", 
-        "genai-service-sa", 
-        "db-migration-sa"
-      ]
-      policy    = {
-        actions   = [
-          "secretsmanager:GetSecretValue", 
-          "secretsmanager:DescribeSecret", 
-          "secretsmanager:GetResourcePolicy", 
-          "secretsmanager:ListSecretVersionIds"
-        ]
-        resources = [
-          "arn:aws:secretsmanager:*:*:secret:${var.app_secret_name}*"
-        ]
-      }
-    }
+resource "aws_iam_role" "irsa" {
+  for_each = local.irsa_roles
+  name     = "${var.env}-${var.cluster_name}-${each.key}-irsa"
 
-    loki = {
-      namespace = "monitoring"
-      sas       = ["loki-sa"]
-      policy    = {
-        actions   = [
-          "s3:ListBucket", 
-          "s3:GetObject", 
-          "s3:PutObject", 
-          "s3:DeleteObject"
-        ]
-        resources = [
-          var.loki_bucket_arn, 
-          "${var.loki_bucket_arn}/*"
-        ]
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Principal = { Federated = var.oidc_arn }
+      Condition = {
+        StringLike = {
+          "${var.oidc_url}:sub" = [
+            for sa in each.value.sas :
+            "system:serviceaccount:${each.value.namespace}:${sa}"
+          ]
+          "${var.oidc_url}:aud" = "sts.amazonaws.com"
+        }
       }
-      extra_statements = [{
+    }]
+  })
+  tags = {
+    system = "irsa"
+    env    = var.env
+  }
+}
+
+resource "aws_iam_policy" "irsa" {
+  for_each = local.irsa_roles
+  name     = "${var.env}-${var.cluster_name}-${each.key}-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat(
+      [{
         Effect   = "Allow"
-        Action   = [
-          "kms:GenerateDataKey", 
-          "kms:Decrypt"
-        ]
-        Resource = [var.data_storage_kms_key_arn]
-      }]
-    }
-
-    cloudwatch_exporter = {
-      namespace = "monitoring"
-      sas       = ["cloudwatch-exporter-sa"]
-      policy    = {
-        actions   = [
-          "cloudwatch:GetMetricData", 
-          "cloudwatch:GetMetricStatistics", 
-          "cloudwatch:ListMetrics", 
-          "tag:GetResources"
-        ]
-        resources = ["*"]
-      }
-    }
-
-  cluster_store = {
-    namespace = "external-secrets"
-    sas       = ["cluster-config-sa"]
-
-    policy = {
-      actions = [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret"
-      ]
-      resources = [
-        "arn:aws:secretsmanager:*:*:secret:${var.cluster_config_secret_name}*"
-      ]
-    }
+        Action   = each.value.policy.actions
+        Resource = each.value.policy.resources
+      }],
+      lookup(each.value, "extra_statements", [])
+    )
+  })
+  
+  tags = {
+    system = "irsa"
+    env    = var.env
   }
-  }
+}
+
+resource "aws_iam_role_policy_attachment" "irsa" {
+  for_each   = local.irsa_roles
+  role       = aws_iam_role.irsa[each.key].name
+  policy_arn = aws_iam_policy.irsa[each.key].arn
 }

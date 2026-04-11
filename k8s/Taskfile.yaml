@@ -62,14 +62,14 @@ tasks:
           --set updater.enabled=false \
           --set admissionController.enabled=false
   
-  install_goldilocks:
-    desc: Install Goldilocks for VPA recommendations
-    cmds:
-      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable
-      - |
-        helm install goldilocks fairwinds-stable/goldilocks \
-          -n goldilocks \
-          --create-namespace
+  # install_goldilocks:
+  #   desc: Install Goldilocks for VPA recommendations
+  #   cmds:
+  #     - helm repo add fairwinds-stable https://charts.fairwinds.com/stable
+  #     - |
+  #       helm install goldilocks fairwinds-stable/goldilocks \
+  #         -n goldilocks \
+  #         --create-namespace
 
   # install_karpenter_crds:
   #   desc: Install Karpenter CRDs
@@ -181,7 +181,16 @@ tasks:
           --set cleanupController.replicas=1 \
           --set reportsController.replicas=1
 
-
+  # install_trivy_operator:
+  #   desc: Install trivy operator for cluster scanning
+  #   cmds:
+  #     - helm repo add aqua https://aquasecurity.github.io/helm-charts/
+  #     - helm repo update
+  #     - | 
+  #       helm install trivy-operator aqua/trivy-operator \
+  #         --namespace trivy-system \
+  #         --create-namespace \
+  #         --version 0.32.1
 # microservices releases
   release_config_server:
     cmds:

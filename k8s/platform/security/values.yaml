@@ -68,3 +68,78 @@ externalSecret:
   #       property: email_password
 # Cloudfare token
 # grafana admin passsword
+
+trivy-operator:
+  targetNamespaces: "petclinic"
+  excludeNamespaces: "kube-system,kube-public,kube-node-lease,monitoring,karpenter,argocd,istio-system,istio-ingress,trivy-system,external-dns,cert-manager"
+  operator:
+    replicas: 1
+    vulnerabilityScannerScanOnlyCurrentRevisions: true
+    configAuditScannerScanOnlyCurrentRevisions: true
+    vulnerabilityScannerEnabled: true
+    configAuditScannerEnabled: true
+    rbacAssessmentScannerEnabled: true
+    infraAssessmentScannerEnabled: true
+    exposedSecretScannerEnabled: true
+    sbomGenerationEnabled: true
+    clusterComplianceEnabled: true
+    scannerReportTTL: "24h"
+    scanJobTimeout: 5m
+    scanJobsConcurrentLimit: 5
+    scanJobsRetryDelay: 30s
+    metricsFindingsEnabled: true
+    metricsVulnIdEnabled: false 
+  nodeSelector:
+    node-type: on-demand
+  trivyOperator:
+    scanJobTolerations:
+      - key: spot
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+
+    scanJobNodeSelector: {}   
+  trivy:
+    mode: Standalone
+    ignoreUnfixed: true
+    severity: MEDIUM,HIGH,CRITICAL
+    slow: true  
+    timeout: "5m0s"
+    useEmbeddedRegoPolicies: "true"
+    useBuiltinRegoPolicies: "false"
+    storageClassEnabled: true
+    storageClassName: "gp3"
+    storageSize: "5Gi"
+    ignoreFileName: ".trivyignore"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+      limits:
+        cpu: 500m
+        memory: 500Mi
+  nodeCollector:
+    tolerations:
+      - key: spot
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+  compliance:
+    cron: "0 */6 * * *"
+    reportType: summary
+    specs:
+      - eks-cis-1.4
+      - k8s-nsa-1.0
+      - k8s-pss-baseline-0.1
+  serviceMonitor:
+    enabled: true
+    namespace: trivy-system
+    labels:
+      release: kube-prometheus-stack
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

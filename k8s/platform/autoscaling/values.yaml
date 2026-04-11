@@ -60,3 +60,41 @@ keda:
       metricServer:
         create: true
         name: keda-metrics-server
+
+goldilocks:
+  vpa:
+    enabled: false
+  controller:
+    enabled: true
+
+    rbac:
+      create: true
+      enableArgoproj: true  
+    flags:
+      on-by-default: false 
+    nodeSelector:
+      node-type: on-demand
+
+    resources:
+      requests:
+        cpu: 25m
+        memory: 256Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
+  dashboard:
+    enabled: true
+    replicaCount: 1
+    excludeContainers: "istio-proxy,linkerd-proxy"
+    nodeSelector:
+      node-type: on-demand
+    resources:
+      requests:
+        cpu: 25m
+        memory: 256Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
+    ingress:
+      enabled: false
+  

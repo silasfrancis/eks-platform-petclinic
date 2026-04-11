@@ -9,3 +9,7 @@ dependencies:
   - name: keda
     version: "2.19.0"
     repository: https://kedacore.github.io/charts
+    
+  - name: goldilocks
+    version: "8.0.2"
+    repository: https://charts.fairwinds.com/stable

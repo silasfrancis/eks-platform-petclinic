@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trivy-ignore
+  namespace: trivy-system
+data:
+  .trivyignore: |
+    CVE-1970-0001
+    CVE-1970-0002

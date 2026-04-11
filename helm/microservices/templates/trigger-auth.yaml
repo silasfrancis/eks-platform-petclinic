@@ -1,0 +1,8 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: prometheus-auth
+  namespace: petclinic
+spec:
+  podIdentity:
+    provider: none

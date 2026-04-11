@@ -10,11 +10,12 @@ spec:
     apiVersion: argoproj.io/v1alpha1
     kind: Rollout
     name: genai-service
-  minReplicaCount: 0    
+  minReplicaCount: 0   
   maxReplicaCount: 5    
   idleReplicaCount: 0
-  pollingInterval: 30       
-  cooldownPeriod: 300       
+  pollingInterval: 30  
+  cooldownPeriod: 300
+  
   triggers:
     - type: prometheus
       metadata:
@@ -24,41 +25,28 @@ spec:
         query: |
           sum(rate(istio_requests_total{
             destination_service_name="genai-service",
-            destination_service_namespace="petclinic"
-          }[2m]))
-
+            destination_service_namespace="petclinic",
+            reporter="destination"
+          }[2m])) or vector(0)
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-        metricName: cpu_usage
+        metricName: cpu_utilization
         threshold: "70"
         query: |
-          sum(rate(container_cpu_usage_seconds_total{
-            namespace="petclinic",
-            pod=~"genai-service.*",
-            container="genai-service"
-          }[2m])) 
-          / 
-          sum(kube_pod_container_resource_requests{
-            namespace="petclinic",
-            pod=~"genai-service.*",
-            resource="cpu"
-          }) * 100
-
+          (
+            avg(rate(container_cpu_usage_seconds_total{namespace="petclinic",pod=~"genai-service.*",container="genai-service"}[2m])) 
+            / 
+            avg(kube_pod_container_resource_requests{namespace="petclinic",pod=~"genai-service.*",resource="cpu"})
+          ) * 100 or vector(0)
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-        metricName: memory_usage
+        metricName: memory_utilization
         threshold: "80"
         query: |
-          sum(container_memory_working_set_bytes{
-            namespace="petclinic",
-            pod=~"genai-service.*",
-            container="genai-service"
-          })
-          /
-          sum(kube_pod_container_resource_requests{
-            namespace="petclinic",
-            pod=~"genai-service.*",
-            resource="memory"
-          }) * 100
+          (
+            avg(container_memory_working_set_bytes{namespace="petclinic",pod=~"genai-service.*",container="genai-service"}) 
+            /
+            avg(kube_pod_container_resource_requests{namespace="petclinic",pod=~"genai-service.*",resource="memory"})
+          ) * 100 or vector(0)

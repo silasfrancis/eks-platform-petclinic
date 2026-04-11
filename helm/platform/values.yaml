@@ -562,6 +562,7 @@ keda:
 
     rbac:
       create: true
+      enabledCustomScaledRefKinds: true
 
     serviceAccount:
       operator:

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: petclinic
+  labels:
+    istio-injection: enabled
+    goldilocks.fairwinds.com/enabled: "true"
+    security: "enforced"
+
+--- 
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-ingress
+  labels:
+    istio-injection: enabled
+    goldilocks.fairwinds.com/enabled: "true"
+
+--- 
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring

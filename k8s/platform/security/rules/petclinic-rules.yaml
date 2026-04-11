@@ -1,0 +1,68 @@
+- required_engine_version: 0.57.0
+
+- required_plugin_versions:
+    - name: container
+      version: 0.4.0
+
+- list: petclinic_allowed_binaries
+  items: [java, tini, sh, bash, ps, ls, cat, grep]
+
+- list: petclinic_allowed_outbound_ports
+  items: [8080, 8081, 8082, 8083, 3306, 9090, 3100]
+
+- macro: is_petclinic
+  condition: k8s.ns.name = "petclinic" and container
+
+- macro: petclinic_java_process
+  condition: proc.name = "java"
+
+- rule: Shell spawned in petclinic container
+  desc: Detects when a shell (bash/sh) is started inside the petclinic namespace.
+  condition: spawned_process and is_petclinic and proc.name and shell_procs
+  output: >
+    Alert: Shell spawned in petclinic
+    (user=%user.name pod=%k8s.pod.name ns=%k8s.ns.name shell=%proc.name parent=%proc.pname cmdline=%proc.cmdline)
+  priority: CRITICAL
+  tags: [petclinic, shell]
+
+- rule: Unexpected outbound connection from petclinic
+  desc: Alerts if petclinic containers talk to external IPs on unusual ports.
+  condition: >
+    outbound and is_petclinic
+    and not (fd.sport in (petclinic_allowed_outbound_ports))
+    and not fd.sip.name in (rfc_1918_addresses)
+  output: >
+    Alert: Unexpected outbound connection
+    (pod=%k8s.pod.name ns=%k8s.ns.name connection=%fd.name cmdline=%proc.cmdline)
+  priority: WARNING
+  tags: [petclinic, network]
+
+- rule: Sensitive file read in petclinic
+  desc: Alerts if any process in the petclinic namespace tries to read sensitive system files.
+  condition: open_read and is_petclinic and fd.name in (sensitive_files)
+  output: >
+    Alert: Sensitive file access
+    (user=%user.name pod=%k8s.pod.name file=%fd.name cmdline=%proc.cmdline)
+  priority: ERROR
+  tags: [petclinic, file]
+
+- rule: Unexpected process in petclinic container
+  desc: Alerts if any binary runs that isn't on our approved "petclinic_allowed_binaries" list.
+  condition: spawned_process and is_petclinic and not proc.name in (petclinic_allowed_binaries)
+  output: >
+    Alert: Process Drift Detected
+    (proc=%proc.name parent=%proc.pname pod=%k8s.pod.name cmdline=%proc.cmdline)
+  priority: WARNING
+  tags: [petclinic, drift]
+
+- rule: Database credential file accessed in petclinic
+  desc: Alerts if something other than the Java app touches the mounted K8s secrets.
+  condition: >
+    open_read and is_petclinic
+    and fd.name startswith "/var/run/secrets"
+    and not petclinic_java_process
+  output: >
+    Alert: Possible Secret Theft Attempt
+    (proc=%proc.name pod=%k8s.pod.name file=%fd.name user=%user.name)
+  priority: ERROR
+  tags: [petclinic, credentials]

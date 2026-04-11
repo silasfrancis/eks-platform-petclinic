@@ -97,7 +97,14 @@ trivy-operator:
         operator: Equal
         value: "true"
         effect: NoSchedule
-
+    scanJobCustomVolumes:
+      - name: trivy-ignore
+        configMap:
+          name: trivy-ignore
+    scanJobCustomVolumesMount:
+      - name: trivy-ignore
+        mountPath: /etc/trivyignore
+        readOnly: true
     scanJobNodeSelector: {}   
   trivy:
     mode: Standalone
@@ -143,3 +150,237 @@ trivy-operator:
     limits:
       cpu: 500m
       memory: 512Mi
+
+falco:
+  driver:
+    enabled: true
+    kind: modern_ebpf
+    loader:
+      enabled: false
+  tty: true
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+    - key: spot
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+    - key: CriticalAddonsOnly
+      operator: Exists
+  collectors:
+    enabled: true
+    kubernetes:
+      enabled: true
+  metrics:
+    enabled: true
+    interval: 1h
+    rulesCountersEnabled: true
+    resourceUtilizationEnabled: true
+    stateCountersEnabled: true
+    kernelEventCountersEnabled: true
+    libbpfStatsEnabled: true
+    service:
+      create: true
+  falco:
+    json_output: true
+    json_include_output_property: true
+    json_include_output_fields_property: true
+    json_include_tags_property: true
+    http_output:
+      enabled: true
+      url: "http://{{ include \"falcosidekick.fullname\" . }}:2801"
+    priority: warning
+    log_level: info
+    stdout_output:
+      enabled: true
+    syslog_output:
+      enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+  serviceMonitor:
+    create: true
+    labels:
+      release: kube-prometheus-stack
+    interval: 15s
+  grafana:
+    dashboards:
+      enabled: true
+      configMaps:
+        falco:
+          name: falco-grafana-dashboard
+          namespace: monitoring
+          folder: "Security"
+  falcosidekick:
+    enabled: true
+    webui:
+      enabled: true
+    fullfqdn: false
+    config:
+      extraEnv:
+        - name: FALCOSIDEKICK_SLACK_WEBHOOKURL
+          valueFrom:
+            secretKeyRef:
+              name: falcosidekick-secrets 
+              key: slack_webhook_url
+      slack:
+        webhookurl: $(FALCOSIDEKICK_SLACK_WEBHOOKURL) 
+        channel: "#petclinic-security"
+        outputformat: all
+        minimumpriority: warning
+        messageformat: |
+          🚨 *Falco Alert* | {{ .Priority }} | {{ .Rule }}
+          *Output:* {{ .Output }}
+          *Pod:* {{ index .OutputFields "k8s.pod.name" }}
+          *Namespace:* {{ index .OutputFields "k8s.ns.name" }}
+          *Node:* {{ index .OutputFields "k8s.node.name" }}
+          *Time:* {{ .Time }}
+
+      prometheus:
+        extralabelsList:
+          - rule
+          - priority
+          - source
+      webui:
+        enabled: false  
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: kube-prometheus-stack
+  customRules:
+    petclinic-rules.yaml: |-
+
+      - rule: Shell spawned in petclinic container
+        desc: A shell was spawned inside a petclinic microservice container
+        condition: >
+          spawned_process
+          and container
+          and k8s.ns.name = "petclinic"
+          and proc.name in (shell_binaries)
+        output: >
+          Shell spawned in petclinic container
+          (user=%user.name pod=%k8s.pod.name ns=%k8s.ns.name
+          shell=%proc.name parent=%proc.pname cmdline=%proc.cmdline)
+        priority: CRITICAL
+        tags: [petclinic, shell, container]
+
+      # ---- Rule 2: Unexpected outbound connection ------------
+      # Petclinic services should only talk to known internal services
+      - rule: Unexpected outbound connection from petclinic
+        desc: A petclinic container made an unexpected outbound connection
+        condition: >
+          outbound
+          and container
+          and k8s.ns.name = "petclinic"
+          and not (fd.sport in (8080, 8081, 8082, 8083, 3306, 9090, 3100))
+          and not fd.sip.name in (rfc_1918_addresses)
+        output: >
+          Unexpected outbound connection from petclinic
+          (pod=%k8s.pod.name ns=%k8s.ns.name
+          connection=%fd.name cmdline=%proc.cmdline)
+        priority: WARNING
+        tags: [petclinic, network, outbound]
+
+      # ---- Rule 3: Sensitive file access --------------------
+      # No petclinic service should read /etc/passwd or similar
+      - rule: Sensitive file read in petclinic
+        desc: A petclinic container read a sensitive system file
+        condition: >
+          open_read
+          and container
+          and k8s.ns.name = "petclinic"
+          and fd.name in (sensitive_files)
+        output: >
+          Sensitive file read in petclinic container
+          (user=%user.name pod=%k8s.pod.name ns=%k8s.ns.name
+          file=%fd.name cmdline=%proc.cmdline)
+        priority: ERROR
+        tags: [petclinic, file, sensitive]
+
+      # ---- Rule 4: Privilege escalation attempt -------------
+      - rule: Privilege escalation attempt in petclinic
+        desc: A petclinic container attempted privilege escalation
+        condition: >
+          container
+          and k8s.ns.name = "petclinic"
+          and (evt.type = setuid or evt.type = setgid)
+          and not user.uid = 0
+          and proc.name != "java"
+        output: >
+          Privilege escalation attempt in petclinic
+          (user=%user.name pod=%k8s.pod.name ns=%k8s.ns.name
+          proc=%proc.name cmdline=%proc.cmdline)
+        priority: CRITICAL
+        tags: [petclinic, privilege, escalation]
+
+      # ---- Rule 5: Crypto mining detection ---------------
+      - rule: Crypto mining process in petclinic
+        desc: Detected a known crypto mining process in petclinic namespace
+        condition: >
+          spawned_process
+          and container
+          and k8s.ns.name = "petclinic"
+          and proc.name in (miners_binaries)
+        output: >
+          Crypto mining process detected in petclinic
+          (proc=%proc.name pod=%k8s.pod.name ns=%k8s.ns.name
+          cmdline=%proc.cmdline)
+        priority: CRITICAL
+        tags: [petclinic, crypto, mining]
+
+      # ---- Rule 6: Container escape attempt ---------------
+      - rule: Container escape attempt in petclinic
+        desc: Detected potential container escape in petclinic namespace
+        condition: >
+          container
+          and k8s.ns.name = "petclinic"
+          and (
+            (evt.type = mount and not proc.name in (mount_binaries))
+            or (evt.type = umount and not proc.name in (umount_binaries))
+          )
+        output: >
+          Container escape attempt detected
+          (proc=%proc.name pod=%k8s.pod.name ns=%k8s.ns.name
+          syscall=%evt.type cmdline=%proc.cmdline)
+        priority: CRITICAL
+        tags: [petclinic, escape, container]
+
+      # ---- Rule 7: Unexpected process in petclinic --------
+      # Only java should run in Spring Boot containers
+      - rule: Unexpected process in petclinic container
+        desc: A process other than java is running in a petclinic container
+        condition: >
+          spawned_process
+          and container
+          and k8s.ns.name = "petclinic"
+          and not proc.name in (java, sh, bash, tini, ps, ls, cat, grep)
+          and not proc.pname in (java, tini)
+        output: >
+          Unexpected process in petclinic container
+          (proc=%proc.name parent=%proc.pname pod=%k8s.pod.name
+          ns=%k8s.ns.name cmdline=%proc.cmdline)
+        priority: WARNING
+        tags: [petclinic, process, unexpected]
+
+      # ---- Rule 8: RDS credential file access ------------
+      # Alert if anything tries to read mounted DB secrets
+      - rule: Database credential file accessed in petclinic
+        desc: A petclinic container accessed a mounted database credential file
+        condition: >
+          open_read
+          and container
+          and k8s.ns.name = "petclinic"
+          and fd.name startswith "/var/run/secrets"
+          and not proc.name = "java"
+        output: >
+          Database credential file accessed by unexpected process
+          (proc=%proc.name pod=%k8s.pod.name ns=%k8s.ns.name
+          file=%fd.name user=%user.name)
+        priority: ERROR
+        tags: [petclinic, credentials, secrets]

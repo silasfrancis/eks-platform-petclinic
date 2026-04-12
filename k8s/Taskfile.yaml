@@ -353,3 +353,116 @@ tasks:
       - task: install_argo_rollouts
       - task: inject_envoy_petclinic
       - task: release_all
+
+    bootstrap:
+      desc: Full cluster bootstrap — run once
+      cmds:
+        - task: apply-namespaces
+        - task: apply-rbac
+        - task: install-crds
+        - task: install-argocd
+        - task: deploy-root-app
+
+    apply-namespaces:
+      desc: Create all namespaces
+      cmds:
+        - kubectl apply -f bootstrap/namespaces.yaml
+
+    apply-rbac:
+      desc: Apply cluster RBAC
+      cmds:
+        - kubectl apply -f bootstrap/rbac-global.yaml
+
+    # ============================================================
+    # CRD installation — before ArgoCD syncs
+    # ============================================================
+    install-crds:
+      desc: Install all CRDs
+      cmds:
+        - task: install-vpa-crds
+        - task: install-istio-crds
+
+    install-vpa-crds:
+      desc: Install VPA CRDs
+      cmds:
+        - kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml
+        - kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-rbac.yaml
+        - kubectl wait --for=condition=established crd/verticalpodautoscalers.autoscaling.k8s.io --timeout=60s
+
+    install-istio-crds:
+      desc: Install Istio CRDs
+      cmds:
+        - helm repo add istio https://istio-release.storage.googleapis.com/charts
+        - helm repo update
+        - helm upgrade --install istio-base istio/base -n istio-system --create-namespace --wait
+
+    # ============================================================
+    # ArgoCD installation
+    # ============================================================
+    install-argocd:
+      desc: Install ArgoCD via Helm
+      cmds:
+        - helm repo add argo https://argoproj.github.io/argo-helm
+        - helm repo update
+        - helm dependency update argocd/install/
+        - |
+          helm upgrade --install argocd argocd/install/ \
+            --namespace argocd \
+            --create-namespace \
+            --values argocd/install/values.yaml \
+            --wait \
+            --timeout 10m
+
+    # ============================================================
+    # Deploy root app — ArgoCD takes over from here
+    # ============================================================
+    deploy-root-app:
+      desc: Deploy root app — ArgoCD manages everything after this
+      cmds:
+        - kubectl apply -f argocd/apps/root-app.yaml
+        - echo "Root app deployed — ArgoCD will sync all applications"
+
+    # ============================================================
+    # Helm dependency updates
+    # ============================================================
+    deps:
+      desc: Update all Helm chart dependencies
+      cmds:
+        - helm dependency update argocd/install/
+        - helm dependency update platform/monitoring/
+        - helm dependency update platform/compute/
+        - helm dependency update platform/autoscaling/
+        - helm dependency update platform/security/
+        - helm dependency update platform/backup/
+        - helm dependency update platform/ingress/
+
+    # ============================================================
+    # Manual sync helpers — for debugging
+    # ============================================================
+    sync-all:
+      desc: Force sync all ArgoCD apps
+      cmds:
+        - argocd app sync --all
+
+    sync:
+      desc: Sync a specific app — usage task sync -- monitoring
+      cmds:
+        - argocd app sync petclinic-{{.CLI_ARGS}}
+
+    status:
+      desc: Check status of all ArgoCD apps
+      cmds:
+        - argocd app list
+
+    # ============================================================
+    # ArgoCD access
+    # ============================================================
+    argocd-password:
+      desc: Get initial ArgoCD admin password
+      cmds:
+        - kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d && echo
+
+    argocd-ui:
+      desc: Port-forward ArgoCD UI
+      cmds:
+        - kubectl port-forward svc/argocd-server -n argocd 8080:80

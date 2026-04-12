@@ -1,24 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: petclinic-autoscaling
+  name: petclinic-policies
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "3"    # deploy last — needs platform ready
 spec:
   project: default
 
   source:
     repoURL: https://github.com/silasfrancis/petclinic-gitops
     targetRevision: main
-    path: k8s/platform/autoscaling
+    path: k8s/policies
     helm:
       valueFiles:
         - values.yaml
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: autoscaling
+    namespace: petclinic
 
   syncPolicy:
     automated:
@@ -28,8 +28,21 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
     retry:
-      limit: 3
+      limit: 5
       backoff:
         duration: 30s
         factor: 2
-        maxDuration: 5m
+        maxDuration: 10m
+
+  ignoreDifferences:
+    # Argo Rollouts updates these dynamically
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /status
+    # KEDA updates HPA dynamically
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/metrics
+        - /spec/behavior

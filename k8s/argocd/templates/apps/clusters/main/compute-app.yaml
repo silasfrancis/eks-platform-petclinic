@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: petclinic-compute
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"    # needs to be early — provisions nodes
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/silasfrancis/petclinic-gitops
+    targetRevision: main
+    path: k8s/platform/compute
+    helm:
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true    # needed for Karpenter CRDs
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+
+  # Ignore Karpenter node status fields
+  ignoreDifferences:
+    - group: karpenter.sh
+      kind: NodePool
+      jsonPointers:
+        - /status
+    - group: karpenter.k8s.aws
+      kind: EC2NodeClass
+      jsonPointers:
+        - /status

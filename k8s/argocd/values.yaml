@@ -1,0 +1,299 @@
+argocd:
+  global:
+    domain: argocd.lefrancis.org
+
+    logging:
+      format: json
+      level: info
+
+    nodeSelector:
+      node-type: on-demand
+
+    affinity:
+      podAntiAffinity: soft
+      nodeAffinity:
+        type: hard
+
+  crds:
+    install: true
+    keep: true
+
+  configs:
+    cm:
+      timeout.reconciliation: 120s
+      timeout.reconciliation.jitter: 60s
+      admin.enabled: true
+      exec.enabled: true
+      resource.customizations.ignoreResourceUpdates.all: |
+        jsonPointers:
+          - /status
+      resource.customizations.ignoreResourceUpdates.argoproj.io_Rollout: |
+        jqPathExpressions:
+          - '.metadata.annotations."notified.notifications.argoproj.io"'
+      resource.exclusions: |
+        - apiGroups:
+          - ''
+          - discovery.k8s.io
+          kinds:
+          - Endpoints
+          - EndpointSlice
+        - apiGroups:
+          - coordination.k8s.io
+          kinds:
+          - Lease
+        - apiGroups:
+          - cilium.io
+          kinds:
+          - CiliumIdentity
+          - CiliumEndpoint
+          - CiliumEndpointSlice
+        - apiGroups:
+          - kyverno.io
+          - reports.kyverno.io
+          kinds:
+          - PolicyReport
+          - ClusterPolicyReport
+          - EphemeralReport
+          - ClusterEphemeralReport
+          - AdmissionReport
+          - ClusterAdmissionReport
+          - BackgroundScanReport
+          - ClusterBackgroundScanReport
+    repositories:
+      petclinic-gitops:
+        url: https://github.com/silasfrancis/spring_boot_micro_services
+        name: petclinic-gitops
+        type: git
+
+    rbac:
+      policy.default: role:readonly
+      policy.csv: |
+        p, role:admin, applications, *, */*, allow
+        p, role:admin, clusters, get, *, allow
+        p, role:admin, repositories, *, *, allow
+        p, role:admin, logs, get, *, allow
+        p, role:admin, exec, create, */*, allow
+        g, admin, role:admin
+      scopes: "[groups]"
+
+  server:
+    replicas: 1
+    nodeSelector:
+      node-type: on-demand
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    service:
+      type: ClusterIP
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          release: kube-prometheus-stack
+      rules:
+        enabled: true
+        additionalLabels:
+          release: kube-prometheus-stack
+        spec:
+          - alert: ArgoAppNotSynced
+            expr: argocd_app_info{sync_status!="Synced"} == 1
+            for: 12h
+            labels:
+              severity: warning
+            annotations:
+              summary: "ArgoCD app {{ $labels.name }} not synced for 12h"
+          - alert: ArgoAppHealthDegraded
+            expr: argocd_app_info{health_status!="Healthy"} == 1
+            for: 15m
+            labels:
+              severity: critical
+            annotations:
+              summary: "ArgoCD app {{ $labels.name }} health is {{ $labels.health_status }}"
+          - alert: ArgoAppMissing
+            expr: absent(argocd_app_info) == 1
+            for: 15m
+            labels:
+              severity: critical
+            annotations:
+              summary: "ArgoCD has no applications — may be down"
+
+  controller:
+    replicas: 1
+    nodeSelector:
+      node-type: on-demand
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          release: kube-prometheus-stack
+
+  repoServer:
+    replicas: 1
+
+    nodeSelector:
+      node-type: on-demand
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          release: kube-prometheus-stack
+
+  applicationSet:
+    replicas: 1
+
+    nodeSelector:
+      node-type: on-demand
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          release: kube-prometheus-stack
+
+  dex:
+    enabled: false
+  redis:
+    enabled: true
+
+    nodeSelector:
+      node-type: on-demand
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  redis-ha:
+    enabled: false
+  notifications:
+    enabled: true
+
+    nodeSelector:
+      node-type: on-demand
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          release: kube-prometheus-stack
+    secret:
+      create: false
+    notifiers:
+      service.slack: |
+        token: $slack-token
+
+    templates:
+      template.app-deployed: |
+        slack:
+          attachments: |
+            [{
+              "title": "✅ {{ .app.metadata.name }} deployed",
+              "title_link": "https://argocd.lefrancis.org/applications/{{ .app.metadata.name }}",
+              "color": "#18be52",
+              "fields": [
+                {"title": "Sync Status", "value": "{{ .app.status.sync.status }}", "short": true},
+                {"title": "Health", "value": "{{ .app.status.health.status }}", "short": true},
+                {"title": "Revision", "value": "{{ .app.status.sync.revision }}", "short": true}
+              ]
+            }]
+
+      template.app-health-degraded: |
+        slack:
+          attachments: |
+            [{
+              "title": "❌ {{ .app.metadata.name }} degraded",
+              "title_link": "https://argocd.lefrancis.org/applications/{{ .app.metadata.name }}",
+              "color": "#f4c030",
+              "fields": [
+                {"title": "Health", "value": "{{ .app.status.health.status }}", "short": true},
+                {"title": "Sync", "value": "{{ .app.status.sync.status }}", "short": true}
+              ]
+            }]
+
+      template.app-sync-failed: |
+        slack:
+          attachments: |
+            [{
+              "title": "🚨 {{ .app.metadata.name }} sync failed",
+              "title_link": "https://argocd.lefrancis.org/applications/{{ .app.metadata.name }}",
+              "color": "#E96D76",
+              "fields": [
+                {"title": "Error", "value": "{{ .app.status.operationState.message }}", "short": false}
+              ]
+            }]
+
+    triggers:
+      trigger.on-deployed: |
+        - description: Application synced and healthy
+          oncePer: app.status.sync.revision
+          send:
+            - app-deployed
+          when: >
+            app.status.operationState.phase in ['Succeeded']
+            and app.status.health.status == 'Healthy'
+
+      trigger.on-health-degraded: |
+        - description: Application health degraded
+          send:
+            - app-health-degraded
+          when: app.status.health.status == 'Degraded'
+
+      trigger.on-sync-failed: |
+        - description: Sync failed
+          send:
+            - app-sync-failed
+          when: app.status.operationState.phase in ['Error', 'Failed']
+
+    subscriptions:
+      - recipients:
+          - slack:#petclinic-gitops
+        triggers:
+          - on-deployed
+          - on-health-degraded
+          - on-sync-failed

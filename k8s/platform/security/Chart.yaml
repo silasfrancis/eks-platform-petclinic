@@ -13,3 +13,7 @@ dependencies:
   - name: falco
     version: "4.8.0"
     repository: https://falcosecurity.github.io/charts
+
+  - name: cert-manager
+    version: "1.20.1"
+    repository: https://charts.jetstack.io

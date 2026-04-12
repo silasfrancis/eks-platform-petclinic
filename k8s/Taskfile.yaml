@@ -10,10 +10,6 @@ env:
   ALB_IRSA_NAME: "aws-load-balancer-controller"
 
 tasks:
-  install_gateway_crds:
-    desc: Install Kubernetes Gateway API CRDs
-    cmd: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/{{.GATEWAY_API_VERSION}}/standard-install.yaml
-
 # istio
   add_istio_repo:
     desc: Add and update Istio Helm repo
@@ -103,10 +99,10 @@ tasks:
       - task: install_istiod
       - task: wait_for_istio
 
-# cert manager
-  install_cert_manager:
-    desc: Install cert manager for gateway TLS termination
-    cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
+# # cert manager
+#   install_cert_manager:
+#     desc: Install cert manager for gateway TLS termination
+#     cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
   
 # aws load balancer controller
   install_aws_load_balancer_controller:
@@ -168,7 +164,7 @@ tasks:
         helm install external-secrets \
           external-secrets/external-secrets \
             -n external-secrets \
-            --create-namespace 
+            --create-namespace
 
 # install kyverno
   install_kyverno:

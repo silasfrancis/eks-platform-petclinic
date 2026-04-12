@@ -256,3 +256,67 @@ falco:
   customRules:
     petclinic-rules.yaml: |
       {{ .Files.Get "rules/petclinic-rules.yaml" | indent 4 }}
+
+cert-manager:
+  crds:
+    enabled: true 
+    keep: true
+  global:
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+    logLevel: 2
+    rbac:
+      create: true
+      aggregateClusterRoles: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: true
+      namespace: monitoring
+      prometheusInstance: default
+      interval: 60s
+      scrapeTimeout: 30s
+      labels:
+        release: kube-prometheus-stack
+  webhook:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    hostNetwork: false
+    securePort: 10250
+    timeoutSeconds: 30
+  cainjector:
+    enabled: true
+    replicaCount: 1
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  startupapicheck:
+    enabled: true
+    timeout: 1m
+    backoffLimit: 4
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+  dns01RecursiveNameservers: "1.1.1.1:53,8.8.8.8:53"
+  dns01RecursiveNameserversOnly: false
+  enableCertificateOwnerRef: true

@@ -75,7 +75,7 @@ loadbalancer:
   enabled: true
   name: istio-ingressgateway
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-dev-istio-nlb"
+    service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
     service.beta.kubernetes.io/aws-load-balancer-type: "external"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-021845a2ee47579d9,subnet-0d277d84a61c8d17e"

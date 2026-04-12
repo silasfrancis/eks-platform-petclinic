@@ -7,10 +7,26 @@ env:
   ARGOCD_VERSION: "v3.3.2"
   ARGO_ROLLOUTS_VERSION: "v1.8.3"
   CLUSTER_NAME: "{{.ENV}}-petclinic-eks-cluster"
-  ALB_IRSA_NAME: "aws-load-balancer-controller"
 
 tasks:
-# istio
+  bootstrap:
+    desc: Full cluster bootstrap — run once
+    cmds:
+      - task: install_istio
+      - task: install_vpa
+      - task: install_external_secrets
+      - task: install_argo_rollouts
+      - task: install_argocd
+      - task: deploy_root_app
+
+  install_istio:
+    desc: Install full Istio stack — must exist before ArgoCD syncs ingress
+    cmds:
+      - task: add_istio_repo
+      - task: install_istio_base
+      - task: install_istiod
+      - task: wait_for_istio
+
   add_istio_repo:
     desc: Add and update Istio Helm repo
     cmds:
@@ -20,105 +36,76 @@ tasks:
   install_istio_base:
     desc: Install Istio base — CRDs and cluster-wide resources
     cmds:
-      - task: add_istio_repo
       - |
         helm upgrade --install istio-base istio/base \
           -n istio-system \
           --create-namespace \
           --version {{.ISTIO_VERSION}} \
           --set defaultRevision=default \
-          --wait \
-          --timeout 5m \
-          --atomic
+          --wait --timeout 5m --atomic
 
   install_istiod:
-    desc: Install Istiod — Istio control plane
+    desc: Install Istiod — control plane
     cmds:
       - |
         helm upgrade --install istiod istio/istiod \
           -n istio-system \
           --version {{.ISTIO_VERSION}} \
-          --wait \
-          --timeout 5m \
-          --atomic \
+          --wait --timeout 5m --atomic \
           --set pilot.resources.requests.cpu=100m \
           --set pilot.resources.requests.memory=256Mi \
           --set global.proxy.resources.requests.cpu=50m \
           --set global.proxy.resources.requests.memory=128Mi
-      - kubectl get pods -n istio-system
-
-  install_vpa:
-    desc: Install VPA (recommender only)
-    cmds:
-      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable
-      - |
-        helm upgrade --install vpa fairwinds-stable/vpa \
-          -n vpa-system \
-          --create-namespace \
-          --set updater.enabled=false \
-          --set admissionController.enabled=false
-  
-  # install_goldilocks:
-  #   desc: Install Goldilocks for VPA recommendations
-  #   cmds:
-  #     - helm repo add fairwinds-stable https://charts.fairwinds.com/stable
-  #     - |
-  #       helm install goldilocks fairwinds-stable/goldilocks \
-  #         -n goldilocks \
-  #         --create-namespace
-
-  # install_karpenter_crds:
-  #   desc: Install Karpenter CRDs
-  #   cmds: 
-  #   - |
-  #     kubectl apply -f https://raw.githubusercontent.com/aws/karpenter-provider-aws/{{.KARPENTER_VERSION}}/pkg/apis/crds/karpenter.sh_provisioners.yaml
-  #   - |
-  #     kubectl apply -f https://raw.githubusercontent.com/aws/karpenter-provider-aws/{{.KARPENTER_VERSION}}/pkg/apis/crds/karpenter.k8s.aws_awsnodetemplates.yaml
-      
-  install_keda_crds:
-    desc: install 
-    cmds:
-      - kubectl apply -f https://github.com/kedacore/keda/releases/download/v2.19.0/keda-2.19.0-crds.yaml
-
-  # install_keda:
-  #   desc: install 
-  #   cmds:
-  #     - helm repo add kedacore https://kedacore.github.io/charts  
-  #     - helm repo update
-  #     - helm install keda kedacore/keda -n keda --create-namespace
-
 
   wait_for_istio:
     desc: Wait for Istio control plane to be ready
     cmd: kubectl wait --for=condition=available deployment --all -n istio-system --timeout=180s
 
-  install_istio:
-    desc: Install full Istio stack — base + istiod 
+  install_vpa:
+    desc: Install VPA recommender — must exist before Goldilocks syncs
     cmds:
-      - task: install_istio_base
-      - task: install_istiod
-      - task: wait_for_istio
-
-# # cert manager
-#   install_cert_manager:
-#     desc: Install cert manager for gateway TLS termination
-#     cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
-  
-# aws load balancer controller
-  install_aws_load_balancer_controller:
-    cmds:     
-      - helm repo add eks https://aws.github.io/eks-charts
+      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable
       - helm repo update
       - |
-        helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-          --namespace kube-system \
-          --set clusterName={{.CLUSTER_NAME}} \
-          --set serviceAccount.create=false \
-          --set serviceAccount.name={{.ALB_IRSA_NAME}}
+        helm upgrade --install vpa fairwinds-stable/vpa \
+          -n vpa-system \
+          --create-namespace \
+          --set updater.enabled=false \
+          --set admissionController.enabled=false \
+          --wait
 
-# argo cd
+  install_external_secrets:
+    desc: Install ESO — must exist before ArgoCD syncs secrets
+    cmds:
+      - helm repo add external-secrets https://charts.external-secrets.io
+      - helm repo update
+      - |
+        helm upgrade --install external-secrets \
+          external-secrets/external-secrets \
+          -n external-secrets \
+          --create-namespace \
+          --wait
+
+  install_argo_rollouts:
+    desc: Install Argo Rollouts — needed by petclinic services
+    cmds:
+      - kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+      - |
+        kubectl apply -n argo-rollouts \
+          -f https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/install.yaml
+      - kubectl wait --for=condition=available deployment --all -n argo-rollouts --timeout=180s
+
+  install_argo_rollouts_plugin:
+    desc: Install Argo Rollouts kubectl plugin
+    cmds:
+      - |
+        curl -LO https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/kubectl-argo-rollouts-linux-amd64
+      - chmod +x kubectl-argo-rollouts-linux-amd64
+      - sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+      - kubectl argo rollouts version
+
   install_argocd:
-    desc: Install ArgoCD
+    desc: Install ArgoCD via raw manifest — Helm takes over after bootstrap
     cmds:
       - kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       - |
@@ -128,341 +115,36 @@ tasks:
           -f https://raw.githubusercontent.com/argoproj/argo-cd/{{.ARGOCD_VERSION}}/manifests/install.yaml
       - kubectl wait --for=condition=available deployment --all -n argocd --timeout=300s
 
+  deploy_root_app:
+    desc: Deploy root app — ArgoCD takes over everything from here
+    cmds:
+      - kubectl apply -f k8s/argocd/apps/root-app.yaml
+      - echo "Root app deployed — ArgoCD syncing all applications"
+
   argocd_password:
-    desc: Get the initial ArgoCD admin password
+    desc: Get initial ArgoCD admin password
     cmd: kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d && echo
 
   argocd_port_forward:
     desc: Port forward ArgoCD UI to localhost:8080
     cmd: kubectl port-forward svc/argocd-server -n argocd 8080:443
 
-# argo rollouts
-  install_argo_rollouts:
-    desc: Install Argo Rollouts controller
+  argocd_sync_all:
+    desc: Force sync all ArgoCD apps
+    cmd: argocd app sync --all
+
+  argocd_status:
+    desc: Check status of all ArgoCD apps
+    cmd: argocd app list
+
+  deps:
+    desc: Update all Helm chart dependencies
     cmds:
-      - kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
-      - |
-        kubectl apply -n argo-rollouts \
-          -f https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/install.yaml
-      - kubectl wait --for=condition=available deployment --all -n argo-rollouts --timeout=180s
-
-  install_argo_rollouts_plugin:
-    desc: Install Argo Rollouts kubectl plugin (Linux amd64)
-    cmds:
-      - |
-        curl -LO https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/kubectl-argo-rollouts-linux-amd64
-      - chmod +x kubectl-argo-rollouts-linux-amd64
-      - sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-      - kubectl argo rollouts version
-
-# external secrets
-  install_external_secrets_operator:
-    desc: Install External Secrets Operator
-    cmds:
-      - helm repo add external-secrets https://charts.external-secrets.io
-      - |
-        helm install external-secrets \
-          external-secrets/external-secrets \
-            -n external-secrets \
-            --create-namespace
-
-# install kyverno
-  install_kyverno:
-    desc: Install kyverno for cluster polcies
-    cmds: 
-      - |
-        helm install kyverno kyverno/kyverno -n kyverno --create-namespace \
-          --set admissionController.replicas=3 \
-          --set backgroundController.replicas=2 \
-          --set cleanupController.replicas=1 \
-          --set reportsController.replicas=1
-
-  # install_trivy_operator:
-  #   desc: Install trivy operator for cluster scanning
-  #   cmds:
-  #     - helm repo add aqua https://aquasecurity.github.io/helm-charts/
-  #     - helm repo update
-  #     - | 
-  #       helm install trivy-operator aqua/trivy-operator \
-  #         --namespace trivy-system \
-  #         --create-namespace \
-  #         --version 0.32.1
-# microservices releases
-  release_config_server:
-    cmds:
-      - |
-        helm upgrade --install config-server microservice \
-          -n petclinic \
-          --create-namespace \
-          -f microservice/values/env/{{.ENV}}/config-server.yaml \
-          --wait --timeout 5m --atomic
-
-  release_discovery_server:
-    cmds:
-      - |
-        helm upgrade --install discovery-server microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/discovery-server.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_db_migrations:
-    cmds:
-      - |
-        helm upgrade --install db-migrations microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/db-migrations.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_api_gateway:
-    cmds:
-      - |
-        helm upgrade --install api-gateway microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/api-gateway.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_customers_service:
-    cmds:
-      - |
-        helm upgrade --install customers-service microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/customers-service.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_visits_service:
-    cmds:
-      - |
-        helm upgrade --install visits-service microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/visits-service.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_vets_service:
-    cmds:
-      - |
-        helm upgrade --install vets-service microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/vets-service.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_genai_service:
-    cmds:
-      - |
-        helm upgrade --install genai-service microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/genai-service.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-  release_admin_server:
-    cmds:
-      - |
-        helm upgrade --install admin-server microservice \
-          -n petclinic \
-          -f microservice/values/env/{{.ENV}}/admin-server.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-# cluster configs
-
-# alb controller irsa
-  release_alb_controller_irsa:
-    cmds:
-      - |
-        helm upgrade --install irsa-alb-controller cluster-config/charts/cluster-config \
-          -n kube-system \
-          -f cluster-config/charts/cluster-config/values/env/{{.ENV}}/alb-controller.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-# cluster issuer
-  release_cluster_issuer:
-    cmds:
-      - |
-        helm upgrade --install cluster-issuer cluster-config/charts/cluster-config \
-          -f cluster-config/charts/cluster-config/values/env/{{.ENV}}/cluster-issuer.yaml \
-          --wait --timeout 5m 
-          # --atomic
-
-# platform
-
-# gateway
-  realease_gateway:
-    cmds:
-      - kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
-      - kubectl label namespace istio-ingress istio-injection=enabled --overwrite
-      - |
-        helm upgrade --install istio-ingressgateway platform/charts/gateway \
-          -n istio-ingress \
-          -f platform/charts/gateway/values/env/{{.ENV}}/gateway.yaml \
-          --wait --timeout 5m 
-          # --atomic
-          
-  release_all:
-    desc: Release all microservices in dependency order
-    cmds:
-      - task: release_config_server
-      - task: release_discovery_server
-      - task: release_db_migrations
-      - task: release_api_gateway
-      - task: release_customers_service
-      - task: release_visits_service
-      - task: release_vets_service
-      - task: release_genai_service
-      - task: release_admin_server
-
-  restart_deployments:
-    cmds:
-      # - kubectl rollout restart deployment/config-server-deployment -n petclinic
-      - kubectl rollout restart deployment/discovery-server-deployment -n petclinic
-      - kubectl rollout restart deployment/admin-server-deployment -n petclinic
-      - kubectl rollout status deployment/discovery-server-deployment -n petclinic
-      # - kubectl rollout status deployment/config-server-deployment -n petclinic
-      - kubectl rollout status deployment/admin-server-deployment -n petclinic
-
-  restart_rollouts:
-    cmds:
-    - kubectl argo rollouts restart api-gateway-rollout -n petclinic
-    - kubectl argo rollouts restart customers-service-rollout -n petclinic
-    - kubectl argo rollouts restart visits-service-rollout -n petclinic
-    - kubectl argo rollouts restart vets-service-rollout -n petclinic
-    - kubectl argo rollouts restart genai-service-rollout -n petclinic
-    - kubectl argo rollouts status api-gateway-rollout -n petclinic
-    - kubectl argo rollouts status customers-service-rollout -n petclinic
-    - kubectl argo rollouts status visits-service-rollout -n petclinic
-    - kubectl argo rollouts status vets-service-rollout -n petclinic
-    - kubectl argo rollouts status genai-service-rollout -n petclinic
-
-  restart_all:
-    cmds:
-      - task: restart_deployments
-      - task: restart_rollouts
-
-  bootstrap:
-    desc: Full platform setup
-    cmds:
-      - task: install_gateway_crds
-      - task: install_istio
-      - task: install_argocd
-      - task: install_argo_rollouts
-      - task: inject_envoy_petclinic
-      - task: release_all
-
-    bootstrap:
-      desc: Full cluster bootstrap — run once
-      cmds:
-        - task: apply-namespaces
-        - task: apply-rbac
-        - task: install-crds
-        - task: install-argocd
-        - task: deploy-root-app
-
-    apply-namespaces:
-      desc: Create all namespaces
-      cmds:
-        - kubectl apply -f bootstrap/namespaces.yaml
-
-    apply-rbac:
-      desc: Apply cluster RBAC
-      cmds:
-        - kubectl apply -f bootstrap/rbac-global.yaml
-
-    # ============================================================
-    # CRD installation — before ArgoCD syncs
-    # ============================================================
-    install-crds:
-      desc: Install all CRDs
-      cmds:
-        - task: install-vpa-crds
-        - task: install-istio-crds
-
-    install-vpa-crds:
-      desc: Install VPA CRDs
-      cmds:
-        - kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml
-        - kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-rbac.yaml
-        - kubectl wait --for=condition=established crd/verticalpodautoscalers.autoscaling.k8s.io --timeout=60s
-
-    install-istio-crds:
-      desc: Install Istio CRDs
-      cmds:
-        - helm repo add istio https://istio-release.storage.googleapis.com/charts
-        - helm repo update
-        - helm upgrade --install istio-base istio/base -n istio-system --create-namespace --wait
-
-    # ============================================================
-    # ArgoCD installation
-    # ============================================================
-    install-argocd:
-      desc: Install ArgoCD via Helm
-      cmds:
-        - helm repo add argo https://argoproj.github.io/argo-helm
-        - helm repo update
-        - helm dependency update argocd/install/
-        - |
-          helm upgrade --install argocd argocd/install/ \
-            --namespace argocd \
-            --create-namespace \
-            --values argocd/install/values.yaml \
-            --wait \
-            --timeout 10m
-
-    # ============================================================
-    # Deploy root app — ArgoCD takes over from here
-    # ============================================================
-    deploy-root-app:
-      desc: Deploy root app — ArgoCD manages everything after this
-      cmds:
-        - kubectl apply -f argocd/apps/root-app.yaml
-        - echo "Root app deployed — ArgoCD will sync all applications"
-
-    # ============================================================
-    # Helm dependency updates
-    # ============================================================
-    deps:
-      desc: Update all Helm chart dependencies
-      cmds:
-        - helm dependency update argocd/install/
-        - helm dependency update platform/monitoring/
-        - helm dependency update platform/compute/
-        - helm dependency update platform/autoscaling/
-        - helm dependency update platform/security/
-        - helm dependency update platform/backup/
-        - helm dependency update platform/ingress/
-
-    # ============================================================
-    # Manual sync helpers — for debugging
-    # ============================================================
-    sync-all:
-      desc: Force sync all ArgoCD apps
-      cmds:
-        - argocd app sync --all
-
-    sync:
-      desc: Sync a specific app — usage task sync -- monitoring
-      cmds:
-        - argocd app sync petclinic-{{.CLI_ARGS}}
-
-    status:
-      desc: Check status of all ArgoCD apps
-      cmds:
-        - argocd app list
-
-    # ============================================================
-    # ArgoCD access
-    # ============================================================
-    argocd-password:
-      desc: Get initial ArgoCD admin password
-      cmds:
-        - kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d && echo
-
-    argocd-ui:
-      desc: Port-forward ArgoCD UI
-      cmds:
-        - kubectl port-forward svc/argocd-server -n argocd 8080:80
+      - helm dependency update k8s/argocd/install/
+      - helm dependency update k8s/platform/monitoring/
+      - helm dependency update k8s/platform/compute/
+      - helm dependency update k8s/platform/autoscaling/
+      - helm dependency update k8s/platform/security/
+      - helm dependency update k8s/platform/backup/
+      - helm dependency update k8s/platform/ingress/
+      - helm dependency update k8s/policies/

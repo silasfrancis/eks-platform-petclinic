@@ -15,6 +15,12 @@ locals {
       exp_days     = 30
       versioning   = true
     }
+    
+    velero = {
+      id           = aws_s3_bucket.velero.id
+      exp_days     = 30
+      versioning   = true
+    }
   }
 }
 

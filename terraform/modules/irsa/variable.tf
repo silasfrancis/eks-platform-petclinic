@@ -29,3 +29,7 @@ variable "loki_bucket_arn" {
 variable "data_storage_kms_key_arn" {
   type = string
 }
+
+variable "velero_bucket_arn" {
+  type = string
+}

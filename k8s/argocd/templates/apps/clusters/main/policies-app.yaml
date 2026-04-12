@@ -4,7 +4,7 @@ metadata:
   name: petclinic-policies
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"    # deploy last — needs platform ready
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
 
@@ -18,7 +18,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: petclinic
+    namespace: kyverno
 
   syncPolicy:
     automated:
@@ -26,23 +26,20 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
+      - ServerSideApply=true 
     retry:
-      limit: 5
+      limit: 3
       backoff:
         duration: 30s
         factor: 2
-        maxDuration: 10m
+        maxDuration: 5m
 
   ignoreDifferences:
-    # Argo Rollouts updates these dynamically
-    - group: argoproj.io
-      kind: Rollout
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
       jsonPointers:
-        - /status
-    # KEDA updates HPA dynamically
-    - group: autoscaling
-      kind: HorizontalPodAutoscaler
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
       jsonPointers:
-        - /spec/metrics
-        - /spec/behavior
+        - /webhooks/0/clientConfig/caBundle

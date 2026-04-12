@@ -1,161 +1,247 @@
-# Default values for backup.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+velero:
+  nameOverride: "velero"
+  # ---- AWS plugin init container -------------------------
+  # Required — Velero doesn't bundle the AWS plugin
+  initContainers:
+    - name: velero-plugin-for-aws
+      image: velero/velero-plugin-for-aws:v1.13.1
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - mountPath: /target
+          name: plugins
 
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-replicaCount: 1
+  # ---- IRSA — no static credentials ---------------------
+  credentials:
+    useSecret: false    # IRSA handles auth — no key file needed
 
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
-image:
-  repository: nginx
-  # This sets the pull policy for images.
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  serviceAccount:
+    server:
+      create: true
+      name: velero
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-velero"
 
-# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-imagePullSecrets: []
-# This is to override the chart name.
-nameOverride: ""
-fullnameOverride: ""
+  # ---- Run on ON_DEMAND nodes ----------------------------
+  nodeSelector:
+    node-type: on-demand
 
-# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Automatically mount a ServiceAccount's API credentials?
-  automount: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+  # ---- Security context for IRSA -------------------------
+  podSecurityContext:
+    fsGroup: 1337    # required for IRSA token reading
 
-# This is for setting Kubernetes Annotations to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-podAnnotations: {}
-# This is for setting Kubernetes Labels to a Pod.
-# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-podLabels: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    readOnlyRootFilesystem: true
 
-podSecurityContext: {}
-  # fsGroup: 2000
+  # ---- Resources -----------------------------------------
+  resources:
+    requests:
+      cpu: 500m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+  # ---- Node agent — for PVC filesystem backups -----------
+  # Needed to backup Prometheus TSDB, Grafana, Loki PVCs
+  deployNodeAgent: true
 
-# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
-service:
-  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: ClusterIP
-  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 80
+  nodeAgent:
+    tolerations:
+      # Run on all nodes including SPOT
+      - key: spot
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      - key: CriticalAddonsOnly
+        operator: Exists
 
-# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1024Mi
 
-# -- Expose the service via gateway-api HTTPRoute
-# Requires Gateway API resources and suitable controller installed within the cluster
-# (see: https://gateway-api.sigs.k8s.io/guides/)
-httpRoute:
-  # HTTPRoute enabled.
-  enabled: false
-  # HTTPRoute annotations.
-  annotations: {}
-  # Which Gateways this Route is attached to.
-  parentRefs:
-  - name: gateway
-    sectionName: http
-    # namespace: default
-  # Hostnames matching HTTP header.
-  hostnames:
-  - chart-example.local
-  # List of rules and filters applied.
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /headers
-  #   filters:
-  #   - type: RequestHeaderModifier
-  #     requestHeaderModifier:
-  #       set:
-  #       - name: My-Overwrite-Header
-  #         value: this-is-the-only-value
-  #       remove:
-  #       - User-Agent
-  # - matches:
-  #   - path:
-  #       type: PathPrefix
-  #       value: /echo
-  #     headers:
-  #     - name: version
-  #       value: v2
+    podSecurityContext:
+      runAsUser: 0    # node-agent needs root for filesystem access
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+  # ---- Storage configuration -----------------------------
+  configuration:
+    uploaderType: kopia    # modern uploader — better than restic
 
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-livenessProbe:
-  httpGet:
-    path: /
-    port: http
-readinessProbe:
-  httpGet:
-    path: /
-    port: http
+    # Backup TTL default
+    defaultBackupTTL: 720h    # 30 days
 
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+    # Backup storage location — S3
+    backupStorageLocation:
+      - name: default
+        provider: aws
+        bucket: "<cluster-name>-velero-backups"
+        default: true
+        accessMode: ReadWrite
+        validationFrequency: 1h
+        config:
+          region: us-east-2
+          kmsKeyId: ""        # optional — leave empty for AES256
 
-# Additional volumes on the output Deployment definition.
-volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
+    # Volume snapshot location — EBS
+    volumeSnapshotLocation:
+      - name: default
+        provider: aws
+        config:
+          region: us-east-2
 
-# Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
+    # Server settings
+    logFormat: json
+    logLevel: info
+    backupSyncPeriod: 1m
+    defaultVolumesToFsBackup: false    # explicit opt-in per backup
+    garbageCollectionFrequency: 1h
 
-nodeSelector: {}
+  # ---- Backup schedules ----------------------------------
+  schedules:
 
-tolerations: []
+    # ---- Daily full cluster backup ----------------------
+    daily-cluster-backup:
+      disabled: false
+      schedule: "0 2 * * *"    # 2 AM daily
+      useOwnerReferencesInBackup: false
+      template:
+        ttl: "720h"             # keep 30 days
+        storageLocation: default
+        volumeSnapshotLocations:
+          - default
+        # Back up everything except noisy system namespaces
+        excludedNamespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+        # Include all resource types
+        includedResources: []
+        # Snapshot PVCs
+        snapshotVolumes: true
+        defaultVolumesToFsBackup: false
+        labels:
+          schedule: daily-cluster-backup
+          type: full
 
-affinity: {}
+    # ---- Hourly petclinic backup -----------------------
+    # More frequent backup for your app namespace
+    hourly-petclinic-backup:
+      disabled: false
+      schedule: "0 * * * *"    # every hour
+      useOwnerReferencesInBackup: false
+      template:
+        ttl: "168h"             # keep 7 days
+        storageLocation: default
+        includedNamespaces:
+          - petclinic
+        snapshotVolumes: true
+        defaultVolumesToFsBackup: false
+        labels:
+          schedule: hourly-petclinic-backup
+          type: petclinic
+
+    # ---- Daily monitoring backup -----------------------
+    # Backup Prometheus/Grafana/Loki PVCs with filesystem backup
+    daily-monitoring-backup:
+      disabled: false
+      schedule: "0 3 * * *"    # 3 AM daily
+      useOwnerReferencesInBackup: false
+      template:
+        ttl: "168h"             # keep 7 days
+        storageLocation: default
+        includedNamespaces:
+          - monitoring
+        snapshotVolumes: true
+        # Use filesystem backup for monitoring PVCs
+        defaultVolumesToFsBackup: true
+        labels:
+          schedule: daily-monitoring-backup
+          type: monitoring
+
+  # ---- Metrics -------------------------------------------
+  metrics:
+    enabled: true
+    scrapeInterval: 30s
+    scrapeTimeout: 10s
+
+    serviceMonitor:
+      enabled: true
+      autodetect: true
+      additionalLabels:
+        release: kube-prometheus-stack
+
+    nodeAgentPodMonitor:
+      enabled: true
+      autodetect: true
+      additionalLabels:
+        release: kube-prometheus-stack
+
+    # ---- PrometheusRule alerts --------------------------
+    prometheusRule:
+      enabled: true
+      autodetect: true
+      additionalLabels:
+        release: kube-prometheus-stack
+      spec:
+        # Alert when backup fails
+        - alert: VeleroBackupFailed
+          annotations:
+            summary: "Velero backup {{ $labels.schedule }} has failed"
+            description: "Velero backup schedule {{ $labels.schedule }} last status is not successful."
+          expr: velero_backup_last_status{schedule!=""} != 1
+          for: 15m
+          labels:
+            severity: critical
+
+        # Alert when backup has been failing for 12h
+        - alert: VeleroBackupFailing
+          annotations:
+            summary: "Velero backup {{ $labels.schedule }} has been failing for 12h"
+            description: "Velero backup schedule {{ $labels.schedule }} has been failing for the last 12 hours."
+          expr: velero_backup_last_status{schedule!=""} != 1
+          for: 12h
+          labels:
+            severity: critical
+
+        # Alert when no successful backup in 25h
+        - alert: VeleroNoNewBackup
+          annotations:
+            summary: "Velero backup {{ $labels.schedule }} has not run in 25h"
+            description: "Velero backup schedule {{ $labels.schedule }} has not run successfully in the last 25 hours."
+          expr: |
+            (
+              (time() - velero_backup_last_successful_timestamp{schedule!=""}) >bool (25 * 3600)
+              or
+              absent(velero_backup_last_successful_timestamp{schedule!=""})
+            ) == 1
+          for: 1h
+          labels:
+            severity: critical
+
+        # Alert on partial failures
+        - alert: VeleroBackupPartialFailures
+          annotations:
+            summary: "Velero backup {{ $labels.schedule }} has partial failures"
+            description: "Velero backup schedule {{ $labels.schedule }} has {{ $value | humanizePercentage }} partial failures."
+          expr: |
+            rate(velero_backup_partial_failure_total{schedule!=""}[25m])
+            / rate(velero_backup_attempt_total{schedule!=""}[25m]) > 0.25
+          for: 15m
+          labels:
+            severity: warning
+
+        # Alert when restore fails
+        - alert: VeleroRestoreFailed
+          annotations:
+            summary: "Velero restore {{ $labels.schedule }} has failed"
+            description: "A Velero restore operation has failed."
+          expr: velero_restore_failed_total > 0
+          for: 5m
+          labels:
+            severity: critical

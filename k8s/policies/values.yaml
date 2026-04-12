@@ -1,0 +1,124 @@
+kyverno:
+  global:
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+  crds:
+    install: true
+
+  config:
+    resourceFilters:
+      - '[Event,*,*]'
+      - '[*/*,kube-system,*]'
+      - '[*/*,kube-public,*]'
+      - '[*/*,kube-node-lease,*]'
+      - '[*/*,karpenter,*]'     
+      - '[*/*,argocd,*]'       
+      - '[*/*,monitoring,*]'   
+      - '[Node,*,*]'
+      - '[Node/?*,*,*]'
+      - '[APIService,*,*]'
+      - '[TokenReview,*,*]'
+      - '[SubjectAccessReview,*,*]'
+      - '[SelfSubjectAccessReview,*,*]'
+      - '[Binding,*,*]'
+      - '[ReplicaSet,*,*]'
+      - '[EphemeralReport,*,*]'
+      - '[ClusterEphemeralReport,*,*]'
+
+    webhooks:
+      namespaceSelector:
+        matchExpressions:
+          - key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+              - karpenter
+              - argocd
+
+    generateSuccessEvents: false
+  admissionController:
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+    container:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          memory: 384Mi
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack
+      interval: 30s
+      scrapeTimeout: 25s
+
+  backgroundController:
+    enabled: true
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack
+
+  cleanupController:
+    enabled: true
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack
+
+  reportsController:
+    enabled: true
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/os: linux
+      node-type: on-demand
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack
+
+  grafana:
+    enabled: true
+    namespace: monitoring 
+    labels:
+      grafana_dashboard: "1"
+
+  features:
+    backgroundScan:
+      enabled: true
+      backgroundScanInterval: 1h
+      backgroundScanWorkers: 2
+    policyExceptions:
+      enabled: false
+    autoUpdateWebhooks:
+      enabled: true

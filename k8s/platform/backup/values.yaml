@@ -1,7 +1,6 @@
 velero:
   nameOverride: "velero"
-  # ---- AWS plugin init container -------------------------
-  # Required — Velero doesn't bundle the AWS plugin
+
   initContainers:
     - name: velero-plugin-for-aws
       image: velero/velero-plugin-for-aws:v1.13.1
@@ -10,9 +9,8 @@ velero:
         - mountPath: /target
           name: plugins
 
-  # ---- IRSA — no static credentials ---------------------
   credentials:
-    useSecret: false    # IRSA handles auth — no key file needed
+    useSecret: false
 
   serviceAccount:
     server:
@@ -21,13 +19,10 @@ velero:
       annotations:
         eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-velero"
 
-  # ---- Run on ON_DEMAND nodes ----------------------------
   nodeSelector:
     node-type: on-demand
-
-  # ---- Security context for IRSA -------------------------
   podSecurityContext:
-    fsGroup: 1337    # required for IRSA token reading
+    fsGroup: 1337 
 
   containerSecurityContext:
     allowPrivilegeEscalation: false
@@ -35,7 +30,6 @@ velero:
       drop: ["ALL"]
     readOnlyRootFilesystem: true
 
-  # ---- Resources -----------------------------------------
   resources:
     requests:
       cpu: 500m
@@ -44,13 +38,10 @@ velero:
       cpu: 1000m
       memory: 512Mi
 
-  # ---- Node agent — for PVC filesystem backups -----------
-  # Needed to backup Prometheus TSDB, Grafana, Loki PVCs
   deployNodeAgent: true
 
   nodeAgent:
     tolerations:
-      # Run on all nodes including SPOT
       - key: spot
         operator: Equal
         value: "true"
@@ -67,18 +58,13 @@ velero:
         memory: 1024Mi
 
     podSecurityContext:
-      runAsUser: 0    # node-agent needs root for filesystem access
+      runAsUser: 0
 
-  # ---- Storage configuration -----------------------------
   configuration:
-    uploaderType: kopia    # modern uploader — better than restic
-
-    # Backup TTL default
-    defaultBackupTTL: 720h    # 30 days
-
-    # Backup storage location — S3
+    uploaderType: kopia
+    defaultBackupTTL: 720h
     backupStorageLocation:
-      - name: default
+      - name: petclinic-s3-backup
         provider: aws
         bucket: "<cluster-name>-velero-backups"
         default: true
@@ -86,58 +72,48 @@ velero:
         validationFrequency: 1h
         config:
           region: us-east-2
-          kmsKeyId: ""        # optional — leave empty for AES256
+          kmsKeyId: ""
 
-    # Volume snapshot location — EBS
     volumeSnapshotLocation:
-      - name: default
+      - name: petclinic-ebs-backup
         provider: aws
         config:
           region: us-east-2
 
-    # Server settings
     logFormat: json
     logLevel: info
     backupSyncPeriod: 1m
-    defaultVolumesToFsBackup: false    # explicit opt-in per backup
+    defaultVolumesToFsBackup: false
     garbageCollectionFrequency: 1h
 
-  # ---- Backup schedules ----------------------------------
   schedules:
-
-    # ---- Daily full cluster backup ----------------------
     daily-cluster-backup:
       disabled: false
-      schedule: "0 2 * * *"    # 2 AM daily
+      schedule: "0 2 * * *"
       useOwnerReferencesInBackup: false
       template:
-        ttl: "720h"             # keep 30 days
-        storageLocation: default
+        ttl: "720h"
+        storageLocation: petclinic-s3-backup
         volumeSnapshotLocations:
-          - default
-        # Back up everything except noisy system namespaces
+          - petclinic-ebs-backup
         excludedNamespaces:
           - kube-system
           - kube-public
           - kube-node-lease
-        # Include all resource types
         includedResources: []
-        # Snapshot PVCs
         snapshotVolumes: true
         defaultVolumesToFsBackup: false
         labels:
           schedule: daily-cluster-backup
           type: full
 
-    # ---- Hourly petclinic backup -----------------------
-    # More frequent backup for your app namespace
     hourly-petclinic-backup:
       disabled: false
-      schedule: "0 * * * *"    # every hour
+      schedule: "0 * * * *"
       useOwnerReferencesInBackup: false
       template:
-        ttl: "168h"             # keep 7 days
-        storageLocation: default
+        ttl: "168h"
+        storageLocation: petclinic-s3-backup
         includedNamespaces:
           - petclinic
         snapshotVolumes: true
@@ -146,25 +122,21 @@ velero:
           schedule: hourly-petclinic-backup
           type: petclinic
 
-    # ---- Daily monitoring backup -----------------------
-    # Backup Prometheus/Grafana/Loki PVCs with filesystem backup
     daily-monitoring-backup:
       disabled: false
       schedule: "0 3 * * *"    # 3 AM daily
       useOwnerReferencesInBackup: false
       template:
         ttl: "168h"             # keep 7 days
-        storageLocation: default
+        storageLocation: petclinic-s3-backup
         includedNamespaces:
           - monitoring
         snapshotVolumes: true
-        # Use filesystem backup for monitoring PVCs
         defaultVolumesToFsBackup: true
         labels:
           schedule: daily-monitoring-backup
           type: monitoring
 
-  # ---- Metrics -------------------------------------------
   metrics:
     enabled: true
     scrapeInterval: 30s
@@ -182,7 +154,6 @@ velero:
       additionalLabels:
         release: kube-prometheus-stack
 
-    # ---- PrometheusRule alerts --------------------------
     prometheusRule:
       enabled: true
       autodetect: true

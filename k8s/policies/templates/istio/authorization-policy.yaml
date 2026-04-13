@@ -1,0 +1,159 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: petclinic
+spec: {}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: api-gateway-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-ingress/sa/istio-ingressgateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: customers-service-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: customers-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: visits-service-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: visits-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: vets-service-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: vets-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: config-server-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: config-server
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+              - cluster.local/ns/petclinic/sa/customers-service
+              - cluster.local/ns/petclinic/sa/visits-service
+              - cluster.local/ns/petclinic/sa/vets-service
+              - cluster.local/ns/petclinic/sa/genai-service
+              - cluster.local/ns/petclinic/sa/admin-server
+              - cluster.local/ns/petclinic/sa/discovery-server
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: discovery-server-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: discovery-server
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+              - cluster.local/ns/petclinic/sa/customers-service
+              - cluster.local/ns/petclinic/sa/visits-service
+              - cluster.local/ns/petclinic/sa/vets-service
+              - cluster.local/ns/petclinic/sa/genai-service
+              - cluster.local/ns/petclinic/sa/admin-server
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: genai-service-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: genai-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: admin-server-authz
+  namespace: petclinic
+spec:
+  selector:
+    matchLabels:
+      app: admin-server
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway
+              - cluster.local/ns/petclinic/sa/discovery-server
+              - cluster.local/ns/petclinic/sa/config-server
+              - cluster.local/ns/petclinic/sa/genai-service
+              - cluster.local/ns/petclinic/sa/customers-service
+              - cluster.local/ns/petclinic/sa/visits-service
+              - cluster.local/ns/petclinic/sa/vets-service
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: petclinic
+spec:
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/monitoring/sa/kube-prometheus-stack-prometheus
+      to:
+        - operation:
+            paths: ["/actuator/prometheus"]
+            methods: ["GET"]

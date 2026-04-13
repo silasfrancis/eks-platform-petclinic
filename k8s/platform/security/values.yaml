@@ -255,7 +255,7 @@ falco:
         release: kube-prometheus-stack
   customRules:
     petclinic-rules.yaml: |
-      {{ .Files.Get "rules/petclinic-rules.yaml" | indent 4 }}
+      {{ .Files.Get "falco-rules/petclinic-rules.yaml" | indent 4 }}
 
 cert-manager:
   crds:

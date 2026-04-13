@@ -18,6 +18,7 @@ nodeSelector:
 
 service:
   port: 9090
+  targetPort: 9090
 
 podDisruptionBudget:
   enabled: true
@@ -25,16 +26,16 @@ podDisruptionBudget:
 
 probes:
   startup:
-    path: /actuator/health
+    path: /
     failureThreshold: 30
     periodSeconds: 10
   readiness:
-    path: /actuator/health
+    path: /
     initialDelaySeconds: 10
     periodSeconds: 5
     failureThreshold: 3
   liveness:
-    path: /actuator/health
+    path: /
     initialDelaySeconds: 30
     periodSeconds: 15
     failureThreshold: 3

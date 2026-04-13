@@ -11,8 +11,8 @@ spec:
   subsets:
     - name: stable
       labels:
-        role: stable
+        app: {{ .Values.appName }}
     - name: canary
       labels:
-        role: canary
+        app: {{ .Values.appName }}
 {{- end }}

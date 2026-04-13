@@ -13,7 +13,6 @@ appName: ""
 springProfile: ""
 
 image:
-  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: ""
   tag: ""
   digest: ""
@@ -47,7 +46,16 @@ securityContext: #security context for all containers
 podSecurityContext: #security context at the pod level
   runAsNonRoot: true
   seccompProfile:
-    type: RuntimeDefault
+    type: RuntimeDefault 
+
+workload:
+  minReadySeconds: 30
+  revisionHistoryLimit: 5
+
+podSpec:
+  hostPID: false
+  hostIPC: false
+  hostNetwork: false
 
 probes: # pod health checks can be overridden per service
   startup:
@@ -55,12 +63,12 @@ probes: # pod health checks can be overridden per service
     failureThreshold: 30
     periodSeconds: 10
   readiness:
-    path: /actuator/health/readiness
+    path: /actuator/health
     initialDelaySeconds: 10
     periodSeconds: 5
     failureThreshold: 3
   liveness:
-    path: /actuator/health/liveness
+    path: /actuator/health
     initialDelaySeconds: 60
     periodSeconds: 15
     failureThreshold: 3
@@ -88,7 +96,8 @@ affinity:
       - weight: 100
         podAffinityTerm:
           labelSelector:
-            matchLabels: {}    # populated by _helpers.tpl selectorLabels
+            matchLabels: 
+              {{- include "microservice.selectorLabels" . | nindent 17 }}
           topologyKey: kubernetes.io/hostname
 
 deployment: #deployment settings used when controller.type = deployment
@@ -97,11 +106,6 @@ deployment: #deployment settings used when controller.type = deployment
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
-  minReadySeconds: 30
-  revisionHistoryLimit: 5
-  hostPID: false
-  hostIPC: false
-  hostNetwork: false
 
 rollout: #rollout settings used when controller.type = rollout
   strategy:
@@ -125,16 +129,17 @@ rollout: #rollout settings used when controller.type = rollout
 
 service:
   enabled: true
-  port: 9090
-  targetPort: 9090
+  port: ""
+  targetPort: ""
   protocol: TCP
 
 virtualService: # virtual service config - for services undergoing rollout
   enabled: false
   host: ""     # stable service name or host e.g petclinic.lefrancis.org
-  gateway: istio-ingress/petclinic-gateway # only needed for externally exposed
+  gateway: ""  # ingress gateway name, defaults to 'mesh'
   prefix: /
   rewriteUri: /
+  routes: {} # additional routes for the virtual service if neccessary. defaults to the primary route used during rollout
 
 serviceAccount:
   create: true
@@ -159,21 +164,18 @@ podDisruptionBudget:
 # External Secrets
 secretStore:
   enabled: false
-  name: ""
   awsRegion: us-east-2
   annotations: {}
   
 externalSecret:
   enabled: false
   refreshInterval: 1h
-  secretStoreName: ""
-  secretStoreKind: SecretStore
   annotations: {}
-  target: ""             # name of the K8s secret to create
+  target: ""   # name of the K8s secret to create, defaults to <appName>-secrets
   data: []
   # - secretKey: DB_PASSWORD
   #   remoteRef:
-  #     key: petclinic/customers-service
+  #     key: dev/petclinic
   #     property: db_password
 
 # Database migration — Flyway job
@@ -188,3 +190,10 @@ databaseMigration:
   env:
     plain: {}
     secret: {}
+# metadata:
+#   annotations:
+#     helm.sh/hook: pre-install,pre-upgrade
+#     helm.sh/hook-weight: "-5"
+#     helm.sh/hook-delete-policy: before-hook-creation
+#     argocd.argoproj.io/hook: PreSync           # ← ArgoCD equivalent
+#     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation

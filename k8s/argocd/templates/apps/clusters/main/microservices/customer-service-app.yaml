@@ -1,4 +1,3 @@
-# customers-service-app.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -11,11 +10,11 @@ spec:
   source:
     repoURL: https://github.com/silasfrancis/petclinic-gitops
     targetRevision: main
-    path: k8s/microservice        # ← shared chart
+    path: k8s/microservice  
     helm:
       valueFiles:
-        - values.yaml                  # ← common base values
-        - values/env/dev/customers-service.yaml   # ← service specific
+        - values.yaml                
+        - values/env/dev/customers-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: petclinic

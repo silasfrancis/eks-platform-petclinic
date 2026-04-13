@@ -11,7 +11,7 @@ spec:
     {{- if .Values.virtualService.host }}
     - {{ .Values.virtualService.host }}    # external host
     {{- end }}
-    - {{ include "microservice.serviceName" . }}    # internal cluster routing
+    - {{ include "microservice.fqdn" . }}   # internal cluster routing
   {{- if .Values.virtualService.host }}
   gateways:
     - {{ .Values.virtualService.gateway }}
@@ -21,24 +21,27 @@ spec:
     - mesh    # internal only
   {{- end }}
   http:
+    {{- if .Values.virtualService.routes }}
+    {{- toYaml .Values.virtualService.routes | nindent 4 }}
+    {{- else }}
     - name: primary
       route:
         - destination:
-            host: {{ include "microservice.serviceName" . }}
+            host: {{ include "microservice.fqdn" . }}
             {{- if eq .Values.controller.type "rollout" }}
             subset: stable
             {{- end }}
             port:
               number: {{ .Values.service.port }}
           {{- if eq .Values.controller.type "rollout" }}
-          weight: 100    # Argo Rollouts manages this weight during canary
+          weight: 100
           {{- end }}
         {{- if eq .Values.controller.type "rollout" }}
         - destination:
-            host: {{ include "microservice.serviceName" . }}
+            host: {{ include "microservice.fqdn" . }}
             subset: canary
             port:
               number: {{ .Values.service.port }}
-          weight: 0    # starts at 0, Argo Rollouts increases during canary
+          weight: 0
         {{- end }}
 {{- end }}

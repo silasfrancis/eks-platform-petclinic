@@ -3,9 +3,9 @@ Full image reference using registry + repository + digest/tag
 */}}
 {{- define "microservice.image" -}}
 {{- if .Values.image.digest -}}
-{{- printf "%s/%s@%s" .Values.image.registry .Values.image.repository .Values.image.digest }}
+{{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
 {{- else -}}
-{{- printf "%s/%s:%s" .Values.image.registry .Values.image.repository .Values.image.tag }}
+{{- printf "%s:%s" .Values.image.repository .Values.image.tag }}
 {{- end -}}
 {{- end }}
 
@@ -70,9 +70,17 @@ Resource names
 {{- printf "%s-dr" .Values.appName }}
 {{- end }}
 
+{{- define "microservice.secretStoreName" -}}
+{{- printf "%s-secret-store" .Values.appName }}
+{{- end }}
+
 {{- define "microservice.externalSecretName" -}}
 {{- printf "%s-secrets" .Values.appName }}
 {{- end }}
+
+{{- define "microservice.fqdn" -}}
+{{- printf "%s.%s.svc.cluster.local" (include "microservice.serviceName" .) .Release.Namespace -}}
+{{- end -}}
 
 {{/*
 Common Spring Boot environment variables
@@ -81,22 +89,12 @@ Injected into every container
 {{- define "microservice.commonEnv" -}}
 - name: SPRING_PROFILES_ACTIVE
   value: {{ .Values.springProfile | default "kubernetes" | quote }}
-- name: SPRING_CONFIG_IMPORT
-  value: "optional:configserver:http://config-server-svc.petclinic.svc.cluster.local:8888"
-# - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-#   value: "http://discovery-server-svc.petclinic.svc.cluster.local:8761/eureka"
-# - name: POD_NAME
-#   valueFrom:
-#     fieldRef:
-#       fieldPath: metadata.name
-# - name: POD_NAMESPACE
-#   valueFrom:
-#     fieldRef:
-#       fieldPath: metadata.namespace
-{{- range $key, $val := .Values.env.plain }}
-- name: {{ $key }}
-  value: {{ $val | quote }}
-{{- end }}
+- name: CONFIG_SERVER_URL
+  value: "http://config-server-svc.petclinic.svc.cluster.local:8888"
+# {{- range $key, $val := .Values.env.plain }}
+# - name: {{ $key }}
+#   value: {{ $val | quote }}
+# {{- end }}
 # {{- if .Values.externalSecret.enabled }}
 # - name: placeholder
 # {{- end }}
@@ -114,14 +112,14 @@ startupProbe:
   periodSeconds: {{ .Values.probes.startup.periodSeconds | default 10 }}
 readinessProbe:
   httpGet:
-    path: {{ .Values.probes.readiness.path | default "/actuator/health/readiness" }}
+    path: {{ .Values.probes.readiness.path | default "/actuator/health" }}
     port: {{ .Values.containerPort | default 8080 }}
   initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds | default 10 }}
   periodSeconds: {{ .Values.probes.readiness.periodSeconds | default 5 }}
   failureThreshold: {{ .Values.probes.readiness.failureThreshold | default 3 }}
 livenessProbe:
   httpGet:
-    path: {{ .Values.probes.liveness.path | default "/actuator/health/liveness" }}
+    path: {{ .Values.probes.liveness.path | default "/actuator/health" }}
     port: {{ .Values.containerPort | default 8080 }}
   initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds | default 30 }}
   periodSeconds: {{ .Values.probes.liveness.periodSeconds | default 15 }}

@@ -1,105 +1,40 @@
-createNamespace: false
-namespace: petclinic
-
-selectorLabels:
-  app: admin-server
-
-serviceAccount:
-  enabled: false
-
-secretStore:
-  enabled: false
-
-externalSecret:
-  enabled: false
-
-databaseMigration:
-  enabled: false
+appName: admin-server
+containerPort: 9090
+springProfile: docker
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
-  tag: 'c84d2ef1'
-  digest: sha256:84f9ec014d75b55392305baa32b39beecf5667b036ec91b4b6a57f6c34ab4c51
+  repository: springboot/admin-server
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
 
-container:
-  name: admin-server
-  imagePullPolicy: IfNotPresent
-  port: 9090
-  readinessProbe:
-    path: /
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    runAsGroup: 65532
-    priviledged: false
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop: ["ALL"]
-  env:
-    plain:
-      SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server:8888
+controller:
+  type: deployment
 
-deployment:
-  enabled: true
-  name: admin-server-deployment
-  spec:
-    tolerations:
-      - key: spot
-        operator: Equal
-        value: "true"
-        effect: NoSchedule
-    nodeSelector:
-      node-type: spot
-    replicas: 1
-    hostPID: false
-    hostIPC: false
-    hostNetwork: false
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: "RuntimeDefault"
-    minReadySeconds: 30
-    revisionHistoryLimit: 5
-    strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 0
+replicaCount: 1
 
-# affinity:
-#   nodeAffinity:
-#     requiredDuringSchedulingIgnoredDuringExecution:
-#       nodeSelectorTerms:
-#         - matchExpressions:
-#             - key: node-type
-#               operator: In
-#               values: ["on-demand"]
-              
-argoRollout:
-  enabled: false
+nodeSelector:
+  node-type: on-demand
 
 service:
-  enabled: true
-  name: admin-server
   port: 9090
-  rolloutServices:
-    enabled: false
 
-virtualService:
-  enabled: false
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+probes:
+  startup:
+    path: /actuator/health
+    failureThreshold: 30
+    periodSeconds: 10
+  readiness:
+    path: /actuator/health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    failureThreshold: 3
+  liveness:
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    failureThreshold: 3

@@ -3,7 +3,9 @@ kind: AuthorizationPolicy
 metadata:
   name: deny-all
   namespace: petclinic
-spec: {}
+spec: 
+  action: DENY
+  rules: {}
 ---
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
@@ -14,6 +16,7 @@ spec:
   selector:
     matchLabels:
       app: api-gateway
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -29,6 +32,7 @@ spec:
   selector:
     matchLabels:
       app: customers-service
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -44,6 +48,7 @@ spec:
   selector:
     matchLabels:
       app: visits-service
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -59,6 +64,7 @@ spec:
   selector:
     matchLabels:
       app: vets-service
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -74,6 +80,7 @@ spec:
   selector:
     matchLabels:
       app: config-server
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -95,6 +102,7 @@ spec:
   selector:
     matchLabels:
       app: discovery-server
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -115,6 +123,7 @@ spec:
   selector:
     matchLabels:
       app: genai-service
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -130,6 +139,7 @@ spec:
   selector:
     matchLabels:
       app: admin-server
+  action: ALLOW
   rules:
     - from:
         - source:
@@ -148,6 +158,7 @@ metadata:
   name: allow-prometheus-scraping
   namespace: petclinic
 spec:
+  action: ALLOW
   rules:
     - from:
         - source:

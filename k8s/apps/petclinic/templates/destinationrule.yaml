@@ -1,0 +1,18 @@
+{{- if eq .Values.controller.type "rollout" }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ .Values.appName }}-dr
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  host: {{ include "microservice.serviceName" . }}
+  subsets:
+    - name: stable
+      labels:
+        role: stable
+    - name: canary
+      labels:
+        role: canary
+{{- end }}

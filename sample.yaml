@@ -1,0 +1,102 @@
+# templates/deployment.yaml
+{{- if eq .Values.controller.type "deployment" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "microservice.deploymentName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "microservice.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "microservice.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "microservice.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      nodeSelector:
+        {{- include "microservice.nodeSelector" . | nindent 8 }}
+      tolerations:
+        {{- include "microservice.tolerations" . | nindent 8 }}
+      affinity:
+        {{- include "microservice.affinity" . | nindent 8 }}
+      containers:
+        - name: {{ .Values.appName }}
+          image: {{ include "microservice.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          env:
+            {{- include "microservice.commonEnv" . | nindent 12 }}
+          {{- if .Values.externalSecret.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ include "microservice.externalSecretName" . }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- include "microservice.probes" . | nindent 10 }}
+{{- end }}
+
+---
+
+# templates/rollout.yaml
+{{- if eq .Values.controller.type "rollout" }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "microservice.rolloutName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  revisionHistoryLimit: {{ .Values.rollout.revisionHistoryLimit | default 5 }}
+  selector:
+    matchLabels:
+      {{- include "microservice.selectorLabels" . | nindent 6 }}
+  strategy:
+    canary:
+      {{- toYaml .Values.rollout.strategy.canary | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "microservice.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "microservice.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      nodeSelector:
+        {{- include "microservice.nodeSelector" . | nindent 8 }}
+      tolerations:
+        {{- include "microservice.tolerations" . | nindent 8 }}
+      affinity:
+        {{- include "microservice.affinity" . | nindent 8 }}
+      containers:
+        - name: {{ .Values.appName }}
+          image: {{ include "microservice.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          env:
+            {{- include "microservice.commonEnv" . | nindent 12 }}
+          {{- if .Values.externalSecret.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ include "microservice.externalSecretName" . }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- include "microservice.probes" . | nindent 10 }}
+{{- end }}

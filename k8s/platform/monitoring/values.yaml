@@ -51,6 +51,9 @@ kube-prometheus-stack:
       podMonitorSelectorNilUsesHelmValues: false
       podMonitorSelector: {}
       podMonitorNamespaceSelector: {}
+      podMetadata:
+        annotations:
+          traffic.sidecar.istio.io/includeOutboundIPRanges: "*"
 
       # Discover PrometheusRules in any namespace
       ruleSelectorNilUsesHelmValues: false

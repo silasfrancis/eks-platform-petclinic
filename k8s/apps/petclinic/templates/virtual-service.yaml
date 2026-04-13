@@ -1,20 +1,44 @@
 {{- if .Values.virtualService.enabled }}
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: {{ .Values.virtualService.name }}   
-  namespace: {{ .Values.namespace }}
+  name: {{ .Values.appName }}-vs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
 spec:
-  {{- with .Values.virtualService.spec.hosts }}
   hosts:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- if .Values.virtualService.spec.gatewayRef.enabled }}      
+    {{- if .Values.virtualService.host }}
+    - {{ .Values.virtualService.host }}    # external host
+    {{- end }}
+    - {{ include "microservice.serviceName" . }}    # internal cluster routing
+  {{- if .Values.virtualService.host }}
   gateways:
-    {{- toYaml .Values.virtualService.spec.gatewayRef.gateway | nindent 4 }}
-  {{- end }} 
-  {{- with .Values.virtualService.spec.http }}
-  http:
-    {{- toYaml . | nindent 4 }}
+    - {{ .Values.virtualService.gateway }}
+    - mesh    # also apply to internal mesh traffic
+  {{- else }}
+  gateways:
+    - mesh    # internal only
   {{- end }}
+  http:
+    - name: primary
+      route:
+        - destination:
+            host: {{ include "microservice.serviceName" . }}
+            {{- if eq .Values.controller.type "rollout" }}
+            subset: stable
+            {{- end }}
+            port:
+              number: {{ .Values.service.port }}
+          {{- if eq .Values.controller.type "rollout" }}
+          weight: 100    # Argo Rollouts manages this weight during canary
+          {{- end }}
+        {{- if eq .Values.controller.type "rollout" }}
+        - destination:
+            host: {{ include "microservice.serviceName" . }}
+            subset: canary
+            port:
+              number: {{ .Values.service.port }}
+          weight: 0    # starts at 0, Argo Rollouts increases during canary
+        {{- end }}
 {{- end }}

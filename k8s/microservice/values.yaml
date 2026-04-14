@@ -208,6 +208,9 @@ virtualService:
   rewriteUri: /   # rewrite URI before forwarding to destination
   routes: []      # additional routes — see api-gateway values for example
 
+destinationService:
+  enabled: false
+  
 # Service Account
 # IRSA annotations go here for services that need AWS API access.
 # Example:

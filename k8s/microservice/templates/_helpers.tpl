@@ -188,3 +188,29 @@ podAntiAffinity:
         topologyKey: {{ .Values.affinity.topologyKey | default "kubernetes.io/hostname" }}
 {{- end }}
 {{- end }}
+
+{{/*
+Rollout canary strategy
+*/}}
+{{- define "microservice.rolloutStrategy" -}}
+{{- if eq .Values.controller.type "rollout" }}
+canary: 
+  trafficRouting:
+    istio:
+      virtualService:
+        name: {{ include "microservice.vsName" . }}
+        routes:
+          - {{ .Values.rollout.strategy.canary.trafficRouting.istio.virtualService.route }}
+      destinationRule:
+        name: {{ include "microservice.drName" . }}          
+        stableSubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.stableSubsetName }}
+        canarySubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.canarySubsetName }}
+  steps:
+    {{- toYaml .Values.rollout.strategy.canary.steps | nindent 8 }}
+{{- end }}
+{{- else if eq .Values.controller.type "deployment" }}
+type: RollingUpdate
+rollingUpdate:
+  maxSurge: {{ .Values.deployment.spec.strategy.rollingUpdate.maxSurge }}
+  maxUnavailable: {{ .Values.deployment.spec.strategy.rollingUpdate.maxUnavailable }}
+{{- end }}

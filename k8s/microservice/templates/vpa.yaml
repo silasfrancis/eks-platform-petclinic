@@ -1,24 +1,34 @@
+{{- if and .Values.vpa.enabled (ne .Values.controller.type "job") }}
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: my-app-vpa
+  name: {{ include "microservice.vpaName" . }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
 spec:
   targetRef:
-    apiVersion: "apps/v1"
+    {{- if eq .Values.controller.type "rollout" }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ include "microservice.rolloutName" . }}
+    {{- else if eq .Values.controller.type "deployment" }}
+    apiVersion: apps/v1
     kind: Deployment
-    name: {{}}
+    name: {{ include "microservice.deploymentName" . }}
+    {{- end }}
   updatePolicy:
     updateMode: "Off"
   resourcePolicy:
     containerPolicies:
-    - containerName: "{{}}"
-      minAllowed:
-        cpu: 200m
-        memory: 512Mi
-      maxAllowed:
-        cpu: 700m
-        memory: 1Gi
-      controlledResources:
-      - cpu
-      - memory
-      controlledValues: RequestsAndLimits
+      - containerName: {{ .Values.appName }}
+        minAllowed:
+          cpu: {{ .Values.vpa.minAllowed.cpu | quote }}
+          memory: {{ .Values.vpa.minAllowed.memory | quote }}
+        maxAllowed:
+          cpu: {{ .Values.vpa.maxAllowed.cpu | quote }}
+          memory: {{ .Values.vpa.maxAllowed.memory | quote }}
+        controlledResources:
+          - cpu
+          - memory
+        controlledValues: RequestsAndLimits
+{{- end }}

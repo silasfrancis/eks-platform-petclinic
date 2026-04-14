@@ -2,7 +2,7 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: {{ .Values.appName }}-vs
+  name: {{ include "microservice.serviceName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "microservice.labels" . | nindent 4 }}

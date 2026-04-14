@@ -105,6 +105,9 @@ Resource names
 {{- printf "%s-scale-object" .Values.appName }}
 {{- end }}
 
+{{- define "microservice.vpaName" -}}
+{{- printf "%s-vpa" .Values.appName }}
+{{- end }}
 
 {{- define "microservice.fqdn" -}}
 {{- printf "%s.%s.svc.cluster.local" (include "microservice.serviceName" .) .Release.Namespace -}}

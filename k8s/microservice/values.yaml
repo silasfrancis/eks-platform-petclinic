@@ -204,6 +204,14 @@ virtualService:
   prefix: /       # URI prefix for the primary catch-all route
   rewriteUri: /   # rewrite URI before forwarding to destination
   routes: []      # additional routes — see api-gateway values for example
+# - name: example
+#   route:
+#     - destination:
+#         host: http://example-svc.petclinic.svc.cluster.local
+#         subset: stable
+#         port:
+#           number: 8000
+#     weight: 100
 
 destinationRule:
   enabled: false
@@ -246,11 +254,23 @@ scaleObject:
   idleReplicaCount: 0
   pollingInterval: 30
   cooldownPeriod: 300    # 5 minutes before scaling down
-  fallback:
+  fallback: # fallback to 1 (default) replica if metrics are unavailable
     failureThreshold: 3
     replicas: 1
   prometheusServer: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090 # prom server for metrics
   triggers: [] # additional triggers specified will be appended to the default triggers defined in _helpers.tpl
+
+# VPA used in Recommendation mode with Goldilocks
+# recources for each controller (deployment, rollout) can be updated based on Goldilocks recommendations
+vpa:
+  enabled: true
+# Default limits for Goldilocks/Recommendation mode
+  minAllowed:
+    cpu: 200m
+    memory: 512Mi
+  maxAllowed:
+    cpu: 700m
+    memory: 1Gi
 
 # PodDisruptionBudget
 # Prevents all replicas being evicted simultaneously during:

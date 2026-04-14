@@ -3,6 +3,7 @@ containerPort: 8080
 springProfile: docker
 
 image:
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: springboot/api-gateway
   tag: "c84d2ef1"
   digest: ""
@@ -18,6 +19,9 @@ service:
   targetPort: 8080
 
 hpa:
+  enabled: true
+
+vpa:
   enabled: true
 
 virtualService:

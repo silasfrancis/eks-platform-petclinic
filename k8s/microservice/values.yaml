@@ -263,7 +263,7 @@ scaleObject:
 # VPA used in Recommendation mode with Goldilocks
 # recources for each controller (deployment, rollout) can be updated based on Goldilocks recommendations
 vpa:
-  enabled: true
+  enabled: false
 # Default limits for Goldilocks/Recommendation mode
   minAllowed:
     cpu: 200m

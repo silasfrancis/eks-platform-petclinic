@@ -3,7 +3,8 @@ containerPort: 8084
 springProfile: docker,mysql
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
+  repository: springboot/genai-service
   tag: "c84d2ef1"
   digest: ""
   pullPolicy: IfNotPresent
@@ -42,4 +43,7 @@ externalSecret:
         property: openai_api_key
 
 virtualService:
+  enabled: true
+
+vpa:
   enabled: true

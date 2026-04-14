@@ -24,3 +24,8 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  ignoreDifferences:
+      - group: networking.istio.io
+        kind: VirtualService
+        jqPathExpressions:
+          - .spec.http[].route[].weight    # ignores ALL weight fields

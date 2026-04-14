@@ -9,39 +9,42 @@ metadata:
 spec:
   hosts:
     {{- if .Values.virtualService.host }}
-    - {{ .Values.virtualService.host }}    # external host
+    - {{ .Values.virtualService.host }} 
     {{- end }}
-    - {{ include "microservice.fqdn" . }}   # internal cluster routing
+    - {{ include "microservice.fqdn" . }}
   {{- if .Values.virtualService.host }}
   gateways:
     - {{ .Values.virtualService.gateway }}
-    - mesh    # also apply to internal mesh traffic
+    - mesh
   {{- else }}
   gateways:
-    - mesh    # internal only
+    - mesh
   {{- end }}
   http:
     {{- if .Values.virtualService.routes }}
     {{- toYaml .Values.virtualService.routes | nindent 4 }}
-    {{- else }}
+    {{- end }}
+    {{- if eq .Values.controller.type "rollout" }}
     - name: primary
       route:
         - destination:
             host: {{ include "microservice.fqdn" . }}
-            {{- if eq .Values.controller.type "rollout" }}
             subset: stable
-            {{- end }}
             port:
               number: {{ .Values.service.port }}
-          {{- if eq .Values.controller.type "rollout" }}
           weight: 100
-          {{- end }}
-        {{- if eq .Values.controller.type "rollout" }}
         - destination:
             host: {{ include "microservice.fqdn" . }}
             subset: canary
             port:
               number: {{ .Values.service.port }}
           weight: 0
-        {{- end }}
+    {{- else }}
+    - name: primary
+      route:
+        - destination:
+            host: {{ include "microservice.fqdn" . }}
+            port:
+              number: {{ .Values.service.port }}
+    {{- end }}
 {{- end }}

@@ -13,11 +13,21 @@ Full image reference using registry + repository + digest/tag
 Common labels
 */}}
 {{- define "microservice.labels" -}}
-app: {{ .Values.appName }}
-app.kubernetes.io/name: {{ .Values.appName }}
-app.kubernetes.io/version: {{ .Values.image.tag | quote }}
+app.kubernetes.io/name: {{ .Values.appName | default .Release.Name }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Values.image.tag | default "latest" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-app.kubernetes.io/part-of: petclinic
+{{- end }}
+
+{{/* Specific Annotations for Jobs/Hooks */}}
+{{- define "microservice.annotations" -}}
+{{- if eq .Values.controller.type "job" }}
+helm.sh/hook: pre-install,pre-upgrade
+helm.sh/hook-weight: "-5"
+helm.sh/hook-delete-policy: before-hook-creation
+argocd.argoproj.io/hook: PreSync
+argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+{{- end }}
 {{- end }}
 
 {{/*
@@ -78,6 +88,11 @@ Resource names
 {{- printf "%s-secrets" .Values.appName }}
 {{- end }}
 
+{{- define "microservice.scaleObjectName" -}}
+{{- printf "%s-scale-object" .Values.appName }}
+{{- end }}
+
+
 {{- define "microservice.fqdn" -}}
 {{- printf "%s.%s.svc.cluster.local" (include "microservice.serviceName" .) .Release.Namespace -}}
 {{- end -}}
@@ -88,16 +103,29 @@ Injected into every container
 */}}
 {{- define "microservice.commonEnv" -}}
 - name: SPRING_PROFILES_ACTIVE
-  value: {{ .Values.springProfile | default "kubernetes" | quote }}
+  value: {{ .Values.springProfile | default "docker" | quote }}
+
+{{/* Only inject config server URL for services that are NOT the config server */}}
+{{- if .Values.configServer.enabled }}
 - name: CONFIG_SERVER_URL
-  value: "http://config-server-svc.petclinic.svc.cluster.local:8888"
-# {{- range $key, $val := .Values.env.plain }}
-# - name: {{ $key }}
-#   value: {{ $val | quote }}
-# {{- end }}
-# {{- if .Values.externalSecret.enabled }}
-# - name: placeholder
-# {{- end }}
+  value: {{ .Values.configServer.url | default "http://config-server-svc.petclinic.svc.cluster.local:8888" | quote }}
+{{- end }}
+
+{{/* Pod metadata */}}
+- name: POD_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: POD_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+
+{{/* Service-specific plain env vars */}}
+{{- range $key, $val := .Values.env.plain }}
+- name: {{ $key }}
+  value: {{ $val | quote }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -148,10 +176,8 @@ node-type: spot
 {{- end }}
 {{- end }}
 
-{{/*
-Pod anti-affinity — spread pods across nodes
-*/}}
 {{- define "microservice.affinity" -}}
+{{- if .Values.affinity.enabled }}
 podAntiAffinity:
   preferredDuringSchedulingIgnoredDuringExecution:
     - weight: 100
@@ -159,5 +185,6 @@ podAntiAffinity:
         labelSelector:
           matchLabels:
             {{- include "microservice.selectorLabels" . | nindent 12 }}
-        topologyKey: kubernetes.io/hostname
+        topologyKey: {{ .Values.affinity.topologyKey | default "kubernetes.io/hostname" }}
+{{- end }}
 {{- end }}

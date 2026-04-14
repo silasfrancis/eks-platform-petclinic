@@ -1,132 +1,45 @@
-createNamespace: false
-namespace: petclinic
-
-selectorLabels:
-  app: genai-service
-
-serviceAccount:
-  enabled: true
-  name: genai-service-sa
-  annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-genai-service-sa-pod-secrets-reader"
-
-secretStore:
-  enabled: true
-  kind: SecretStore
-  name: genai-service-secret-store
-  awsRegion: us-east-2
-
-externalSecret:
-  enabled: true
-  name: genai-service-external-secret
-  refreshInterval: "5m"
-  target:
-    name: genai-service-secrets
-    creationPolicy: Owner
-  data:
-    - secretKey: OPENAI_API_KEY
-      remoteRef:
-        key: dev/springboot-microservices
-        property: OPENAI_API_KEY
-
-databaseMigration:
-  enabled: false
+appName: genai-service
+containerPort: 8084
+springProfile: docker,mysql
 
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/genai-service
-  tag: 'c84d2ef1'
-  digest: sha256:cda8f4c5ae6b4b90398938988997b0a78692c8aca63df6f61f643f5e249101a8
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
 
-container:
-  name: genai-service
-  imagePullPolicy: IfNotPresent
-  port: 8084
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 120
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 120
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    runAsGroup: 65532
-    priviledged: false
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop: ["ALL"]
-  env:
-    secrets:
-      - name: OPENAI_API_KEY
-        secretName: genai-service-secrets
-        secretKey: OPENAI_API_KEY
-    plain:
-      SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server:8888
+controller:
+  type: rollout
 
-deployment:
-  enabled: false
+replicaCount: 1
 
-argoRollout:
+spot:
   enabled: true
-  name: genai-service-rollout
-  spec:
-    replicas: 1
-    hostPID: false
-    hostIPC: false
-    hostNetwork: false
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: "RuntimeDefault"
-    minReadySeconds: 30
-    revisionHistoryLimit: 5
-    strategy:
-      canary:
-        maxSurge: 25%
-        maxUnavailable: 0
-        dynamicStableScale: true
-        abortScaleDownDelaySeconds: 600
 
 service:
-  enabled: true
-  name: genai-service-service
   port: 8084
-  rolloutServices:
-    enabled: true
-    stableService: genai-service
-    canaryService: genai-service-canary
+  targetPort: 8084
+
+scaleObject:
+  enabled: true
+
+configServer:
+  enabled: true
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+
+secretStore:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  data:
+    - secretKey: OPENAI_API_KEY
+      remoteRef:
+        key: dev/petclinic
+        property: openai_api_key
 
 virtualService:
   enabled: true
-  name: genai-service-vs
-  spec:
-    hosts:
-      - genai-service
-    gatewayRef:
-      enabled: false
-    http:
-    - name: primary
-      route:
-        - destination:
-            host: genai-service
-            port:
-              number: 8084
-          weight: 100
-        - destination:
-            host: genai-service-canary
-            port:
-              number: 8084
-          weight: 0

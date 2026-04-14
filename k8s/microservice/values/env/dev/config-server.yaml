@@ -13,32 +13,20 @@ controller:
 
 replicaCount: 1
 
-nodeSelector:
-  node-type: on-demand
-
 service:
   port: 8888
   targetPort: 8888
 
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-
 probes:
   startup:
     path: /
-    failureThreshold: 30
-    periodSeconds: 10
   readiness:
     path: /
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    failureThreshold: 3
   liveness:
     path: /
-    initialDelaySeconds: 30
-    periodSeconds: 15
-    failureThreshold: 3
+
+configServer:
+  enabled: false
 
 serviceAccount:
   annotations:

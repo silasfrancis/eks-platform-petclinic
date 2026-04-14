@@ -1,30 +1,51 @@
-# Common helm values shared by all microservices.
-# These values can be overridden at each microservice level where neccessary
-# 
+# Common Helm values shared by all microservices.
+#
 # Supports:
-# - Deployments & Argo Rollouts (canary)
-# - Istio traffic routing
-# - HPA & KEDA autoscaling
-# - PodDisruptionBudgets (availability)
-# - External Secrets (AWS)
-# - Spot/On-Demand scheduling
+#   - Deployments and Argo Rollouts (canary)
+#   - Istio traffic routing (VirtualService + DestinationRule)
+#   - HPA and KEDA autoscaling
+#   - PodDisruptionBudgets
+#   - External Secrets (AWS Secrets Manager via ESO)
+#   - SPOT and ON_DEMAND node scheduling
+#
+# Usage:
+#   Override only the fields that differ per service.
+#   Common environment variables (config server, spring profile) are injected automatically via _helpers.tpl.
 
+# App Identity
+# appName drives all resource names via _helpers.tpl:
+#   <appName>-deployment, <appName>-svc, <appName>-rollout etc
 appName: ""
+
+# springProfile is injected as SPRING_PROFILES_ACTIVE env var
+# Common values: docker, mysql, native
 springProfile: ""
 
+# Image
 image:
-  repository: ""
-  tag: ""
-  digest: ""
+  repository: ""    # ECR repository path e.g. <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/<PROJECT>/<SERVICE_NAME>
+  tag: ""           # image tag — set by CI pipeline from git SHA, for immutability pin image digest
+  digest: ""        # image digest — set by CI pipeline
   pullPolicy: IfNotPresent
 
+# Controller
+# Determines which workload resource is created:
+#   deployment → apps/v1 Deployment (config-server, discovery-server, admin-server)
+#   rollout    → argoproj.io/v1alpha1 Rollout with canary strategy (api-gateway, customers, visits, vets, genai)
+#   job        → batch/v1 Job (db-migrations)
 controller:
-  type: deployment        # "deployment", "rollout" or "job"
+  type: deployment
 
+# replicaCount must always be set explicitly.
+# If omitted Argo Rollouts defaults to 1
 replicaCount: 1
 
+# containerPort is the port the Spring Boot app listens on inside the container
 containerPort: ""
 
+# Resources
+# Defaults based on Goldilocks VPA recommendations for Spring Boot microservices.
+# Override per service after running Goldilocks in your cluster.
 resources:
   requests:
     cpu: 100m
@@ -33,7 +54,10 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-securityContext: #security context for all containers
+# Security
+# Container-level security context — applied to every container
+# runAsUser 65532 = nonroot user from distroless base image
+securityContext:
   runAsNonRoot: true
   runAsUser: 65532
   runAsGroup: 65532
@@ -43,24 +67,35 @@ securityContext: #security context for all containers
   capabilities:
     drop: ["ALL"]
 
-podSecurityContext: #security context at the pod level
+# Pod-level security context
+# seccompProfile RuntimeDefault blocks dangerous syscalls
+podSecurityContext:
   runAsNonRoot: true
   seccompProfile:
-    type: RuntimeDefault 
+    type: RuntimeDefault
 
+# Workload
 workload:
+  # minReadySeconds ensures pods are stable before being considered available
+  # protects against flapping during rolling updates
   minReadySeconds: 30
+  # keep last 5 ReplicaSets for rollback capability
   revisionHistoryLimit: 5
 
+# Pod Spec
+# All disabled — enabling any of these breaks pod security standards
+# and Kyverno policies will reject the pod
 podSpec:
   hostPID: false
   hostIPC: false
   hostNetwork: false
 
-probes: # pod health checks can be overridden per service
+# Health Probes
+# Spring Boot Actuator probe paths.
+probes:
   startup:
     path: /actuator/health
-    failureThreshold: 30
+    failureThreshold: 30    # 30 * 10s = 5 minutes max startup time
     periodSeconds: 10
   readiness:
     path: /actuator/health
@@ -69,55 +104,72 @@ probes: # pod health checks can be overridden per service
     failureThreshold: 3
   liveness:
     path: /actuator/health
-    initialDelaySeconds: 60
+    initialDelaySeconds: 60    # give Spring Boot time to fully initialise
     periodSeconds: 15
     failureThreshold: 3
 
+# Environment Variables
 env:
-  plain: {}
-    # Add service-specific env vars here
-    # Common ones (config server, spring profile) come from _helpers.tpl
-  secret: {}
-    # Populated from ExternalSecret via envFrom
+  plain: {}   # non-sensitive env vars — committed to Git
+  secret: {}  # sensitive env vars — populated via ExternalSecret
 
+# Config Server
+# Controls whether SPRING_CONFIG_IMPORT is injected.
+# Disable for config-server itself (it IS the config server).
+configServer:
+  enabled: true
+  url: "http://config-server-svc.petclinic.svc.cluster.local:8888"
 
+# Node Scheduling
+# spot.enabled adds SPOT node toleration and nodeSelector automatically.
+# SPOT nodes are cheaper but interruptible — use for workloads that can afford to be interrupted
+# Keep false for critical infrastructure:
+#   config-server, discovery-server, api-gateway, admin-server
 spot:
-  enabled: false          # true → adds SPOT toleration + nodeSelector
+  enabled: false
 
 nodeSelector:
-  node-type: on-demand    # default ON_DEMAND — override per service
+  node-type: on-demand    # overridden to spot when spot.enabled=true
 
-tolerations: []           # populated by spot.enabled or custom
+tolerations: []
 
-# Pod anti-affinity — spread replicas across nodes
+# Pod Anti-Affinity
+# Spreads replicas across nodes to prevent all pods landing on the same node.
+# When a node is drained (Karpenter consolidation, SPOT interruption),
+# at least one replica remains available.
 affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels: 
-              {{- include "microservice.selectorLabels" . | nindent 17 }}
-          topologyKey: kubernetes.io/hostname
+  enabled: true
+  topologyKey: kubernetes.io/hostname
 
-deployment: #deployment settings used when controller.type = deployment
+# Deployment Strategy
+# Only used when controller.type = deployment
+deployment:
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 0
+      maxUnavailable: 0    # zero downtime — always have full capacity during rollout
 
-rollout: #rollout settings used when controller.type = rollout
+# Argo Rollout Strategy
+# Only used when controller.type = rollout
+# Canary steps gradually shift traffic and pause for validation.
+# Argo Rollouts manages VirtualService weights 
+# ArgoCD is configured to ignore VirtualService weight diffs to prevent revert conflicts.
+rollout:
   strategy:
     canary:
+      stableMetadataLabels:
+        role: stable    # Istio DestinationRule stable subset selector
+      canaryMetadataLabels:
+        role: canary    # Istio DestinationRule canary subset selector
       trafficRouting:
         istio:
           virtualService:
-            name: ""
+            name: ""          # set per service — must match VS resource name
             routes:
-              - primary
+              - primary       # must match the named route in VirtualService
           destinationRule:
-            name: ""
+            name: ""          # set per service — must match DR resource name
             stableSubsetName: stable
             canarySubsetName: canary
       steps:
@@ -127,28 +179,50 @@ rollout: #rollout settings used when controller.type = rollout
         - pause: { duration: 60s }
         - setWeight: 100
 
+# Service
 service:
   enabled: true
-  port: ""
-  targetPort: ""
+  port: ""        # service port — usually same as containerPort
+  targetPort: ""  # container port to forward to — usually same as port
   protocol: TCP
 
-virtualService: # virtual service config - for services undergoing rollout
+# VirtualService
+# Istio traffic routing configuration.
+# Required for:
+#   - canary traffic splitting (all rollout services)
+#   - external exposure via Istio Gateway (api-gateway only)
+#   - path-based routing to downstream services (api-gateway only)
+#
+# Always use FQDN for hosts to avoid namespace misconfigurations.
+# Use microservice.fqdn helper in templates.
+#
+# routes: additional HTTP routes appended BEFORE the primary catch-all route.
+# Istio evaluates routes top-to-bottom — specific matches must come first.
+virtualService:
   enabled: false
-  host: ""     # stable service name or host e.g petclinic.lefrancis.org
-  gateway: ""  # ingress gateway name, defaults to 'mesh'
-  prefix: /
-  rewriteUri: /
-  routes: {} # additional routes for the virtual service if neccessary. defaults to the primary route used during rollout
+  host: ""        # external hostname e.g. petclinic.lefrancis.org
+                  # leave empty for mesh-only services
+  gateway: ""     # e.g. istio-ingress/petclinic-gateway
+                  # leave empty for mesh-only (uses 'mesh' gateway)
+  prefix: /       # URI prefix for the primary catch-all route
+  rewriteUri: /   # rewrite URI before forwarding to destination
+  routes: []      # additional routes — see api-gateway values for example
 
+# Service Account
+# IRSA annotations go here for services that need AWS API access.
+# Example:
+#   annotations:
+#     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
 serviceAccount:
   create: true
-  name: ""               # defaults to appName via _helpers.tpl
-  annotations: {}        # add IRSA annotation here if needed
+  name: ""          # defaults to appName via _helpers.tpl
+  annotations: {}
 
 # HPA
-# Only used when controller.type = deployment
-# rollouts use KEDA or their own HPA
+# CPU/memory based horizontal pod autoscaling.
+# Use for stateless services that need scaling but NOT scale-to-zero.
+# For scale-to-zero use scaleObject (KEDA) instead.
+# Cannot be used alongside scaleObject — enable one or the other.
 hpa:
   enabled: false
   minReplicas: 1
@@ -156,44 +230,69 @@ hpa:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
+# KEDA ScaledObject
+# Event-driven autoscaling for services that can scale to zero.
+# Currently used by genai-service which scales based on:
+#   - Istio HTTP request rate (prometheus trigger)
+#   - CPU utilisation (prometheus trigger)
+#   - Memory utilisation (prometheus trigger)
+# Cannot be used alongside hpa — enable one or the other.
+scaleObject:
+  enabled: false
+  minReplicas: 0      # 0 = scale to zero when idle
+  maxReplicas: 5
+  idleReplicaCount: 0
+  pollingInterval: 30
+  cooldownPeriod: 300    # 5 minutes before scaling down
+  triggers: []
+
 # PodDisruptionBudget
+# Prevents all replicas being evicted simultaneously during:
+#   - Karpenter node consolidation
+#   - Kubernetes node drain
+#   - Rolling updates
+# minAvailable: 1 ensures at least one pod is always running.
+# Disable only for single-replica non-critical services (e.g. admin-server).
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
 
-# External Secrets
+# Secret Store
+# SecretStore reference for ExternalSecrets.
+# Secret Store is configured to authenticate to AWS Secrets Manager via IRSA.
 secretStore:
   enabled: false
   awsRegion: us-east-2
   annotations: {}
-  
+
+# External Secret
+# Pulls secrets from AWS Secrets Manager and creates a Kubernetes Secret.
+# The created secret is mounted as environment variables via envFrom.
 externalSecret:
   enabled: false
   refreshInterval: 1h
   annotations: {}
-  target: ""   # name of the K8s secret to create, defaults to <appName>-secrets
+  target: ""    # K8s secret name — defaults to <appName>-secrets via _helpers.tpl
   data: []
-  # - secretKey: DB_PASSWORD
+  # Example:
+  # - secretKey: MYSQL_PASSWORD         # key in the K8s secret
   #   remoteRef:
-  #     key: dev/petclinic
-  #     property: db_password
+  #     key: dev/petclinic            # path in AWS Secrets Manager
+  #     property: mysql_password      # field within the secret JSON
 
-# Database migration — Flyway job
-# Only for data migration job
+# Database Migration
+# Flyway migration job — runs as a Helm pre-install/pre-upgrade hook.
+# Only enable for services that own a database schema.
+# The job runs before the application deploys ensuring schema is ready.
+# hook-delete-policy: before-hook-creation cleans up previous job runs.
 databaseMigration:
   enabled: false
   image:
-    registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-    repository: springboot/db-migrations
-    tag: "latest"
+    repository: "" #<AWS_ACCOUNT_ID>.dkr.ecr.us-east-2.amazonaws.com/<repo>
+    tag: ""
+    digest: ""
+    pullPolicy: Always
   annotations: {}
   env:
     plain: {}
     secret: {}
-# metadata:
-#   annotations:
-#     helm.sh/hook: pre-install,pre-upgrade
-#     helm.sh/hook-weight: "-5"
-#     helm.sh/hook-delete-policy: before-hook-creation
-#     argocd.argoproj.io/hook: PreSync           # ← ArgoCD equivalent
-#     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation

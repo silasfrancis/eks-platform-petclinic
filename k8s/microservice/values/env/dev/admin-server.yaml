@@ -3,7 +3,7 @@ containerPort: 9090
 springProfile: docker
 
 image:
-  repository: springboot/admin-server
+  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/admin-server
   tag: "c84d2ef1"
   digest: ""
   pullPolicy: IfNotPresent
@@ -13,29 +13,14 @@ controller:
 
 replicaCount: 1
 
-nodeSelector:
-  node-type: on-demand
-
 service:
   port: 9090
   targetPort: 9090
 
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-
 probes:
   startup:
     path: /
-    failureThreshold: 30
-    periodSeconds: 10
   readiness:
     path: /
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    failureThreshold: 3
   liveness:
     path: /
-    initialDelaySeconds: 30
-    periodSeconds: 15
-    failureThreshold: 3

@@ -13,16 +13,9 @@ controller:
 
 replicaCount: 1
 
-nodeSelector:
-  node-type: on-demand
-
 service:
   port: 8080
   targetPort: 8080
-
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
 
 hpa:
   enabled: true

@@ -1,154 +1,57 @@
-createNamespace: false
-namespace: petclinic
-
-selectorLabels:
-  app: visits-service
-
-serviceAccount:
-  enabled: true
-  name: visits-service-sa
-  annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-visits-service-sa-pod-secrets-reader"
-
-secretStore:
-  enabled: true
-  kind: SecretStore
-  name: visits-service-secret-store
-  awsRegion: us-east-2
-
-externalSecret:
-  enabled: true
-  name: visits-service-external-secret
-  refreshInterval: "5m"
-  target:
-    name: visits-service-secrets
-    creationPolicy: Owner
-  data:
-    - secretKey: MYSQL_HOST
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_HOST
-    - secretKey: MYSQL_PASSWORD
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_PASSWORD
-    - secretKey: MYSQL_USER
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_USER
-    - secretKey: MYSQL_DATABASE
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_DATABASE
-
-databaseMigration:
-  enabled: false
+appName: visits-service
+containerPort: 8082
+springProfile: docker,mysql
 
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
-  tag: 'c84d2ef1'
-  digest: sha256:645bd27097990ae8ba928f97ec6d954c4e166231ae8b381ecda2be4cf99b9862
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
 
-container:
-  name: visits-service
-  imagePullPolicy: IfNotPresent
-  port: 8082
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    runAsGroup: 65532
-    priviledged: false
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop: ["ALL"]
-  env:
-    secrets:
-      - name: MYSQL_HOST
-        secretName: visits-service-secrets
-        secretKey: MYSQL_HOST
-      - name: MYSQL_USER
-        secretName: visits-service-secrets
-        secretKey: MYSQL_USER
-      - name: MYSQL_PASSWORD
-        secretName: visits-service-secrets
-        secretKey: MYSQL_PASSWORD
-      - name: MYSQL_DATABASE
-        secretName: visits-service-secrets
-        secretKey: MYSQL_DATABASE
-    plain:
-      SPRING_PROFILES_ACTIVE: docker,mysql
-      CONFIG_SERVER_URL: http://config-server:8888
+controller:
+  type: rollout
 
+replicaCount: 1
 
-deployment:
-  enabled: false
-
-argoRollout:
+spot:
   enabled: true
-  name: visits-service-rollout
-  spec: 
-    replicas: 1
-    hostPID: false
-    hostIPC: false
-    hostNetwork: false
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: "RuntimeDefault"
-    minReadySeconds: 30
-    revisionHistoryLimit: 5
-    strategy:
-      canary:
-        maxSurge: 25%
-        maxUnavailable: 0
-        dynamicStableScale: true
-        abortScaleDownDelaySeconds: 600
 
 service:
-  enabled: true
-  name: visits-service
   port: 8082
-  rolloutServices:
-    enabled: true
-    stableService: visits-service
-    canaryService: visits-service-canary
-    
+  targetPort: 8082
+
+hpa:
+  enabled: true
+
+configServer:
+  enabled: true
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+
+secretStore:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  data:
+    - secretKey: MYSQL_HOST
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_host
+    - secretKey: MYSQL_PASSWORD
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_password
+    - secretKey: MYSQL_USER
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_user
+    - secretKey: MYSQL_DATABASE
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_database
+
 virtualService:
   enabled: true
-  name: visits-service-vs
-  spec:
-    hosts:
-      - visits-service
-    gatewayRef:
-      enabled: false
-    http:
-    - name: primary
-      route:
-        - destination:
-            host: visits-service
-            port:
-              number: 8082
-          weight: 100
-        - destination:
-            host: visits-service-canary
-            port:
-              number: 8082
-          weight: 0

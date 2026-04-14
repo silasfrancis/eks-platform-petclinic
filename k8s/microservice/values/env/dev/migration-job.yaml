@@ -1,0 +1,64 @@
+appName: migration-job
+databaseMigration:
+  enabled: true
+  image:
+    repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service
+    tag: "c84d2ef1"
+    digest: ""
+    pullPolicy: IfNotPresent
+
+controller:
+  type: job
+
+replicaCount: 1
+
+service:
+  enabled: false
+
+configServer:
+  enabled: false
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+
+secretStore:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  data:
+    - secretKey: MYSQL_HOST
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_host
+    - secretKey: MYSQL_PASSWORD
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_password
+    - secretKey: MYSQL_USER
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_user
+    - secretKey: MYSQL_DATABASE
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_database
+
+  env:
+    secrets:
+      - name: MYSQL_HOST
+        secretName: db-migration-secrets
+        secretKey: MYSQL_HOST
+      - name: MYSQL_DATABASE
+        secretName: db-migration-secrets
+        secretKey: MYSQL_DATABASE
+      - name: FLYWAY_USER
+        secretName: db-migration-secrets
+        secretKey: MYSQL_USER
+      - name: FLYWAY_PASSWORD
+        secretName: db-migration-secrets
+        secretKey: MYSQL_PASSWORD
+    plain:
+      FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
+

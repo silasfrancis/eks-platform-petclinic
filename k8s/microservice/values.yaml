@@ -159,10 +159,6 @@ deployment:
 rollout:
   strategy:
     canary:
-      stableMetadataLabels:
-        role: stable    # Istio DestinationRule stable subset selector
-      canaryMetadataLabels:
-        role: canary    # Istio DestinationRule canary subset selector
       trafficRouting:
         istio:
           virtualService:
@@ -209,7 +205,7 @@ virtualService:
   rewriteUri: /   # rewrite URI before forwarding to destination
   routes: []      # additional routes — see api-gateway values for example
 
-destinationService:
+destinationRule:
   enabled: false
   
 # Service Account
@@ -267,7 +263,6 @@ podDisruptionBudget:
 secretStore:
   enabled: false
   awsRegion: us-east-2
-  annotations: {}
 
 # External Secret
 # Pulls secrets from AWS Secrets Manager and creates a Kubernetes Secret.
@@ -275,7 +270,6 @@ secretStore:
 externalSecret:
   enabled: false
   refreshInterval: 1h
-  annotations: {}
   target: ""    # K8s secret name — defaults to <appName>-secrets via _helpers.tpl
   data: []
   # Example:
@@ -291,13 +285,10 @@ externalSecret:
 # hook-delete-policy: before-hook-creation cleans up previous job runs.
 databaseMigration:
   enabled: false
-  image:
-    registry: "" # <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com
-    repository: "" # /<repo>
-    tag: ""
-    digest: ""
-    pullPolicy: Always
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 600
+  completions: 1
+  parallelism: 1
   annotations: {}
-  env:
-    plain: {}
-    secret: {}
+

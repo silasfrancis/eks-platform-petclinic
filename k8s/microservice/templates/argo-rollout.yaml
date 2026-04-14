@@ -63,7 +63,7 @@ spec:
           {{- if and .Values.externalSecret .Values.externalSecret.enabled }}
           envFrom:
             - secretRef:
-                name: {{ include "microservice.externalSecretName" . }}
+                name: {{ include "microservice.secretName" . }}
           {{- end }}
           {{- if .Values.resources }}
           resources:

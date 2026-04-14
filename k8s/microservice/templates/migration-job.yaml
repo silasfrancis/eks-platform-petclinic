@@ -1,70 +1,76 @@
-{{- if .Values.databaseMigration.enabled }}
+{{- if eq .Values.controller.type "job" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.databaseMigration.name }}
-  namespace: {{ .Values.namespace }}
-  {{- with .Values.databaseMigration.annotations }}
+  name: {{ include "microservice.jobName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+  {{- $annotations := include "microservice.workloadAnnotations" . | fromYaml }}
+  {{- if $annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml $annotations | nindent 4 }}
   {{- end }}
 spec:
-  backoffLimit: {{ .Values.databaseMigration.spec.backoffLimit }}
-  hostPID: {{ .Values.databaseMigration.spec.hostPID }}
-  hostIPC: {{ .Values.databaseMigration.spec.hostIPC }}
-  hostNetwork: {{ .Values.databaseMigration.spec.hostNetwork }}
-  {{- with .Values.databaseMigration.spec.securityContext }}
-  securityContext:
-    runAsNonRoot: {{ .runAsNonRoot }}
-    seccompProfile:
-      {{- toYaml .seccompProfile.type | nindent 6 }}
-  {{- end }}
+  backoffLimit: {{ .Values.databaseMigration.backoffLimit | default 3 }}
+  ttlSecondsAfterFinished: {{ .Values.databaseMigration.ttlSecondsAfterFinished | default 300 }}
+  activeDeadlineSeconds: {{ .Values.databaseMigration.activeDeadlineSeconds | default 600 }}
+  completions: {{ .Values.databaseMigration.completions | default 1 }}
+  parallelism: {{ .Values.databaseMigration.parallelism | default 1 }}
   template:
+    metadata:
+      labels:
+        {{- include "microservice.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
+      restartPolicy: OnFailure
+      {{- with .Values.podSpec }}
+      {{- if hasKey . "hostPID" }}
+      hostPID: {{ .hostPID }}
       {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- if hasKey . "hostIPC" }}
+      hostIPC: {{ .hostIPC }}
+      {{- end }}
+      {{- if hasKey . "hostNetwork" }}
+      hostNetwork: {{ .hostNetwork }}
+      {{- end }}
+      {{- end }}
+      serviceAccountName: {{ include "microservice.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
+      {{- $nodeSelector := include "microservice.nodeSelector" . }}
+      {{- if $nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
+        {{- $nodeSelector | nindent 8 }}
       {{- end }}
-      restartPolicy: {{ .Values.databaseMigration.spec.restartPolicy }}
-      {{- if .Values.serviceAccount.enabled }}
-      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- $tolerations := include "microservice.tolerations" . }}
+      {{- if $tolerations }}
+      tolerations:
+        {{- $tolerations | nindent 8 }}
+      {{- end }}
+      {{- $affinity := include "microservice.affinity" . }}
+      {{- if $affinity }}
+      affinity:
+        {{- $affinity | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ .Values.container.name }}
-          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
-          imagePullPolicy: {{ .Values.container.imagePullPolicy }}
-          resources:
-            limits:
-              memory: {{ .Values.container.resources.limits.memory }}
-              cpu: {{ .Values.container.resources.limits.cpu }}
-            requests:
-              memory: {{ .Values.container.resources.requests.memory }}
-              cpu: {{ .Values.container.resources.requests.cpu }}
-          securityContext:
-            runAsNonRoot: {{ .Values.container.securityContext.runAsNonRoot }}
-            runAsUser: {{ .Values.container.securityContext.runAsUser }}
-            runAsGroup: {{ .Values.container.securityContext.runAsGroup }}
-            priviledged: {{ .Values.container.securityContext.priviledged }}
-            allowPrivilegeEscalation: {{ .Values.container.securityContext.allowPrivilegeEscalation }}
-            readOnlyRootFilesystem: {{ .Values.container.securityContext.readOnlyRootFilesystem }}
-            capabilities:
-              drop: {{ .Values.container.securityContext.capabilities.drop }}
-          args:
-            - migrate
-          env:
-          {{- range .Values.container.env.secrets }}
-          - name: {{ .name }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ .secretName }}
-                key: {{ .secretKey }}
+        - name: {{ .Values.appName }}
+          image: {{ include "microservice.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          {{- if and .Values.externalSecret .Values.externalSecret.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ include "microservice.secretName" . }}
           {{- end }}
-          {{- range $key, $val := .Values.container.env.plain }}
-          - name: {{ $key }}
-            value: {{ $val | quote }}
+          env:
+            {{- include "microservice.commonEnv" . | nindent 12 }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.securityContext }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           {{- end }}
 {{- end }}

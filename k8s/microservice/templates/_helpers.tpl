@@ -19,17 +19,35 @@ app.kubernetes.io/version: {{ .Values.image.tag | default "latest" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/* Specific Annotations for Jobs/Hooks */}}
-{{- define "microservice.annotations" -}}
-{{- if eq .Values.controller.type "job" }}
-helm.sh/hook: pre-install,pre-upgrade
-helm.sh/hook-weight: "-5"
-helm.sh/hook-delete-policy: before-hook-creation
-argocd.argoproj.io/hook: PreSync
-argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+{{/* Specific Annotations for services */}}
+{{- define "microservice.serviceAccountAnnotations" -}}
+{{- if .Values.serviceAccount.annotations }}
+{{- toYaml .Values.serviceAccount.annotations }}
 {{- end }}
 {{- end }}
 
+{{- define "microservice.workloadAnnotations" -}}
+{{- $a := dict -}}
+
+{{- /* Job hooks only here */}}
+{{- if eq .Values.controller.type "job" }}
+{{- $_ := set $a "helm.sh/hook" "pre-install,pre-upgrade" -}}
+{{- $_ := set $a "helm.sh/hook-weight" "-5" -}}
+{{- $_ := set $a "helm.sh/hook-delete-policy" "before-hook-creation" -}}
+{{- $_ := set $a "argocd.argoproj.io/hook" "PreSync" -}}
+{{- $_ := set $a "argocd.argoproj.io/hook-delete-policy" "BeforeHookCreation" -}}
+{{- end }}
+
+{{- toYaml $a }}
+{{- end }}
+
+{{- /* User-defined annotations */}}
+{{- range $k, $v := .Values.databaseMigration.annotations }}
+{{- $_ := set $a $k $v -}}
+{{- end }}
+
+{{- toYaml $a }}
+{{- end }}
 {{/*
 Selector labels — stable subset used by Service + PDB
 */}}
@@ -60,6 +78,10 @@ Resource names
 {{- printf "%s-rollout" .Values.appName }}
 {{- end }}
 
+{{- define "microservice.jobName" -}}
+{{- printf "%s-job" .Values.appName }}
+{{- end }}
+
 {{- define "microservice.serviceName" -}}
 {{- printf "%s-svc" .Values.appName }}
 {{- end }}
@@ -85,6 +107,10 @@ Resource names
 {{- end }}
 
 {{- define "microservice.externalSecretName" -}}
+{{- printf "%s-secrets" .Values.appName }}
+{{- end }}
+
+{{- define "microservice.secretName" -}}
 {{- printf "%s-secrets" .Values.appName }}
 {{- end }}
 

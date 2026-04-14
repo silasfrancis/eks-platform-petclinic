@@ -1,22 +1,43 @@
-{{- if .Values.horizontalPodAutoscaler.enabled }}
+{{- if .Values.hpa.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ .Values.horizontalPodAutoscaler.name }}
-  namespace: {{ .Values.namespace }}
-  {{- with .Values.labels }}
+  name: {{ include "microservice.hpaName" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- include "microservice.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
+    {{- if eq .Values.controller.type "rollout" }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: {{ include "microservice.rolloutName" . }}
+    {{- else if eq .Values.controller.type "deployment" }}
     apiVersion: apps/v1
-    kind: Deployment #Rollout  
-    name: {{ .Values.deployment.name }}
-  minReplicas: {{ .Values.horizontalPodAutoscaler.minReplicas }}
-  maxReplicas: {{ .Values.horizontalPodAutoscaler.maxReplicas }}
+    kind: Deployment
+    name: {{ include "microservice.deploymentName" . }}
+    {{- end }}
+
+  minReplicas: {{ .Values.hpa.minReplicas | default 1 }}
+  maxReplicas: {{ .Values.hpa.maxReplicas | default 3 }}
+
   metrics:
-  {{- with .Values.horizontalPodAutoscaler.metrics }}
-  {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- if .Values.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
+    {{- end }}
+
+    {{- if .Values.hpa.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
+    {{- end }}
+
 {{- end }}

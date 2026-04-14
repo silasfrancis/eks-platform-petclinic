@@ -1,13 +1,13 @@
-{{- if eq .Values.controller.type "rollout" }}
-apiVersion: networking.istio.io/v1beta1
+{{- if .Values.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: {{ .Values.appName }}-dr
+  name: {{ include "microservice.drName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "microservice.labels" . | nindent 4 }}
 spec:
-  host: {{ include "microservice.serviceName" . }}
+  host: {{ include "microservice.fqdn" . }}
   subsets:
     - name: stable
       labels:

@@ -1,12 +1,14 @@
-{{- if .Values.podDisruptionBudget.enabled }}
+{{- if and .Values.podDisruptionBudget.enabled (ne .Values.controller.type "job") }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ .Values.appName }}-pdb
+  name: {{ include "microservice.pdbName" . }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable | default 1 }}
   selector:
     matchLabels:
-      {{- toYaml .Values.selectorLabels | nindent 6 }}
+      {{- include "microservice.selectorLabels" . | nindent 6 }}
 {{- end }}

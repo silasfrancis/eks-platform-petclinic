@@ -1,52 +1,33 @@
+{{- if and .Values.scaleObject.enabled (ne .Values.controller.type "job") }}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: genai-service
-  namespace: petclinic
+  name: {{ include "microservice.scaleObjectName" . }}
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.scaleObject.annotations }}
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   scaleTargetRef:
+    {{- if eq .Values.controller.type "rollout" }}
     apiVersion: argoproj.io/v1alpha1
     kind: Rollout
-    name: genai-service
-  minReplicaCount: 0   
-  maxReplicaCount: 5    
-  idleReplicaCount: 0
-  pollingInterval: 30  
-  cooldownPeriod: 300
-  
+    name: {{ include "microservice.rolloutName" . }}
+    {{- else if eq .Values.controller.type "deployment" }}
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "microservice.deploymentName" . }}
+    {{- end }}
+  minReplicaCount: {{ .Values.scaleObject.minReplicas }}
+  maxReplicaCount: {{ .Values.scaleObject.maxReplicas }}
+  idleReplicaCount: {{ .Values.scaleObject.idleReplicaCount }}
+  pollingInterval: {{ .Values.scaleObject.pollingInterval }}
+  cooldownPeriod: {{ .Values.scaleObject.cooldownPeriod }}
+  {{- if .Values.scaleObject.fallback }}
+  fallback:
+    {{- toYaml .Values.scaleObject.fallback | nindent 4 }}
+  {{- end }}
   triggers:
-    - type: prometheus
-      metadata:
-        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-        metricName: istio_requests_total
-        threshold: "10"
-        query: |
-          sum(rate(istio_requests_total{
-            destination_service_name="genai-service",
-            destination_service_namespace="petclinic",
-            reporter="destination"
-          }[2m])) or vector(0)
-    - type: prometheus
-      metadata:
-        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-        metricName: cpu_utilization
-        threshold: "70"
-        query: |
-          (
-            avg(rate(container_cpu_usage_seconds_total{namespace="petclinic",pod=~"genai-service.*",container="genai-service"}[2m])) 
-            / 
-            avg(kube_pod_container_resource_requests{namespace="petclinic",pod=~"genai-service.*",resource="cpu"})
-          ) * 100 or vector(0)
-    - type: prometheus
-      metadata:
-        serverAddress: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-        metricName: memory_utilization
-        threshold: "80"
-        query: |
-          (
-            avg(container_memory_working_set_bytes{namespace="petclinic",pod=~"genai-service.*",container="genai-service"}) 
-            /
-            avg(kube_pod_container_resource_requests{namespace="petclinic",pod=~"genai-service.*",resource="memory"})
-          ) * 100 or vector(0)
+    {{- include "microservice.scaleObjectTriggers" . | nindent 4 }}
+{{- end }}

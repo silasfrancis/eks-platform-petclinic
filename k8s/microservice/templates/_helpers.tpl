@@ -26,34 +26,21 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 {{- end }}
 
+{{- /* Job hooks */}}
 {{- define "microservice.workloadAnnotations" -}}
-{{- $a := dict -}}
-
-{{- /* Job hooks only here */}}
+{{- /* Default Job Hooks */ -}}
 {{- if eq .Values.controller.type "job" }}
-{{- $_ := set $a "helm.sh/hook" "pre-install,pre-upgrade" -}}
-{{- $_ := set $a "helm.sh/hook-weight" "-5" -}}
-{{- $_ := set $a "helm.sh/hook-delete-policy" "before-hook-creation" -}}
-{{- $_ := set $a "argocd.argoproj.io/hook" "PreSync" -}}
-{{- $_ := set $a "argocd.argoproj.io/hook-delete-policy" "BeforeHookCreation" -}}
+helm.sh/hook: pre-install,pre-upgrade
+helm.sh/hook-weight: "-5"
+helm.sh/hook-delete-policy: before-hook-creation
+argocd.argoproj.io/hook: PreSync
+argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 {{- end }}
 
-{{- toYaml $a }}
+{{- /* Additional manual annotations from values.yaml */ -}}
+{{- if .Values.job.annotations }}
+{{- toYaml .Values.job.annotations | nindent 0 }}
 {{- end }}
-
-{{- /* User-defined annotations */}}
-{{- range $k, $v := .Values.databaseMigration.annotations }}
-{{- $_ := set $a $k $v -}}
-{{- end }}
-
-{{- toYaml $a }}
-{{- end }}
-{{/*
-Selector labels — stable subset used by Service + PDB
-*/}}
-{{- define "microservice.selectorLabels" -}}
-app: {{ .Values.appName }}
-app.kubernetes.io/name: {{ .Values.appName }}
 {{- end }}
 
 {{/*
@@ -156,6 +143,7 @@ Injected into every container
   value: {{ $val | quote }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 {{/*
 Standard probes — overrideable per service via values
@@ -231,7 +219,7 @@ canary:
       virtualService:
         name: {{ include "microservice.vsName" . }}
         routes:
-          - {{ .Values.rollout.strategy.canary.trafficRouting.istio.virtualService.route }}
+          - {{ .Values.rollout.strategy.canary.trafficRouting.istio.virtualService.routes }}
       destinationRule:
         name: {{ include "microservice.drName" . }}          
         stableSubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.stableSubsetName }}
@@ -242,7 +230,77 @@ canary:
 {{- else if eq .Values.controller.type "deployment" }}
 type: RollingUpdate
 rollingUpdate:
-  maxSurge: {{ .Values.deployment.spec.strategy.rollingUpdate.maxSurge }}
-  maxUnavailable: {{ .Values.deployment.spec.strategy.rollingUpdate.maxUnavailable }}
+  maxSurge: {{ .Values.deployment.strategy.rollingUpdate.maxSurge }}
+  maxUnavailable: {{ .Values.deployment.strategy.rollingUpdate.maxUnavailable }}
+{{- end }}
+{{- end }}
+
+{{/*
+Default Prometheus triggers for KEDA ScaledObject.
+Scales based on HTTP request rate, CPU and memory utilisation.
+Uses Istio metrics for request rate — requires Istio sidecar injection.
+or vector(0) prevents KEDA errors when no metrics exist yet (e.g. cold start).
+*/}}
+{{- define "microservice.scaleObjectBaseTriggers" -}}
+- type: prometheus
+  metadata:
+    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" }}
+    metricName: http_requests_total
+    threshold: "10"
+    query: |
+      sum(rate(istio_requests_total{
+        destination_service_name="{{ include "microservice.serviceName" . }}",
+        destination_service_namespace="{{ .Release.Namespace }}",
+        reporter="destination"
+      }[2m])) or vector(0)
+- type: prometheus
+  metadata:
+    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" }}
+    metricName: cpu_utilization
+    threshold: "70"
+    query: |
+      (
+        avg(rate(container_cpu_usage_seconds_total{
+          namespace="{{ .Release.Namespace }}",
+          pod=~"{{ .Values.appName }}-.*",
+          container="{{ .Values.appName }}"
+        }[2m]))
+        /
+        avg(kube_pod_container_resource_requests{
+          namespace="{{ .Release.Namespace }}",
+          pod=~"{{ .Values.appName }}-.*",
+          resource="cpu"
+        })
+      ) * 100 or vector(0)
+- type: prometheus
+  metadata:
+    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" }}
+    metricName: memory_utilization
+    threshold: "80"
+    query: |
+      (
+        avg(container_memory_working_set_bytes{
+          namespace="{{ .Release.Namespace }}",
+          pod=~"{{ .Values.appName }}-.*",
+          container="{{ .Values.appName }}"
+        })
+        /
+        avg(kube_pod_container_resource_requests{
+          namespace="{{ .Release.Namespace }}",
+          pod=~"{{ .Values.appName }}-.*",
+          resource="memory"
+        })
+      ) * 100 or vector(0)
+{{- end }}
+
+{{/*
+Merge base triggers with any additional service-specific triggers.
+Additional triggers are defined in scaleObject.triggers in values.yaml.
+Base triggers always run — additional triggers are appended after.
+*/}}
+{{- define "microservice.scaleObjectTriggers" -}}
+{{- include "microservice.scaleObjectBaseTriggers" . }}
+{{- if .Values.scaleObject.triggers }}
+{{- toYaml .Values.scaleObject.triggers | nindent 0 }}
 {{- end }}
 {{- end }}

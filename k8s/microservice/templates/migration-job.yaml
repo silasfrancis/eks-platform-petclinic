@@ -12,11 +12,11 @@ metadata:
     {{- toYaml $annotations | nindent 4 }}
   {{- end }}
 spec:
-  backoffLimit: {{ .Values.databaseMigration.backoffLimit | default 3 }}
-  ttlSecondsAfterFinished: {{ .Values.databaseMigration.ttlSecondsAfterFinished | default 300 }}
-  activeDeadlineSeconds: {{ .Values.databaseMigration.activeDeadlineSeconds | default 600 }}
-  completions: {{ .Values.databaseMigration.completions | default 1 }}
-  parallelism: {{ .Values.databaseMigration.parallelism | default 1 }}
+  backoffLimit: {{ .Values.job.backoffLimit | default 3 }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished | default 300 }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds | default 600 }}
+  completions: {{ .Values.job.completions | default 1 }}
+  parallelism: {{ .Values.job.parallelism | default 1 }}
   template:
     metadata:
       labels:

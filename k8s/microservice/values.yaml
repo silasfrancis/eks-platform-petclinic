@@ -239,12 +239,18 @@ hpa:
 # Cannot be used alongside hpa — enable one or the other.
 scaleObject:
   enabled: false
+  annotations: 
+    argocd.argoproj.io/sync-wave: "4"
   minReplicas: 0      # 0 = scale to zero when idle
   maxReplicas: 5
   idleReplicaCount: 0
   pollingInterval: 30
   cooldownPeriod: 300    # 5 minutes before scaling down
-  triggers: []
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  prometheusServer: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090 # prom server for metrics
+  triggers: [] # additional triggers specified will be appended to the default triggers defined in _helpers.tpl
 
 # PodDisruptionBudget
 # Prevents all replicas being evicted simultaneously during:
@@ -283,7 +289,7 @@ externalSecret:
 # Only enable for services that own a database schema.
 # The job runs before the application deploys ensuring schema is ready.
 # hook-delete-policy: before-hook-creation cleans up previous job runs.
-databaseMigration:
+job:
   enabled: false
   backoffLimit: 3
   ttlSecondsAfterFinished: 300

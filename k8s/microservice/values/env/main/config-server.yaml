@@ -3,6 +3,7 @@ containerPort: 8888
 springProfile: native
 
 image:
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: springboot/config-server
   tag: "c84d2ef1"
   digest: ""
@@ -59,4 +60,5 @@ env:
   plain:
     CONFIG_DIR: /config
 
-
+vpa:
+  enabled: true

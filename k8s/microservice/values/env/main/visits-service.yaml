@@ -3,7 +3,8 @@ containerPort: 8082
 springProfile: docker,mysql
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/visits-service
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
+  repository: springboot/visits-service
   tag: "c84d2ef1"
   digest: ""
   pullPolicy: IfNotPresent
@@ -54,4 +55,7 @@ externalSecret:
         property: mysql_database
 
 virtualService:
+  enabled: true
+
+vpa:
   enabled: true

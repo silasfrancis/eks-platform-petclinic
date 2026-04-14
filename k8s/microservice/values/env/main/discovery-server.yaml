@@ -3,7 +3,8 @@ containerPort: 8761
 springProfile: docker
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/discovery-server
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
+  repository: springboot/discovery-server
   tag: "c84d2ef1"
   digest: ""
   pullPolicy: IfNotPresent
@@ -24,3 +25,4 @@ probes:
     path: /
   liveness:
     path: /
+

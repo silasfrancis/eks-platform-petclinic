@@ -3,9 +3,9 @@ Full image reference using registry + repository + digest/tag
 */}}
 {{- define "microservice.image" -}}
 {{- if .Values.image.digest -}}
-{{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
+{{- printf "%s/%s@%s" .Values.image.registry .Values.image.repository .Values.image.digest }}
 {{- else -}}
-{{- printf "%s:%s" .Values.image.repository .Values.image.tag }}
+{{- printf "%s/%s:%s" .Values.image.registry .Values.image.repository .Values.image.tag }}
 {{- end -}}
 {{- end }}
 
@@ -102,6 +102,7 @@ Common Spring Boot environment variables
 Injected into every container
 */}}
 {{- define "microservice.commonEnv" -}}
+{{- if neq .Values.controller "job" }}
 - name: SPRING_PROFILES_ACTIVE
   value: {{ .Values.springProfile | default "docker" | quote }}
 
@@ -109,6 +110,7 @@ Injected into every container
 {{- if .Values.configServer.enabled }}
 - name: CONFIG_SERVER_URL
   value: {{ .Values.configServer.url | default "http://config-server-svc.petclinic.svc.cluster.local:8888" | quote }}
+{{- end }}
 {{- end }}
 
 {{/* Pod metadata */}}
@@ -122,6 +124,7 @@ Injected into every container
       fieldPath: metadata.namespace
 
 {{/* Service-specific plain env vars */}}
+{{- if .Values.env.plain }}
 {{- range $key, $val := .Values.env.plain }}
 - name: {{ $key }}
   value: {{ $val | quote }}
@@ -160,8 +163,10 @@ Node scheduling — SPOT or ON_DEMAND
 {{- define "microservice.nodeSelector" -}}
 {{- if .Values.spot.enabled }}
 node-type: spot
-{{- else }}
+{{- else if .Values.nodeSelector }}
 {{- toYaml .Values.nodeSelector }}
+{{- else }}
+node-type: on-demand
 {{- end }}
 {{- end }}
 
@@ -177,7 +182,7 @@ node-type: spot
 {{- end }}
 
 {{- define "microservice.affinity" -}}
-{{- if .Values.affinity.enabled }}
+{{- if and .Values.affinity .Values.affinity.enabled }}
 podAntiAffinity:
   preferredDuringSchedulingIgnoredDuringExecution:
     - weight: 100
@@ -190,9 +195,9 @@ podAntiAffinity:
 {{- end }}
 
 {{/*
-Rollout canary strategy
+Deployment strategy for Canary (Argo Rollouts) or RollingUpdate (Standard Deployment)
 */}}
-{{- define "microservice.rolloutStrategy" -}}
+{{- define "microservice.strategy" -}}
 {{- if eq .Values.controller.type "rollout" }}
 canary: 
   trafficRouting:
@@ -207,10 +212,11 @@ canary:
         canarySubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.canarySubsetName }}
   steps:
     {{- toYaml .Values.rollout.strategy.canary.steps | nindent 8 }}
-{{- end }}
+
 {{- else if eq .Values.controller.type "deployment" }}
 type: RollingUpdate
 rollingUpdate:
   maxSurge: {{ .Values.deployment.spec.strategy.rollingUpdate.maxSurge }}
   maxUnavailable: {{ .Values.deployment.spec.strategy.rollingUpdate.maxUnavailable }}
+{{- end }}
 {{- end }}

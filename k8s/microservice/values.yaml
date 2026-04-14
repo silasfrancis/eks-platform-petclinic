@@ -23,7 +23,8 @@ springProfile: ""
 
 # Image
 image:
-  repository: ""    # ECR repository path e.g. <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/<PROJECT>/<SERVICE_NAME>
+  registry: ""      # ECR registry path e.g. <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com
+  repository: ""    # ECR repository e.g. <PROJECT>/<SERVICE_NAME>
   tag: ""           # image tag — set by CI pipeline from git SHA, for immutability pin image digest
   digest: ""        # image digest — set by CI pipeline
   pullPolicy: IfNotPresent
@@ -291,7 +292,8 @@ externalSecret:
 databaseMigration:
   enabled: false
   image:
-    repository: "" #<AWS_ACCOUNT_ID>.dkr.ecr.us-east-2.amazonaws.com/<repo>
+    registry: "" # <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com
+    repository: "" # /<repo>
     tag: ""
     digest: ""
     pullPolicy: Always

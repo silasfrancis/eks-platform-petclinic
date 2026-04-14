@@ -1,130 +1,62 @@
-createNamespace: false
-namespace: petclinic
+appName: config-server
+containerPort: 8888
+springProfile: native
 
-selectorLabels:
-  app: config-server
+image:
+  repository: springboot/config-server
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
+
+controller:
+  type: deployment
+
+replicaCount: 1
+
+service:
+  port: 8888
+  targetPort: 8888
+
+probes:
+  startup:
+    path: /
+  readiness:
+    path: /
+  liveness:
+    path: /
+
+configServer:
+  enabled: false
 
 serviceAccount:
-  enabled: true
-  name: config-server-sa
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
 
 secretStore:
   enabled: true
-  kind: SecretStore
-  name: config-server-secret-store
-  awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: config-server-external-secret
-  refreshInterval: "5m"
-  target:
-    name: config-server-secrets
-    creationPolicy: Owner
   data:
     - secretKey: MYSQL_HOST
       remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_HOST
+        key: dev/petclinic
+        property: mysql_host
     - secretKey: MYSQL_PASSWORD
       remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_PASSWORD
+        key: dev/petclinic
+        property: mysql_password
     - secretKey: MYSQL_USER
       remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_USER
+        key: dev/petclinic
+        property: mysql_user
     - secretKey: MYSQL_DATABASE
       remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_DATABASE
+        key: dev/petclinic
+        property: mysql_database
 
-databaseMigration:
-  enabled: false
+env:
+  plain:
+    CONFIG_DIR: /config
 
-image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/config-server
-  tag: '82585603'
-  digest: sha256:b2eedaafa66a9a3b3b164fb51c03e5497d2962fd52adc7dc33e087d5e082b4b6
 
-container:
-  name: config-server
-  imagePullPolicy: IfNotPresent
-  port: 8888
-  readinessProbe:
-    path: /
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    runAsGroup: 65532
-    priviledged: false
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop: ["ALL"]
-  env:
-    secrets:
-      - name: MYSQL_HOST
-        secretName: config-server-secrets
-        secretKey: MYSQL_HOST
-      - name: MYSQL_USER
-        secretName: config-server-secrets
-        secretKey: MYSQL_USER
-      - name: MYSQL_PASSWORD
-        secretName: config-server-secrets
-        secretKey: MYSQL_PASSWORD
-      - name: MYSQL_DATABASE
-        secretName: config-server-secrets
-        secretKey: MYSQL_DATABASE
-    plain:
-      SPRING_PROFILES_ACTIVE: native
-      CONFIG_DIR: /config
-
-deployment:
-  enabled: true
-  name: config-server-deployment
-  spec: 
-    replicas: 1
-    hostPID: false
-    hostIPC: false
-    hostNetwork: false
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: "RuntimeDefault"
-    minReadySeconds: 30
-    revisionHistoryLimit: 5
-    strategy:
-      rollingUpdate:
-        maxSurge: 25%
-        maxUnavailable: 0
-
-argoRollout:
-  enabled: false
-
-service:
-  enabled: true
-  name: config-server
-  port: 8888
-  rolloutServices:
-    enabled: false
-
-virtualService:
-  enabled: false

@@ -1,153 +1,57 @@
-createNamespace: false
-namespace: petclinic
-
-selectorLabels:
-  app: vets-service
-
-serviceAccount:
-  enabled: true
-  name: vets-service-sa
-  annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-vets-service-sa-pod-secrets-reader"
-
-secretStore:
-  enabled: true
-  kind: SecretStore
-  name: vets-service-secret-store
-  awsRegion: us-east-2
-
-externalSecret:
-  enabled: true
-  name: vets-service-external-secret
-  refreshInterval: "5m"
-  target:
-    name: vets-service-secrets
-    creationPolicy: Owner
-  data:
-    - secretKey: MYSQL_HOST
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_HOST
-    - secretKey: MYSQL_PASSWORD
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_PASSWORD
-    - secretKey: MYSQL_USER
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_USER
-    - secretKey: MYSQL_DATABASE
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_DATABASE
-
-databaseMigration:
-  enabled: false
+appName: vets-service
+containerPort: 8083
+springProfile: docker,mysql
 
 image:
   repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/vets-service
-  tag: 'c84d2ef1'
-  digest: sha256:ee5c1fa9374790b70852f288aa45d1cab274183ad0d36a4e9d0455c1398328ba
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
 
-container:
-  name: vets-service
-  imagePullPolicy: IfNotPresent
-  port: 8083
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    runAsGroup: 65532
-    priviledged: false
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop: ["ALL"]
-  env:
-    secrets:
-      - name: MYSQL_HOST
-        secretName: vets-service-secrets
-        secretKey: MYSQL_HOST
-      - name: MYSQL_USER
-        secretName: vets-service-secrets
-        secretKey: MYSQL_USER
-      - name: MYSQL_PASSWORD
-        secretName: vets-service-secrets
-        secretKey: MYSQL_PASSWORD
-      - name: MYSQL_DATABASE
-        secretName: vets-service-secrets
-        secretKey: MYSQL_DATABASE
-    plain:
-      SPRING_PROFILES_ACTIVE: docker,mysql
-      CONFIG_SERVER_URL: http://config-server:8888
+controller:
+  type: rollout
 
-deployment:
-  enabled: false
+replicaCount: 1
 
-argoRollout:
+spot:
   enabled: true
-  name: vets-service-rollout
-  spec:
-    replicas: 1
-    hostPID: false
-    hostIPC: false
-    hostNetwork: false
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: "RuntimeDefault"
-    minReadySeconds: 30
-    revisionHistoryLimit: 5
-    strategy:
-      canary:
-        maxSurge: 25%
-        maxUnavailable: 0
-        dynamicStableScale: true
-        abortScaleDownDelaySeconds: 600
 
 service:
-  enabled: true
-  name: vets-service
   port: 8083
-  rolloutServices:
-    enabled: true
-    stableService: vets-service
-    canaryService: vets-service-canary
+  targetPort: 8083
+
+hpa:
+  enabled: true
+
+configServer:
+  enabled: true
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+
+secretStore:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  data:
+    - secretKey: MYSQL_HOST
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_host
+    - secretKey: MYSQL_PASSWORD
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_password
+    - secretKey: MYSQL_USER
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_user
+    - secretKey: MYSQL_DATABASE
+      remoteRef:
+        key: dev/petclinic
+        property: mysql_database
 
 virtualService:
   enabled: true
-  name: vets-service-vs
-  spec:
-    hosts:
-      - vets-service
-    gatewayRef:
-      enabled: false
-    http:
-    - name: primary
-      route:
-        - destination:
-            host: vets-service
-            port:
-              number: 8083
-          weight: 100
-        - destination:
-            host: vets-service-canary
-            port:
-              number: 8083
-          weight: 0

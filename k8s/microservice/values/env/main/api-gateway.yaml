@@ -1,158 +1,72 @@
-createNamespace: false
-namespace: petclinic
-
-selectorLabels:
-  app: api-gateway
-
-serviceAccount:
-  enabled: false
-
-secretStore:
-  enabled: false
-
-externalSecret:
-  enabled: false
-
-databaseMigration:
-  enabled: false
+appName: api-gateway
+containerPort: 8080
+springProfile: docker
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway
-  tag: 'c9f9f2f9'
-  digest: sha256:f173d4372e2887928f8586635d79c93a3177df2ed6778425d063b06741e67fd3
+  repository: springboot/api-gateway
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
 
-container:
-  name: api-gateway
-  imagePullPolicy: IfNotPresent
-  port: 8080
-  readinessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  livenessProbe:
-    path: /actuator/health
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    failureThreshold: 3
-  resources:
-    limits:
-      memory: 512Mi
-      cpu: 500m
-    requests:
-      memory: 256Mi
-      cpu: 100m
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65532
-    runAsGroup: 65532
-    priviledged: false
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop: ["ALL"]
-  env:
-    plain:
-      SPRING_PROFILES_ACTIVE: docker
-      CONFIG_SERVER_URL: http://config-server:8888
+controller:
+  type: rollout
 
-deployment:
-  enabled: false
-
-argoRollout:
-  enabled: true
-  name: api-gateway-rollout
-  spec: 
-    replicas: 2
-    hostPID: false
-    hostIPC: false
-    hostNetwork: false
-    securityContext:
-      runAsNonRoot: true
-      seccompProfile:
-        type: "RuntimeDefault"
-    minReadySeconds: 30
-    revisionHistoryLimit: 5
-    strategy:
-      canary:
-        maxSurge: 25%
-        maxUnavailable: 0
-        dynamicStableScale: true
-        abortScaleDownDelaySeconds: 600
+replicaCount: 1
 
 service:
-  enabled: true
-  name: api-gateway
   port: 8080
-  rolloutServices:
-    enabled: true
-    stableService: api-gateway
-    canaryService: api-gateway-canary
+  targetPort: 8080
+
+hpa:
+  enabled: true
 
 virtualService:
   enabled: true
-  name: api-gateway-vs
-  spec:
-    hosts:
-      - petclinic-dev.lefrancis.org
-    gatewayRef:
-      enabled: true
-      gateway:
-        - istio-ingress/petclinic-gateway
-    http:
-      - name: customers-route
-        match:
+  hosts: petclinic-dev.lefrancis.org
+  gateways: istio-ingress/petclinic-gateway
+  routes:
+    - name: customers-service
+      match:
           - uri:
               prefix: /api/customer/
-        rewrite:
+      rewrite:
           uri: /
-        route:
-          - destination:
-              host: customers-service
+      route:
+          - destination: 
+              host: customers-service-svc.petclinic.svc.cluster.local
               port:
                 number: 8081
-      - name: visits-route
-        match:
+    - name: visits-route
+      match:
           - uri:
               prefix: /api/visit/
-        rewrite:
+      rewrite:
           uri: /
-        route:
+      route:
           - destination:
-              host: visits-service
+              host: visits-service-svc.petclinic.svc.cluster.local
               port:
                 number: 8082
-      - name: vets-route
-        match:
-          - uri:
-              prefix: /api/vet/
-        rewrite:
-          uri: /
-        route:
-          - destination:
-              host: vets-service
-              port:
-                number: 8083
-      - name: genai-route
-        match:
-          - uri:
-              prefix: /api/genai/
-        rewrite:
-          uri: /
-        route:
-          - destination:
-              host: genai-service
-              port:
-                number: 8084
-      - name: primary
-        route:
-          - destination:
-              host: api-gateway
-              port:
-                number: 8080
-            weight: 100
-          - destination:
-              host: api-gateway-canary
-              port:
-                number: 8080
-            weight: 0
+    - name: vets-route
+      match:
+        - uri:
+            prefix: /api/vet/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: vets-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8083
+    - name: genai-route
+      match:
+        - uri:
+            prefix: /api/genai/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: genai-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8084
+

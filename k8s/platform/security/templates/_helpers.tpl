@@ -1,41 +1,10 @@
 {{/*
-Expand the name of the chart.
+Common labels used by customer resources
 */}}
-{{- define "security.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "security.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "security.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Common labels
-*/}}
-{{- define "security.labels" -}}
-helm.sh/chart: {{ include "security.chart" . }}
-{{ include "security.selectorLabels" . }}
+{{- define "platform-security.labels" -}}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+app.kubernetes.io/name: {{ include "platform-security.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,20 +12,63 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Selector labels used by customer resources
 */}}
-{{- define "security.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "security.name" . }}
+{{- define "platform-security.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "platform-security.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+ServiceAccount name
 */}}
-{{- define "security.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "security.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "platform-security.serviceAccountName" -}}
+{{- if .Values.serviceAccount.name -}}
+{{- .Values.serviceAccount.name -}}
+{{- else -}}
+{{- printf "%s-sa" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end }}
+
+{{/*
+ClusterIssuer name
+*/}}
+{{- define "platform-security.clusterIssuer.name" -}}
+{{- if .Values.clusterIssuer.name -}}
+{{- .Values.clusterIssuer.name -}}
+{{- else -}}
+{{- printf "%s-cluster-issuer" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end }}
+
+{{/*
+Resource names
+*/}}
+{{- define "platform-security.secretStoreName" -}}
+{{- printf "%s-secret-store" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+
+{{- define "platform-security.externalSecretName" -}}
+{{- printf "%s-external-secrets" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+
+{{- define "platform-security.secretName" -}}
+{{- printf "%s-secrets" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+
+{{/*
+ACME Spec Helper for cluster issuer
+*/}}
+{{- define "platform-security.clusterIssuer.spec" -}}
+acme:
+  server: {{ .Values.clusterIssuer.acmeServer | default "https://acme-v02.api.letsencrypt.org/directory" }}
+  email: {{ .Values.clusterIssuer.email | quote }}
+  privateKeySecretRef:
+    name: {{ .Values.clusterIssuer.privateKeySecretName | default "letsencrypt-cloudflare-account-key" }}
+  solvers:
+    - dns01:
+        cloudflare:
+          apiTokenSecretRef:
+            name: {{ include "platform-security.secretName" . }}
+            key: {{ .Values.clusterIssuer.existingSecret.key | default "cloudflare-api-token" }}
+{{- end -}}

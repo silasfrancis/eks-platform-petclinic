@@ -14,22 +14,19 @@
 # ClusterIssuer for cert-manager — used by ingress chart certificate
 # Defined here since cert-manager lives in the security chart
 # OVERRIDE: update email
+
 clusterIssuer:
   enabled: true
-  name: letsencrypt-cloudflare
-  spec:
-    acme:
-      server: https://acme-v02.api.letsencrypt.org/directory
-      # Provide a valid email for Lets encrypt
-      email: ""
-      privateKeySecretRef:
-        name: letsencrypt-cloudflare-account-key
-      solvers:
-        - dns01:
-            cloudflare:
-              apiTokenSecretRef:
-                name: platform-security-secrets
-                key: cloudflare-api-token
+  # valid email address for lets encrypt
+  email: ""
+  # acme server for lets encrypt
+  acmeServer: https://acme-v02.api.letsencrypt.org/directory
+  # private key secret name
+  privateKeySecretName: letsencrypt-cloudflare-account-key
+  # cloudflare secrets
+  existingSecret:
+    name: "" # defaults to the platform secrets created by ESO
+    key: "cloudflare-api-token"
 
 # SecretStore — ESO store reference for secrets used in this chart
 secretStore:
@@ -55,6 +52,17 @@ externalSecret:
     #   remoteRef:
     #     key: "" # Update path to match your Secrets Manager structure
     #     property: cloudflare-api-token
+
+# Service Account
+# IRSA annotations go here for services that need AWS API access.
+# Example:
+#   annotations:
+#     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
+serviceAccount:
+  create: true
+  name: ""          # defaults to Chart.Name via _helpers.tpl
+  annotations: {}
+  portName: http
 
 # Trivy Operator — continuous vulnerability scanning
 # Scans only petclinic namespace — reduces noise from system workloads
@@ -229,7 +237,7 @@ falco:
     log_level: info
     stdout_output:
       enabled: true
-    # syslog disabled as it is noisy in containerised environments
+    # syslog disabled as it is noisy - alerts are sent via falcosidekick
     syslog_output:
       enabled: false
 

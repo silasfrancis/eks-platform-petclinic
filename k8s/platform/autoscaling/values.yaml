@@ -1,6 +1,20 @@
+# Autoscaling platform values.
+# Manages event-driven scaling (KEDA) and resource rightsizing recommendations (Goldilocks).
+#
+# KEDA scales workloads based on external metrics (Prometheus, SQS etc).
+# Goldilocks uses VPA in recommendation mode to suggest right-sized resource requests.
+#
+# VPA must be installed before Goldilocks via Taskfile:
+#   task install_vpa
+
+# KEDA — event-driven autoscaling
+# Used by mostly by genai-service (microservice) to scale to zero based on Prometheus metrics
 keda:
+  # Run KEDA controllers on ON_DEMAND nodes — scaling infrastructure
+  # should not itself run on interruptible SPOT nodes
   nodeSelector:
     node-type: on-demand
+
   operator:
     name: keda-operator
     replicaCount: 1
@@ -23,21 +37,23 @@ keda:
         memory: 256Mi
 
   prometheus:
+    # Expose KEDA operator metrics for Prometheus scraping
     operator:
       enabled: true
       port: 8080
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
-    
+          release: platform-monitoring   # must match Prometheus serviceMonitorSelector label
+
+    # Expose KEDA metrics server metrics for Prometheus scraping
     metricServer:
       enabled: true
       port: 8080
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring
 
     webhooks:
       enabled: true
@@ -51,6 +67,8 @@ keda:
 
     rbac:
       create: true
+      # enabledCustomScaledRefKinds allows KEDA to scale Argo Rollouts
+      # required for genai-service which uses Rollout not Deployment
       enabledCustomScaledRefKinds: true
 
     serviceAccount:
@@ -61,17 +79,31 @@ keda:
         create: true
         name: keda-metrics-server
 
+# Goldilocks — VPA-based resource recommendation dashboard
+# Watches namespaces labelled goldilocks.fairwinds.com/enabled=true
+# and generates VPA recommendations visible in the dashboard.
+# Recommendations are advisory only — updateMode is Off.
 goldilocks:
+  # VPA is installed separately via Taskfile (install_vpa)
+  # not as a subchart dependency — it is cluster infrastructure
   vpa:
     enabled: false
+
   controller:
     enabled: true
 
     rbac:
       create: true
-      enableArgoproj: true  
+      # enableArgoproj allows Goldilocks to generate recommendations
+      # for Argo Rollout resources in addition to standard Deployments
+      enableArgoproj: true
+
+    # on-by-default: false means Goldilocks only watches namespaces
+    # explicitly labelled with goldilocks.fairwinds.com/enabled=true
+    # Set to true to watch all namespaces automatically
     flags:
-      on-by-default: false 
+      on-by-default: false
+
     nodeSelector:
       node-type: on-demand
 
@@ -82,12 +114,17 @@ goldilocks:
       limits:
         cpu: 100m
         memory: 256Mi
+
   dashboard:
     enabled: true
     replicaCount: 1
+    # Exclude Istio and Linkerd sidecar containers from recommendations
+    # these are managed by the service mesh not by application teams
     excludeContainers: "istio-proxy,linkerd-proxy"
+
     nodeSelector:
       node-type: on-demand
+
     resources:
       requests:
         cpu: 25m
@@ -95,6 +132,8 @@ goldilocks:
       limits:
         cpu: 100m
         memory: 256Mi
+
+    # Dashboard is accessed via port-forward — no ingress needed
+    # kubectl port-forward svc/goldilocks-dashboard -n autoscaling 8080:80
     ingress:
       enabled: false
-  

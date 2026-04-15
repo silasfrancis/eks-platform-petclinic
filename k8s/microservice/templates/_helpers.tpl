@@ -19,6 +19,16 @@ app.kubernetes.io/version: {{ .Values.image.tag | default "latest" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+
+{{/*
+Selector labels — used by Service and PDB to find pods
+Subset of labels — only what stays stable across releases
+*/}}
+{{- define "microservice.selectorLabels" -}}
+app: {{ include "microservice.name" . }}
+app.kubernetes.io/name: {{ include "microservice.name" . }}
+{{- end }}
+
 {{/* Specific Annotations for services */}}
 {{- define "microservice.serviceAccountAnnotations" -}}
 {{- if .Values.serviceAccount.annotations }}
@@ -107,6 +117,10 @@ Resource names
 
 {{- define "microservice.vpaName" -}}
 {{- printf "%s-vpa" .Values.appName }}
+{{- end }}
+
+{{- define "microservice.serviceMonitorName" -}}
+{{- printf "%s-service-monitor" .Values.appName }}
 {{- end }}
 
 {{- define "microservice.fqdn" -}}

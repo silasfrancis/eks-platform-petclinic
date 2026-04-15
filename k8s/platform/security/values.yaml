@@ -24,34 +24,13 @@ clusterIssuer:
 
 secretStore:
   enabled: true
-  kind: ClusterSecretStore
-  name: cluster-config-secret-store
+  kind: SecretStore
+  name: 
   awsRegion: us-east-2
 
 externalSecret:
   enabled: true
-  name: customers-service-external-secret
-  refreshInterval: "5m"
-  target:
-    name: customers-service-secrets
-    creationPolicy: Owner
-  data:
-    - secretKey: MYSQL_HOST
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_HOST
-    - secretKey: MYSQL_PASSWORD
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_PASSWORD
-    - secretKey: MYSQL_USER
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_USER
-    - secretKey: MYSQL_DATABASE
-      remoteRef:
-        key: dev/springboot-microservices
-        property: MYSQL_DATABASE
+
 
   # target:
   #   name: alertmanager-receivers-secret

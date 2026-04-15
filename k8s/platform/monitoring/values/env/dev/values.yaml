@@ -1,0 +1,30 @@
+kube-prometheus-stack:  
+  grafana:
+    admin:
+      existingSecret: "platform-monitoring-secrets"
+      userKey: admin-user
+      passwordKey: admin-password
+
+prometheus-cloudwatch-exporter:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ""
+
+loki:
+  loki:
+    storage:
+      bucketNames:
+        chunks: "<cluster-name>-loki-logs"
+        ruler: "<cluster-name>-loki-logs"
+        admin: "<cluster-name>-loki-logs"
+  serviceAccount:
+    create: true
+    name: loki
+    annotations:
+      eks.amazonaws.com/role-arn: ""
+
+# ESO:
+# admin-user
+# admin-password
+# slack-webhook-url
+# email-password

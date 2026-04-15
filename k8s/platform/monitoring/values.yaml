@@ -1,70 +1,59 @@
-monitoring:
-  namespace: monitoring
-
-petclinic:
-  namespace: petclinic
-
-  services:
-    - name: api-gateway
-      selectorLabels:
-        app: api-gateway
-
-    - name: customers-service
-      selectorLabels:
-        app: customers-service
-
-    - name: visits-service
-      selectorLabels:
-        app: visits-service
-
-    - name: vets-service
-      selectorLabels:
-        app: vets-service
+# Monitoring platform values.
+# Full observability stack: metrics, logs, dashboards, alerts.
+#
+# Components:
+#   kube-prometheus-stack: Prometheus + Grafana + Alertmanager + node-exporter + kube-state-metrics
+#   Loki: log aggregation stored in S3
+#   Alloy: log collector
+#   prometheus-cloudwatch-exporter: RDS metrics from CloudWatch
 
 kube-prometheus-stack:
+  fullnameOverride: "platform-monitoring"
 
   crds:
     upgradeJob:
       enabled: true
 
+  # Disable components not accessible in EKS managed control plane
+  # etcd, controller-manager and scheduler are managed by AWS — not scrappable
   kubeEtcd:
     enabled: false
-
   kubeControllerManager:
     enabled: false
-
   kubeScheduler:
     enabled: false
-
   kubeProxy:
     enabled: false
 
   prometheus:
     prometheusSpec:
-
-      # Discover ServiceMonitors in any namespace
+      # Discover ServiceMonitors across all namespaces
+      # serviceMonitorSelectorNilUsesHelmValues: false removes the default
+      # restriction to only monitor resources in the same namespace as Prometheus
       serviceMonitorSelectorNilUsesHelmValues: false
-      serviceMonitorSelector: {}
+      # Monitor every ServiceMonitor that has the label release: platform-monitoring
+      serviceMonitorSelector:
+        matchLabels:
+          release: platform-monitoring
       serviceMonitorNamespaceSelector: {}
 
-      # Discover PodMonitors in any namespace
       podMonitorSelectorNilUsesHelmValues: false
       podMonitorSelector: {}
       podMonitorNamespaceSelector: {}
+
+      # Required for Prometheus to scrape petclinic services over Istio mTLS
+      # includeOutboundIPRanges: * tells the sidecar to intercept all outbound traffic
       podMetadata:
         annotations:
           traffic.sidecar.istio.io/includeOutboundIPRanges: "*"
 
-      # Discover PrometheusRules in any namespace
       ruleSelectorNilUsesHelmValues: false
       ruleSelector: {}
       ruleNamespaceSelector: {}
 
-      # Retention
       retention: 15d
       retentionSize: "10GB"
 
-      # Persistent storage using EKS gp3
       storageSpec:
         volumeClaimTemplate:
           spec:
@@ -75,12 +64,11 @@ kube-prometheus-stack:
                 storage: 20Gi
 
   grafana:
-    # adminPassword: "changeme"  # override via ESO in production
     admin:
-      ## Name of the secret. Can be templated.
-      existingSecret: ""
-      userKey: admin-user
-      passwordKey: admin-password
+      # Set existingSecret to ESO-created secret name for grafana admin credentials
+      existingSecret: "platform-monitoring-secrets"
+      userKey: ""
+      passwordKey: ""
 
     persistence:
       enabled: true
@@ -93,14 +81,17 @@ kube-prometheus-stack:
     sidecar:
       dashboards:
         enabled: true
-        searchNamespace: ALL  
+        # searchNamespace: ALL discovers ConfigMaps with grafana_dashboard label
+        # across all namespaces — allows all charts to add dashboards
+        searchNamespace: ALL
         label: grafana_dashboard
         labelValue: "1"
-
       datasources:
         enabled: true
-        uid: prometheus     
+        uid: prometheus
 
+    # Loki datasource — not managed by the sidecar, added as additional datasource
+    # url uses loki-gateway service — fullnameOverride: loki makes this predictable
     additionalDataSources:
       - name: Loki
         type: loki
@@ -109,25 +100,27 @@ kube-prometheus-stack:
         access: proxy
         isDefault: false
         jsonData:
-          maxLines: 1000  
+          maxLines: 1000
 
   alertmanager:
-    # Mount the ESO-synced secret into Alertmanager
     alertmanagerSpec:
+      # ESO creates platform-monitoring-secrets from AWS Secrets Manager
+      # contains: slack-webhook-url, email-password
       secrets:
-        - alertmanager-receivers-secret    # ESO creates this
+        - platform-monitoring-secrets
 
     config:
       global:
         resolve_timeout: 5m
-        # Email global config
         smtp_smarthost: 'smtp.zoho.com:587'
         smtp_from: 'alerts@lefrancis.org'
         smtp_auth_username: 'silas@lefrancis.org'
-        smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-receivers-secret/email-password
+        # Password read from ESO-created secret
+        smtp_auth_password_file: /etc/alertmanager/secrets/platform-monitoring-secrets/email-password
         smtp_require_tls: true
 
-      # Inhibition rules — suppress warnings when critical is firing
+      # Suppress warning alerts when a critical alert is already firing
+      # for the same namespace and alertname — prevents duplicate noise
       inhibit_rules:
         - source_matchers:
             - severity = critical
@@ -137,7 +130,6 @@ kube-prometheus-stack:
             - namespace
             - alertname
 
-      # Routing tree
       route:
         group_by: ['namespace', 'alertname', 'severity']
         group_wait: 30s
@@ -145,18 +137,16 @@ kube-prometheus-stack:
         repeat_interval: 3h
         receiver: 'null'
         routes:
-          # Silence Watchdog — it's a heartbeat alert not a real alert
+          # Watchdog is a heartbeat alert that always fires — silence it
           - receiver: 'null'
             matchers:
               - alertname = "Watchdog"
-
-          # Critical — Slack + Email
+          # Critical alerts go to Slack AND email
           - receiver: 'critical-receiver'
             matchers:
               - severity = critical
             continue: false
-
-          # Warning — Slack only
+          # Warning alerts go to Slack only
           - receiver: 'warning-receiver'
             matchers:
               - severity = warning
@@ -167,7 +157,7 @@ kube-prometheus-stack:
 
         - name: 'warning-receiver'
           slack_configs:
-            - api_url_file: /etc/alertmanager/secrets/alertmanager-receivers-secret/slack-webhook-url
+            - api_url_file: /etc/alertmanager/secrets/platform-monitoring-secrets/slack-webhook-url
               channel: '#petclinic-warnings'
               send_resolved: true
               title: |-
@@ -182,7 +172,7 @@ kube-prometheus-stack:
 
         - name: 'critical-receiver'
           slack_configs:
-            - api_url_file: /etc/alertmanager/secrets/alertmanager-receivers-secret/slack-webhook-url
+            - api_url_file: /etc/alertmanager/secrets/platform-monitoring-secrets/slack-webhook-url
               channel: '#petclinic-critical'
               send_resolved: true
               title: |-
@@ -203,18 +193,21 @@ kube-prometheus-stack:
       templates:
         - '/etc/alertmanager/config/*.tmpl'
 
-
+# CloudWatch exporter — bridges AWS RDS metrics into Prometheus
+# Requires IRSA for CloudWatch:GetMetricStatistics permission
 prometheus-cloudwatch-exporter:
   enabled: true
 
   aws:
+    # Use regional STS endpoint — avoids routing through us-east-1
     stsRegional:
-      enabled: true         # use regional STS endpoint for us-east-2
+      enabled: true
 
   serviceAccount:
     create: true
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-cloudwatch-exporter"
+      # IRSA for scraping cloudwatch metrics
+      eks.amazonaws.com/role-arn: ""
       eks.amazonaws.com/sts-regional-endpoints: "true"
 
   config: |-
@@ -225,37 +218,30 @@ prometheus-cloudwatch-exporter:
         aws_metric_name: CPUUtilization
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: DatabaseConnections
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: FreeableMemory
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: FreeStorageSpace
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: ReadLatency
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: WriteLatency
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: ReadIOPS
         aws_dimensions: [DBInstanceIdentifier]
         aws_statistics: [Average]
-
       - aws_namespace: AWS/RDS
         aws_metric_name: WriteIOPS
         aws_dimensions: [DBInstanceIdentifier]
@@ -266,25 +252,31 @@ prometheus-cloudwatch-exporter:
     namespace: monitoring
     interval: 60s
     labels:
-      release: kube-prometheus-stack    # must match Prometheus selector
+      release: platform-monitoring
 
   securityContext:
     runAsUser: 65534
     fsGroup: 65534
 
+# Loki — log aggregation with S3 backend
+# Logs are stored in S3 — PVC is used for the WAL (write-ahead log) only
 loki:
+  # fullnameOverride: loki makes the service name predictable as "loki"
+  # without this it would be "<release-name>-loki" which varies by environment
   fullnameOverride: "loki"
   deploymentMode: SingleBinary
 
   loki:
+    # auth_enabled: false — single tenant mode, no per-tenant auth headers needed
     auth_enabled: false
 
     storage:
+      # s3 buckets for storing logs
       type: s3
       bucketNames:
-        chunks: "<cluster-name>-loki-logs"
-        ruler: "<cluster-name>-loki-logs"
-        admin: "<cluster-name>-loki-logs"
+        chunks: ""
+        ruler: ""
+        admin: ""
       s3:
         region: us-east-2
 
@@ -313,29 +305,32 @@ loki:
       max_query_parallelism: 32
       max_entries_limit_per_query: 5000
       max_query_lookback: 2160h
-      retention_period: 744h 
+      retention_period: 744h    # 31 days default retention
       retention_stream:
+        # Monitoring namespace logs retained for 7 days only — high volume
         - selector: '{namespace="monitoring"}'
           priority: 1
-          period: 168h 
+          period: 168h
 
     commonConfig:
       path_prefix: /var/loki
-      replication_factor: 1
+      replication_factor: 1    # SingleBinary — no replication needed
 
   serviceAccount:
     create: true
-    name: loki-sa
+    name: loki
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-loki"
+      # IRSA for loki
+      eks.amazonaws.com/role-arn: ""
 
   singleBinary:
     replicas: 1
     persistence:
       enabled: true
       storageClass: gp3
-      size: 10Gi
+      size: 10Gi    # WAL storage — logs themselves go to S3
 
+  # Disable all read/write/backend replicas — SingleBinary handles everything
   read:
     replicas: 0
   write:
@@ -343,14 +338,15 @@ loki:
   backend:
     replicas: 0
 
+  # Caches disabled
   chunksCache:
     enabled: false
   resultsCache:
     enabled: false
-
   memcached:
     enabled: false
 
+  # Canary disabled
   lokiCanary:
     enabled: false
 
@@ -358,17 +354,23 @@ loki:
     serviceMonitor:
       enabled: true
       labels:
-        release: kube-prometheus-stack
+        release: platform-monitoring
     dashboards:
-      enabled: true          
+      enabled: true
       labels:
         grafana_dashboard: "1"
     rules:
-      enabled: true          
+      enabled: true
 
+  # Gateway enabled — provides a stable HTTP endpoint for Loki push and query
+  # Alloy pushes to: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+  # Grafana queries: http://loki-gateway.monitoring.svc.cluster.local
   gateway:
     enabled: true
 
+# Alloy — log collector DaemonSet (replaces deprecated Promtail)
+# Collects logs from petclinic, monitoring, and istio-ingress namespaces
+# Parses JSON structured logs and adds labels before shipping to Loki
 alloy:
   fullnameOverride: "alloy"
   alloy:
@@ -393,6 +395,8 @@ alloy:
             source_labels = ["__meta_kubernetes_pod_container_name"]
             target_label  = "container"
           }
+          # Only collect logs from these namespaces — reduces Loki ingest volume
+          # Add namespaces as needed
           rule {
             source_labels = ["__meta_kubernetes_namespace"]
             regex         = "petclinic|monitoring|istio-ingress"
@@ -405,6 +409,7 @@ alloy:
           forward_to = [loki.process.parse.receiver]
         }
 
+        # Parse JSON log lines and extract level label for filtering in Grafana
         loki.process "parse" {
           stage.json {
             expressions = {
@@ -440,6 +445,7 @@ alloy:
   controller:
     type: 'daemonset'
     tolerations:
+      # Run on ALL nodes — must collect logs from SPOT nodes too
       - effect: NoSchedule
         operator: Exists
       - effect: NoExecute
@@ -451,4 +457,4 @@ alloy:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: kube-prometheus-stack
+      release: platform-monitoring

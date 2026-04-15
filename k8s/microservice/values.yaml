@@ -4,6 +4,7 @@
 #   - Deployments and Argo Rollouts (canary)
 #   - Istio traffic routing (VirtualService + DestinationRule)
 #   - HPA and KEDA autoscaling
+#   - ServiceMonitors for Prometheus scraping
 #   - PodDisruptionBudgets
 #   - External Secrets (AWS Secrets Manager via ESO)
 #   - SPOT and ON_DEMAND node scheduling
@@ -225,6 +226,16 @@ serviceAccount:
   create: true
   name: ""          # defaults to appName via _helpers.tpl
   annotations: {}
+  portName: http
+
+# ServiceMonitor for Prometheus scraping
+serviceMonitor:
+  enabled: false
+  selectorLabels:
+    # This must match Prometheus serviceMonitorSelector label on the monitoring chart
+    release: platform-monitoring
+  portName: http # For services with ServiceMonitor enabled this most match the portName of that service
+  endpoint: /actuator/prometheus
 
 # HPA
 # CPU/memory based horizontal pod autoscaling.
@@ -257,11 +268,11 @@ scaleObject:
   fallback: # fallback to 1 (default) replica if metrics are unavailable
     failureThreshold: 3
     replicas: 1
-  prometheusServer: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090 # prom server for metrics
+  prometheusServer: http://platform-monitoring-prometheus.monitoring.svc.cluster.local:9090 # prom server for metrics
   triggers: [] # additional triggers specified will be appended to the default triggers defined in _helpers.tpl
 
 # VPA used in Recommendation mode with Goldilocks
-# recources for each controller (deployment, rollout) can be updated based on Goldilocks recommendations
+# Recources for each controller (deployment, rollout) can be updated based on Goldilocks suggestions
 vpa:
   enabled: false
 # Default limits for Goldilocks/Recommendation mode

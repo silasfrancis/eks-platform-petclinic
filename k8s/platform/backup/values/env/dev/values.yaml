@@ -1,0 +1,56 @@
+velero:
+  serviceAccount:
+    server:
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::564745622232:role/petclinic-velero"
+
+  configuration:
+    backupStorageLocation:
+      - name: petclinic-s3-backup
+        provider: aws
+        bucket: ""
+        default: true
+        accessMode: ReadWrite
+        validationFrequency: 1h
+        config:
+          region: us-east-2
+          kmsKeyId: ""
+
+    volumeSnapshotLocation:
+      - name: petclinic-ebs-backup
+        provider: aws
+        config:
+          region: us-east-2
+
+
+  schedules:
+    daily-cluster-backup:
+      template:
+        storageLocation: petclinic-s3-backup
+        volumeSnapshotLocations:
+          - petclinic-ebs-backup
+        excludedNamespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+        labels:
+          schedule: daily-cluster-backup
+          type: full
+
+    hourly-petclinic-backup:
+      template:
+        storageLocation: petclinic-s3-backup
+        includedNamespaces:
+          - petclinic
+        labels:
+          schedule: hourly-petclinic-backup
+          type: petclinic
+
+    daily-monitoring-backup:
+      template:
+        storageLocation: petclinic-s3-backup
+        includedNamespaces:
+          - monitoring
+        labels:
+          schedule: daily-monitoring-backup
+          type: monitoring

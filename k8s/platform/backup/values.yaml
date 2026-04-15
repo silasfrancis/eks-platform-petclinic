@@ -1,6 +1,19 @@
+# Backup platform values.
+# Velero provides backup and disaster recovery for Kubernetes resources and PVCs.
+#
+# Architecture:
+#   - Velero server: orchestrates backups and restores
+#   - node-agent DaemonSet: handles filesystem backups of PVC data (Kopia uploader)
+#   - AWS plugin: provides S3 storage and EBS snapshot support
+#
+# Authentication: IRSA — no static credentials stored in the cluster.
+# Storage: S3 for Kubernetes resource backups, EBS snapshots for PVC data.
+
 velero:
   nameOverride: "velero"
 
+  # AWS plugin must be added as an init container — it is not bundled with Velero
+  # Copies the plugin binary into /target which Velero mounts at startup
   initContainers:
     - name: velero-plugin-for-aws
       image: velero/velero-plugin-for-aws:v1.13.1
@@ -9,6 +22,7 @@ velero:
         - mountPath: /target
           name: plugins
 
+  # IRSA handles AWS authentication — no secret needed
   credentials:
     useSecret: false
 
@@ -17,12 +31,16 @@ velero:
       create: true
       name: velero
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-velero"
+        # IRSA for velero
+        eks.amazonaws.com/role-arn: ""
 
+  # Velero server runs on ON_DEMAND — backup orchestration must be reliable
   nodeSelector:
     node-type: on-demand
+
+  # fsGroup 1337 required for IRSA token volume to be readable by Velero
   podSecurityContext:
-    fsGroup: 1337 
+    fsGroup: 1337
 
   containerSecurityContext:
     allowPrivilegeEscalation: false
@@ -38,10 +56,15 @@ velero:
       cpu: 1000m
       memory: 512Mi
 
+  # node-agent DaemonSet is required for PVC filesystem backups
+  # Backs up Prometheus TSDB, Grafana, and Loki PVC data
+  # Uses Kopia uploader for efficient deduplication
   deployNodeAgent: true
 
   nodeAgent:
     tolerations:
+      # node-agent must run on ALL nodes including SPOT
+      # to access PVCs mounted on those nodes
       - key: spot
         operator: Equal
         value: "true"
@@ -57,22 +80,30 @@ velero:
         cpu: 1000m
         memory: 1024Mi
 
+    # node-agent requires root to access host filesystem for PVC backups
     podSecurityContext:
       runAsUser: 0
 
   configuration:
+    # Kopia is the modern uploader — better deduplication than the legacy restic
     uploaderType: kopia
-    defaultBackupTTL: 720h
+
+    # Default TTL for backups not covered by schedule-specific TTLs
+    defaultBackupTTL: 720h    # 30 days
+
     backupStorageLocation:
       - name: petclinic-s3-backup
         provider: aws
-        bucket: "<cluster-name>-velero-backups"
+        bucket: ""
+        # default: true makes this the location used when no location is specified
         default: true
         accessMode: ReadWrite
+        # Velero validates the BSL is accessible every hour
         validationFrequency: 1h
         config:
+          # OVERRIDE: update if deploying to a different region
           region: us-east-2
-          kmsKeyId: ""
+          kmsKeyId: ""    # kms key id for  S3 encryption
 
     volumeSnapshotLocation:
       - name: petclinic-ebs-backup
@@ -82,17 +113,21 @@ velero:
 
     logFormat: json
     logLevel: info
+    # How often Velero syncs backup objects from object storage
     backupSyncPeriod: 1m
+    # false means PVC filesystem backup must be explicitly opted in per schedule
     defaultVolumesToFsBackup: false
     garbageCollectionFrequency: 1h
 
   schedules:
+    # Full cluster backup — excludes noisy system namespaces
+    # Retains 30 days of history
     daily-cluster-backup:
       disabled: false
-      schedule: "0 2 * * *"
+      schedule: "0 2 * * *"    # 2 AM daily
       useOwnerReferencesInBackup: false
       template:
-        ttl: "720h"
+        ttl: "720h"             # 30 days
         storageLocation: petclinic-s3-backup
         volumeSnapshotLocations:
           - petclinic-ebs-backup
@@ -107,12 +142,14 @@ velero:
           schedule: daily-cluster-backup
           type: full
 
+    # Frequent petclinic namespace backup — shorter TTL, hourly cadence
+    # Protects against accidental deletion of application resources
     hourly-petclinic-backup:
       disabled: false
-      schedule: "0 * * * *"
+      schedule: "0 * * * *"    # every hour
       useOwnerReferencesInBackup: false
       template:
-        ttl: "168h"
+        ttl: "168h"             # 7 days
         storageLocation: petclinic-s3-backup
         includedNamespaces:
           - petclinic
@@ -122,17 +159,20 @@ velero:
           schedule: hourly-petclinic-backup
           type: petclinic
 
+    # Monitoring namespace backup with filesystem backup enabled
+    # defaultVolumesToFsBackup: true preserves Prometheus TSDB and Grafana data
+    # without this, metrics history is lost if the cluster is rebuilt
     daily-monitoring-backup:
       disabled: false
-      schedule: "0 3 * * *"    # 3 AM daily
+      schedule: "0 3 * * *"
       useOwnerReferencesInBackup: false
       template:
-        ttl: "168h"             # keep 7 days
+        ttl: "168h"
         storageLocation: petclinic-s3-backup
         includedNamespaces:
           - monitoring
         snapshotVolumes: true
-        defaultVolumesToFsBackup: true
+        defaultVolumesToFsBackup: true    # filesystem backup for Prometheus/Grafana PVCs
         labels:
           schedule: daily-monitoring-backup
           type: monitoring
@@ -146,21 +186,22 @@ velero:
       enabled: true
       autodetect: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring
 
+    # PodMonitor for node-agent DaemonSet — separate from Velero server ServiceMonitor
     nodeAgentPodMonitor:
       enabled: true
       autodetect: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring
 
     prometheusRule:
       enabled: true
       autodetect: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring
       spec:
-        # Alert when backup fails
+        # Fires if the last backup attempt did not complete successfully
         - alert: VeleroBackupFailed
           annotations:
             summary: "Velero backup {{ $labels.schedule }} has failed"
@@ -170,7 +211,7 @@ velero:
           labels:
             severity: critical
 
-        # Alert when backup has been failing for 12h
+        # Fires if a schedule has been continuously failing for 12 hours
         - alert: VeleroBackupFailing
           annotations:
             summary: "Velero backup {{ $labels.schedule }} has been failing for 12h"
@@ -180,7 +221,8 @@ velero:
           labels:
             severity: critical
 
-        # Alert when no successful backup in 25h
+        # Fires if no successful backup has run in the last 25 hours
+        # covers missed daily backups — fires the next morning if backup was skipped
         - alert: VeleroNoNewBackup
           annotations:
             summary: "Velero backup {{ $labels.schedule }} has not run in 25h"
@@ -195,7 +237,7 @@ velero:
           labels:
             severity: critical
 
-        # Alert on partial failures
+        # Fires if more than 25% of recent backup attempts are partial failures
         - alert: VeleroBackupPartialFailures
           annotations:
             summary: "Velero backup {{ $labels.schedule }} has partial failures"
@@ -207,10 +249,10 @@ velero:
           labels:
             severity: warning
 
-        # Alert when restore fails
+        # Fires immediately if any restore operation fails
         - alert: VeleroRestoreFailed
           annotations:
-            summary: "Velero restore {{ $labels.schedule }} has failed"
+            summary: "Velero restore has failed"
             description: "A Velero restore operation has failed."
           expr: velero_restore_failed_total > 0
           for: 5m

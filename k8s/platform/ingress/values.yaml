@@ -1,3 +1,31 @@
+# Ingress platform values.
+# Manages external traffic entry into the cluster via Istio Gateway and ExternalDNS.
+#
+# Architecture:
+#   - Istio ingress gateway: receives external traffic via AWS NLB
+#   - AWS NLB: created automatically by EKS Cloud Provider from Service annotations
+#     (no ALB controller required — NLB is handled natively by Kubernetes)
+#   - cert-manager: issues and renews wildcard TLS certificate via Let's Encrypt DNS-01
+#   - ExternalDNS: syncs DNS records to Cloudflare from Service/Gateway annotations
+#   - Cloudflare API token: pulled from AWS Secrets Manager via ESO
+#
+# Certificate flow:
+#   cert-manager → Let's Encrypt DNS-01 challenge → Cloudflare DNS → TLS secret
+#   Istio Gateway reads TLS secret → terminates TLS for *.lefrancis.org
+#
+# DNS flow:
+#   ExternalDNS reads Gateway annotations → creates CNAME records in Cloudflare
+#   All subdomains (petclinic, argocd, grafana) point to the same NLB DNS name
+#
+# OVERRIDE REQUIRED:
+#   loadbalancer.annotations.service.beta.kubernetes.io/aws-load-balancer-subnets
+#   loadbalancer.annotations.service.beta.kubernetes.io/aws-load-balancer-security-groups
+#   loadbalancer.annotations.external-dns.alpha.kubernetes.io/hostname
+#   certificate.spec.dnsNames (if domain changes)
+#   external-dns.txtOwnerId (must be unique per cluster)
+#   clusterIssuer.spec.acme.email
+#   secretStore and externalSecret (Cloudflare token path)
+
 namespace: istio-ingress
 
 labels:
@@ -9,22 +37,27 @@ selectors:
   app: istio-ingressgateway
   istio: ingressgateway
 
+# Service account used by the Istio ingress gateway pod
+# Needs read access to TLS secrets for certificate mounting
 serviceAccount:
   name: istio-ingressgateway
   enabled: true
 
+# Role grants the gateway service account read access to TLS secrets
+# Required for Istio to mount the cert-manager issued certificate
 role:
   name: istio-ingressgateway
   enabled: true
   rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "watch", "list"]
+    - apiGroups: [""]
+      resources: ["secrets"]
+      verbs: ["get", "watch", "list"]
 
 roleBinding:
   name: istio-ingressgateway
   enabled: true
 
+# Istio proxy container — image: auto means Istio injects the correct version
 container:
   name: istio-proxy
   image: auto
@@ -39,14 +72,17 @@ container:
   ports:
     - containerPort: 15090
       protocol: TCP
-      name: http-envoy-prom
+      name: http-envoy-prom    # Prometheus scrapes Envoy metrics on this port
 
 deployment:
   enabled: true
   name: istio-ingressgateway
   annotations:
+    # inject.istio.io/templates: gateway tells Istio to inject as a gateway
+    # not as a sidecar — different template, different capabilities
     inject.istio.io/templates: gateway
     sidecar.istio.io/inject: "true"
+    # Prometheus scrape annotations — Alloy/Prometheus discovers these
     prometheus.io/path: /stats/prometheus
     prometheus.io/port: "15020"
     prometheus.io/scrape: "true"
@@ -66,6 +102,8 @@ horizontalPodAutoscaler:
           type: Utilization
           averageUtilization: 80
 
+# Prevents all gateway replicas being evicted simultaneously
+# during Karpenter node consolidation or node drain
 podDisruptionBudget:
   enabled: true
   name: istio-ingressgateway
@@ -75,31 +113,47 @@ loadbalancer:
   enabled: true
   name: istio-ingressgateway
   annotations:
+    # NLB is provisioned by EKS Cloud Provider — no ALB controller needed
+    # aws-load-balancer-type: external = NLB (not ALB)
     service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
     service.beta.kubernetes.io/aws-load-balancer-type: "external"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    # OVERRIDE: replace with actual subnet IDs from your VPC (public subnets)
     service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-021845a2ee47579d9,subnet-0d277d84a61c8d17e"
+    # OVERRIDE: replace with actual security group ID for the NLB
     service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0aa67a44e2bb7187c"
+    # ExternalDNS picks up hostnames from this annotation and creates
+    # CNAME records in Cloudflare pointing to the NLB DNS name
+    # OVERRIDE: add/remove hostnames as new dashboards are exposed
     external-dns.alpha.kubernetes.io/managed: "true"
     external-dns.alpha.kubernetes.io/hostname: >
       petclinic.lefrancis.org,
       argocd.lefrancis.org,
       grafana.lefrancis.org
+    # cloudflare-proxied: false keeps traffic direct to NLB
+    # true would route through Cloudflare CDN which breaks some protocols
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     external-dns.alpha.kubernetes.io/ttl: "120"
 
+# Wildcard TLS certificate for *.lefrancis.org
+# Issued by Let's Encrypt via cert-manager DNS-01 challenge against Cloudflare
+# One certificate covers all subdomains — no per-service certificate needed
+# OVERRIDE: update dnsNames if using a different domain
 certificate:
   name: petclinic-dev-tls
   enabled: true
-  spec: 
-    secretName: petclinic-dev-ingress-certs
+  spec:
+    secretName: petclinic-dev-ingress-certs    # referenced by Gateway tls.credentialName
     issuerRef:
       name: letsencrypt-cloudflare
       kind: ClusterIssuer
   dnsNames:
     - "lefrancis.org"
-    - "*.lefrancis.org" 
+    - "*.lefrancis.org"
 
+# Istio Gateway — accepts all *.lefrancis.org traffic on 80 and 443
+# HTTP redirects to HTTPS — all services use TLS
+# VirtualServices route traffic from the gateway to individual services
 gateway:
   name: petclinic-gateway
   enabled: true
@@ -111,7 +165,7 @@ gateway:
       hosts:
         - "*.lefrancis.org"
       tls:
-        httpsRedirect: true 
+        httpsRedirect: true
     - port:
         number: 443
         name: https
@@ -120,32 +174,43 @@ gateway:
         - "*.lefrancis.org"
       tls:
         mode: SIMPLE
-        credentialName: petclinic-dev-ingress-certs
+        credentialName: petclinic-dev-ingress-certs    # must match certificate.spec.secretName
 
+# ExternalDNS — syncs DNS records to Cloudflare
+# Watches Services, Ingresses and Istio Gateways for hostname annotations
+# Only manages resources annotated with external-dns.alpha.kubernetes.io/managed=true
 external-dns:
-  provider: 
+  provider:
     name: cloudflare
 
+  # Cloudflare API token pulled from Kubernetes secret
+  # Secret is created by ESO from AWS Secrets Manager (see externalSecret below)
   env:
     - name: CF_API_TOKEN
       valueFrom:
         secretKeyRef:
-          name: cloudflare-api-token
+          name: cloudflare-api-token    # created by ESO externalSecret below
           key: cloudflare_api_token
 
   domainFilters:
-    - lefrancis.org
-  
+    - lefrancis.org    # only manage DNS for this domain
+
+  # sync: creates and deletes records to match cluster state
+  # upsert-only: only creates, never deletes (safer for production)
   policy: sync
-  
+
   sources:
     - service
     - ingress
-    - istio-gateway
+    - istio-gateway    # watches Istio Gateway resources for hostnames
 
+  # Only manage resources explicitly opted in with this annotation
+  # prevents ExternalDNS from touching DNS records it should not manage
   annotationFilter: "external-dns.alpha.kubernetes.io/managed=true"
 
   registry: txt
+  # OVERRIDE: must be unique per cluster to prevent multiple clusters
+  # fighting over the same DNS records
   txtOwnerId: "eks-cluster-01"
   txtPrefix: "external-dns-"
 
@@ -157,10 +222,58 @@ external-dns:
 
   rbac:
     create: true
-  
+
   serviceAccount:
     create: true
     name: external-dns
 
   serviceMonitor:
     enabled: true
+
+# Secret Store — ESO ClusterSecretStore for pulling secrets from AWS Secrets Manager
+# Used by ExternalDNS to get the Cloudflare API token
+# OVERRIDE: configure per environment
+secretStore:
+  enabled: true
+  name: aws-secrets-backend    # must match ClusterSecretStore name in bootstrap
+  kind: ClusterSecretStore
+
+# External Secrets — pulls Cloudflare API token from AWS Secrets Manager
+# Creates a Kubernetes secret that ExternalDNS and cert-manager reference
+# OVERRIDE: update remoteRef.key to match your AWS Secrets Manager path
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secrets:
+    # Cloudflare API token — used by ExternalDNS and cert-manager DNS-01
+    - name: cloudflare-api-token
+      target:
+        name: cloudflare-api-token
+        creationPolicy: Owner
+      data:
+        - secretKey: cloudflare_api_token
+          remoteRef:
+            # OVERRIDE: update path to match your Secrets Manager structure
+            key: "petclinic/cloudflare"
+            property: api_token
+
+# ClusterIssuer — Let's Encrypt production issuer using Cloudflare DNS-01
+# DNS-01 is required for wildcard certificates
+# cert-manager creates a TXT record in Cloudflare to prove domain ownership
+# OVERRIDE: update email to your Let's Encrypt account email
+clusterIssuer:
+  enabled: true
+  name: letsencrypt-cloudflare
+  spec:
+    acme:
+      server: https://acme-v02.api.letsencrypt.org/directory
+      # OVERRIDE: must be a valid email for Let's Encrypt expiry notifications
+      email: silasfrancis07@gmail.com
+      privateKeySecretRef:
+        name: letsencrypt-cloudflare-account-key
+      solvers:
+        - dns01:
+            cloudflare:
+              apiTokenSecretRef:
+                name: cloudflare-api-token    # created by externalSecret above
+                key: cloudflare_api_token

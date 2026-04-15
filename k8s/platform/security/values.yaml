@@ -1,56 +1,70 @@
-namespace: kube-system
+# Security platform values.
+# Multi-layer runtime security and continuous vulnerability scanning.
+#
+# Components:
+#   Trivy Operator: continuous image scanning and compliance checking
+#   Falco: runtime threat detection using eBPF
+#   Falcosidekick: routes Falco alerts to Slack
+#   cert-manager: TLS certificate management (wildcard via Let's Encrypt)
+#
+# Secrets managed via ESO:
+#   falcosidekick-secrets: Slack webhook URL for security alerts
 
-serviceAccount:
-  name: aws-load-balancer-controller
-  enabled: true
-  annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-petclinic-alb-controller"
 
+# ClusterIssuer for cert-manager — used by ingress chart certificate
+# Defined here since cert-manager lives in the security chart
+# OVERRIDE: update email
 clusterIssuer:
   enabled: true
   name: letsencrypt-cloudflare
   spec:
     acme:
       server: https://acme-v02.api.letsencrypt.org/directory
-      email: silasfrancis07@gmail.com
+      # Provide a valid email for Lets encrypt
+      email: ""
       privateKeySecretRef:
         name: letsencrypt-cloudflare-account-key
       solvers:
-      - dns01:
-          cloudflare:
-            apiTokenSecretRef:
-              name: cloudflare-api-token-secret
-              key: api-token
+        - dns01:
+            cloudflare:
+              apiTokenSecretRef:
+                name: platform-security-secrets
+                key: cloudflare-api-token
 
+# SecretStore — ESO store reference for secrets used in this chart
 secretStore:
   enabled: true
   kind: SecretStore
-  name: 
+  name: platform-security-secretstore
   awsRegion: us-east-2
 
+# ExternalSecret — pulls security-related secrets from AWS Secrets Manager
 externalSecret:
   enabled: true
+  refreshInterval: 1h
+  name: platform-security-secrets
+  creationPolicy: Owner
+  data: {}
+    # Slack webhook for Falcosidekick security alerts
+    # - secretKey: slack_webhook_url
+    #   remoteRef:
+    #     key: "" # Update path to match your Secrets Manager structure
+    #     property: slack_webhook_url
+    # Cloudflare API token for cert-manager DNS-01 challenge
+    # - secretKey: api-token
+    #   remoteRef:
+    #     key: "" # Update path to match your Secrets Manager structure
+    #     property: cloudflare-api-token
 
-
-  # target:
-  #   name: alertmanager-receivers-secret
-  #   creationPolicy: Owner
-  # data:
-  #   - secretKey: slack-webhook-url
-  #     remoteRef:
-  #       key: petclinic/monitoring/alertmanager    # path in AWS Secrets Manager
-  #       property: slack_webhook_url
-
-  #   - secretKey: email-password
-  #     remoteRef:
-  #       key: petclinic/monitoring/alertmanager
-  #       property: email_password
-# Cloudfare token
-# grafana admin passsword
-
+# Trivy Operator — continuous vulnerability scanning
+# Scans only petclinic namespace — reduces noise from system workloads
+# ignoreUnfixed: true — only report CVEs with available fixes (actionable)
 trivy-operator:
+  # Provide additional namespaces to scan, scans only namespace (petclinic) where all microservices are running by default
   targetNamespaces: "petclinic"
+  # Excluded namespaces from scanning
   excludeNamespaces: "kube-system,kube-public,kube-node-lease,monitoring,karpenter,argocd,istio-system,istio-ingress,trivy-system,external-dns,cert-manager"
+
   operator:
     replicas: 1
     vulnerabilityScannerScanOnlyCurrentRevisions: true
@@ -67,15 +81,24 @@ trivy-operator:
     scanJobsConcurrentLimit: 5
     scanJobsRetryDelay: 30s
     metricsFindingsEnabled: true
-    metricsVulnIdEnabled: false 
+    # metricsVulnIdEnabled: false — enabling this significantly increases
+    # Prometheus cardinality (one metric series per CVE ID)
+    metricsVulnIdEnabled: false
+
+  # Trivy Operator controller runs on ON_DEMAND — scanning infrastructure
   nodeSelector:
     node-type: on-demand
+
   trivyOperator:
+    # Scan jobs must tolerate SPOT nodes to scan workloads running there
     scanJobTolerations:
       - key: spot
         operator: Equal
         value: "true"
         effect: NoSchedule
+    # Mount .trivyignore from ConfigMap into scan jobs
+    # ConfigMap must be created separately with CVEs to suppress
+    # Should mirror the .trivyignore file in your CI pipeline
     scanJobCustomVolumes:
       - name: trivy-ignore
         configMap:
@@ -84,13 +107,19 @@ trivy-operator:
       - name: trivy-ignore
         mountPath: /etc/trivyignore
         readOnly: true
-    scanJobNodeSelector: {}   
+    scanJobNodeSelector: {}
+
   trivy:
     mode: Standalone
+    # ignoreUnfixed: true suppresses CVEs with no available fix
+    # reduces noise — focus on actionable findings only
     ignoreUnfixed: true
     severity: MEDIUM,HIGH,CRITICAL
-    slow: true  
+    # slow: true uses less CPU at the cost of longer scan time
+    # appropriate for background scanning in a resource-constrained cluster
+    slow: true
     timeout: "5m0s"
+    # Use embedded Rego policies — no internet access required for policy download
     useEmbeddedRegoPolicies: "true"
     useBuiltinRegoPolicies: "false"
     storageClassEnabled: true
@@ -104,24 +133,31 @@ trivy-operator:
       limits:
         cpu: 500m
         memory: 500Mi
+
+  # nodeCollector runs on every node to collect node-level config data
+  # Must tolerate SPOT nodes to assess all nodes in the cluster
   nodeCollector:
     tolerations:
       - key: spot
         operator: Equal
         value: "true"
         effect: NoSchedule
+
+  # EKS CIS benchmark is most relevant compliance check for this cluster
   compliance:
-    cron: "0 */6 * * *"
+    cron: "0 */6 * * *"    # run every 6 hours
     reportType: summary
     specs:
       - eks-cis-1.4
       - k8s-nsa-1.0
       - k8s-pss-baseline-0.1
+
   serviceMonitor:
     enabled: true
     namespace: trivy-system
     labels:
-      release: kube-prometheus-stack
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+
   resources:
     requests:
       cpu: 100m
@@ -130,13 +166,23 @@ trivy-operator:
       cpu: 500m
       memory: 512Mi
 
+# Falco — eBPF-based runtime threat detection
+# Monitors syscalls for suspicious behaviour: shell spawns, unexpected network
+# connections, privilege escalation, sensitive file access etc.
+# modern_ebpf driver: no kernel module required
 falco:
+  fullnameOverride: "falco"
   driver:
     enabled: true
     kind: modern_ebpf
     loader:
-      enabled: false
+      enabled: false    # not needed for modern_ebpf
+
+  # tty: true flushes logs immediately — useful for seeing alerts in real time
   tty: true
+
+  # Falco runs as a DaemonSet — must tolerate all node taints
+  # including SPOT nodes to monitor all workloads in the cluster
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
@@ -148,10 +194,14 @@ falco:
       effect: NoSchedule
     - key: CriticalAddonsOnly
       operator: Exists
+
   collectors:
     enabled: true
+    # kubernetes collector enriches Falco alerts with pod name, namespace,
+    # labels and other Kubernetes metadata — makes alerts actionable
     kubernetes:
       enabled: true
+
   metrics:
     enabled: true
     interval: 1h
@@ -162,20 +212,27 @@ falco:
     libbpfStatsEnabled: true
     service:
       create: true
+
   falco:
+    # json_output required for Falcosidekick to parse and route alerts
     json_output: true
     json_include_output_property: true
     json_include_output_fields_property: true
     json_include_tags_property: true
+    # Route alerts to Falcosidekick which fans out to Slack, Prometheus etc
     http_output:
       enabled: true
-      url: "http://{{ include \"falcosidekick.fullname\" . }}:2801"
+      url: "http://falco-falcosidekick:2801"
+    # warning: alert on warning, error, critical, emergency
+    # debug/info would generate too much noise for this cluster
     priority: warning
     log_level: info
     stdout_output:
       enabled: true
+    # syslog disabled as it is noisy in containerised environments
     syslog_output:
       enabled: false
+
   resources:
     requests:
       cpu: 100m
@@ -183,11 +240,15 @@ falco:
     limits:
       cpu: 1000m
       memory: 1024Mi
+
   serviceMonitor:
     create: true
     labels:
-      release: kube-prometheus-stack
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
     interval: 15s
+
+  # Falco Grafana dashboard — pushed to monitoring namespace
+  # discovered by Grafana sidecar via grafana_dashboard label
   grafana:
     dashboards:
       enabled: true
@@ -196,20 +257,24 @@ falco:
           name: falco-grafana-dashboard
           namespace: monitoring
           folder: "Security"
+
   falcosidekick:
     enabled: true
     webui:
       enabled: true
     fullfqdn: false
     config:
+      # Slack webhook URL pulled from ESO-created secret
+      # Ensure platform-security-secrets exists (created by externalSecret above)
       extraEnv:
         - name: FALCOSIDEKICK_SLACK_WEBHOOKURL
           valueFrom:
             secretKeyRef:
-              name: falcosidekick-secrets 
+              name: platform-security-secrets
               key: slack_webhook_url
       slack:
-        webhookurl: $(FALCOSIDEKICK_SLACK_WEBHOOKURL) 
+        # Reference the env var set above
+        webhookurl: $(FALCOSIDEKICK_SLACK_WEBHOOKURL)
         channel: "#petclinic-security"
         outputformat: all
         minimumpriority: warning
@@ -226,20 +291,33 @@ falco:
           - rule
           - priority
           - source
+
       webui:
-        enabled: false  
+        enabled: false
+
     serviceMonitor:
       enabled: true
       labels:
-        release: kube-prometheus-stack
+        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+
+  # Custom petclinic rules loaded from a separate file
+  # keeping rules in a separate file makes them easier to manage and review
+  # the file is mounted via .Files.Get from the chart's falco-rules/ directory
   customRules:
     petclinic-rules.yaml: |
       {{ .Files.Get "falco-rules/petclinic-rules.yaml" | indent 4 }}
 
+# cert-manager — TLS certificate lifecycle management
+# Issues and renews the wildcard certificate for *.lefrancis.org
+# Uses DNS-01 challenge via Cloudflare — required for wildcard certificates
 cert-manager:
   crds:
-    enabled: true 
+    # Install CRDs as part of Helm install — keeps CRDs in sync with chart version
+    enabled: true
+    # keep: true prevents accidental CRD deletion if chart is uninstalled
+    # deleting CRDs would delete ALL certificates in the cluster
     keep: true
+
   global:
     nodeSelector:
       kubernetes.io/os: linux
@@ -248,7 +326,9 @@ cert-manager:
     rbac:
       create: true
       aggregateClusterRoles: true
+
   replicaCount: 1
+
   resources:
     requests:
       cpu: 50m
@@ -256,6 +336,7 @@ cert-manager:
     limits:
       cpu: 200m
       memory: 256Mi
+
   prometheus:
     enabled: true
     servicemonitor:
@@ -265,7 +346,8 @@ cert-manager:
       interval: 60s
       scrapeTimeout: 30s
       labels:
-        release: kube-prometheus-stack
+        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+
   webhook:
     replicaCount: 1
     resources:
@@ -278,10 +360,10 @@ cert-manager:
     hostNetwork: false
     securePort: 10250
     timeoutSeconds: 30
+
   cainjector:
     enabled: true
     replicaCount: 1
-
     resources:
       requests:
         cpu: 50m
@@ -289,6 +371,10 @@ cert-manager:
       limits:
         cpu: 100m
         memory: 128Mi
+
+  # startupapicheck is a post-install Helm hook that verifies
+  # the cert-manager webhook is ready before the release completes
+  # prevents ArgoCD from marking the sync successful prematurely
   startupapicheck:
     enabled: true
     timeout: 1m
@@ -296,6 +382,12 @@ cert-manager:
     nodeSelector:
       kubernetes.io/os: linux
       node-type: on-demand
+
+  # Use Cloudflare DNS resolvers for DNS-01 self-check
+  # ensures cert-manager can verify its own challenge records
   dns01RecursiveNameservers: "1.1.1.1:53,8.8.8.8:53"
   dns01RecursiveNameserversOnly: false
+
+  # Delete certificate Secret when Certificate resource is deleted
+  # prevents orphaned TLS secrets accumulating in the cluster
   enableCertificateOwnerRef: true

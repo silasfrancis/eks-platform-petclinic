@@ -1,0 +1,27 @@
+clusterIssuer:
+  enabled: true
+  name: letsencrypt-cloudflare
+  spec:
+    acme:
+      server: https://acme-v02.api.letsencrypt.org/directory
+      email: "silas@lefrancis.org"
+      privateKeySecretRef:
+        name: letsencrypt-cloudflare-account-key
+      solvers:
+        - dns01:
+            cloudflare:
+              apiTokenSecretRef:
+                name: platform-security-secrets
+                key: cloudflare-api-token
+
+externalSecret:
+  enabled: true
+  data: 
+    - secretKey: slack_webhook_url
+      remoteRef:
+        key: "" 
+        property: slack_webhook_url
+    - secretKey: api-token
+      remoteRef:
+        key: "" 
+        property: cloudflare-api-token

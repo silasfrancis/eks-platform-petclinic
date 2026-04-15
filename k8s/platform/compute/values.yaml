@@ -1,20 +1,43 @@
+# Compute platform values.
+# Karpenter provisions and manages EC2 nodes directly without predefined node groups.
+# It selects the optimal instance type and capacity type based on pending pod requirements.
+#
+# Architecture:
+#   - Karpenter controller runs on the bootstrap node group (managed separately in Terraform)
+#   - EC2NodeClass defines AWS-specific node configuration (AMI, subnets, security groups)
+#   - NodePool defines scheduling constraints and scaling limits
+#   - SPOT interruption handling via SQS queue (provisioned in Terraform)
+
 karpenter:
   nameOverride: "karpenter"
+
   replicas: 1
+
   serviceAccount:
     create: true
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-karpenter-controller"
+      # IRSA for karpenter
+      eks.amazonaws.com/role-arn: ""
 
   settings:
-    clusterName: "<your-cluster-name>"
-    clusterEndpoint: ""
-    interruptionQueue: "<cluster-name>-karpenter-interruption"
+    # This must match the EKS cluster name exactly
+    clusterName: ""
 
+    # clusterEndpoint is auto-discovered on EKS — leave empty
+    clusterEndpoint: ""
+
+    # This  must match the SQS queue name created by Terraform
+    interruptionQueue: ""
+
+  # Karpenter must only run on the bootstrap node group
+  # It cannot run on nodes it manages — would cause a circular dependency
+  # bootstrap nodes are labelled node-type=karpenter-bootstrap in Terraform
   nodeSelector:
     kubernetes.io/os: linux
     node-type: karpenter-bootstrap
 
+  # Bootstrap nodes have CriticalAddonsOnly taint to prevent
+  # application workloads from landing on infrastructure nodes
   tolerations:
     - key: CriticalAddonsOnly
       operator: "Equal"
@@ -24,7 +47,7 @@ karpenter:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: kube-prometheus-stack
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
   controller:
     resources:

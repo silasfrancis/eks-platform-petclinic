@@ -1,32 +1,60 @@
+# Policy enforcement platform values.
+# Kyverno is a Kubernetes-native policy engine that validates, mutates
+# and generates resources using admission webhooks.
+#
+# Four controllers handle different concerns:
+#   admissionController:   validates/mutates resources at admission time
+#   backgroundController:  applies generate and mutateExisting policies
+#   cleanupController:     enforces TTL-based resource cleanup policies
+#   reportsController:     generates policy compliance reports
+#
+# Policies live in k8s/policies/templates/ as separate YAML files.
+# Values for policy templates can be found after the kyverno dependency section.
+# This chart installs the Kyverno engine and the policies templates.
+
 kyverno:
+  # global.nodeSelector applies to all four controllers
+  # Run on ON_DEMAND — policy enforcement is critical infrastructure
+  # SPOT interruption could leave the cluster without admission control
   global:
     nodeSelector:
       kubernetes.io/os: linux
       node-type: on-demand
+
   crds:
+    # install: true keeps CRDs in sync with the chart version
+    # CRDs must exist before any Policy resources are applied
     install: true
 
   config:
+    # resourceFilters tell Kyverno which resources to skip entirely
+    # Filtering high-churn or system resources reduces API server load
+    # and prevents Kyverno from evaluating resources it should never touch
+    # For futher details refer to => https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values&path=config.resourceFilters
     resourceFilters:
-      - '[Event,*,*]'
-      - '[*/*,kube-system,*]'
-      - '[*/*,kube-public,*]'
-      - '[*/*,kube-node-lease,*]'
-      - '[*/*,karpenter,*]'     
-      - '[*/*,argocd,*]'       
-      - '[*/*,monitoring,*]'   
-      - '[Node,*,*]'
+      - '[Event,*,*]'                    # events are ephemeral — skip
+      - '[*/*,kube-system,*]'            # Kubernetes system namespace
+      - '[*/*,kube-public,*]'            # public read-only namespace
+      - '[*/*,kube-node-lease,*]'        # node heartbeat leases
+      - '[*/*,karpenter,*]'              # Karpenter manages its own resources
+      - '[*/*,argocd,*]'                 # ArgoCD manages its own resources
+      - '[*/*,monitoring,*]'             # monitoring stack — not application workloads
+      - '[Node,*,*]'                     # nodes are infrastructure — not policy targets
       - '[Node/?*,*,*]'
-      - '[APIService,*,*]'
-      - '[TokenReview,*,*]'
-      - '[SubjectAccessReview,*,*]'
-      - '[SelfSubjectAccessReview,*,*]'
-      - '[Binding,*,*]'
-      - '[ReplicaSet,*,*]'
-      - '[EphemeralReport,*,*]'
-      - '[ClusterEphemeralReport,*,*]'
+      - '[APIService,*,*]'               # API server internals
+      - '[TokenReview,*,*]'              # auth internals
+      - '[SubjectAccessReview,*,*]'      # auth internals
+      - '[SelfSubjectAccessReview,*,*]'  # auth internals
+      - '[Binding,*,*]'                  # pod scheduling internals
+      - '[ReplicaSet,*,*]'               # managed by Deployment/Rollout — skip
+      - '[EphemeralReport,*,*]'          # Kyverno internal reporting objects
+      - '[ClusterEphemeralReport,*,*]'   # Kyverno internal reporting objects
 
     webhooks:
+      # Exclude namespaces from webhook enforcement
+      # kube-system: core Kubernetes components must always be able to start
+      # karpenter: node provisioner must not be blocked by policy webhooks
+      # argocd: GitOps engine must not be blocked during bootstrap
       namespaceSelector:
         matchExpressions:
           - key: kubernetes.io/metadata.name
@@ -36,7 +64,12 @@ kyverno:
               - karpenter
               - argocd
 
+    # generateSuccessEvents: false reduces Event noise in the cluster
+    # Only failures are reported — success is assumed unless flagged
     generateSuccessEvents: false
+
+  # admissionController — enforces policies at admission time
+  # This is the critical path — every pod/resource creation goes through it
   admissionController:
     replicas: 1
     nodeSelector:
@@ -48,14 +81,16 @@ kyverno:
           cpu: 100m
           memory: 128Mi
         limits:
-          memory: 384Mi
+          memory: 384Mi    # no CPU limit — admission must never be throttled
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
       interval: 30s
       scrapeTimeout: 25s
 
+  # backgroundController — processes generate and mutateExisting policies
+  # Runs outside the admission path — handles async policy application
   backgroundController:
     enabled: true
     replicas: 1
@@ -71,8 +106,11 @@ kyverno:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
+  # cleanupController — enforces TTL cleanup policies
+  # Removes resources that have exceeded their configured lifetime
+  # e.g. cleaning up completed Jobs, old reports
   cleanupController:
     enabled: true
     replicas: 1
@@ -88,8 +126,10 @@ kyverno:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
+  # reportsController — generates PolicyReport and ClusterPolicyReport resources
+  # These are consumed by Grafana dashboard and CLI tooling
   reportsController:
     enabled: true
     replicas: 1
@@ -105,20 +145,123 @@ kyverno:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: kube-prometheus-stack
+        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
+  # Grafana dashboard — pushed to monitoring namespace
+  # Discovered by Grafana sidecar via grafana_dashboard label
   grafana:
     enabled: true
-    namespace: monitoring 
+    namespace: monitoring # must match Grafana namespace
     labels:
-      grafana_dashboard: "1"
+      grafana_dashboard: "1" # must match Grafana dashboard label selector
 
   features:
+    # backgroundScan rescans all existing resources periodically
+    # catches resources that existed before a policy was applied
     backgroundScan:
       enabled: true
       backgroundScanInterval: 1h
       backgroundScanWorkers: 2
+
+    # policyExceptions: false — no resources are exempt from policies
+    # Enable and restrict to a specific namespace if exceptions are needed
     policyExceptions:
       enabled: false
+
+    # autoUpdateWebhooks keeps webhook configurations in sync
+    # when policies are added or removed — prevents stale webhook rules
     autoUpdateWebhooks:
       enabled: true
+
+# kyvernoPolicies — shared configuration for all Kyverno policy templates.
+# These values are referenced in policy templates via .Values.kyvernoPolicies.*
+#
+# Policies live in k8s/policies/templates/kyverno as individual YAML files.
+# Each policy uses these shared values to avoid repeating ECR account IDs,
+# namespace names, and GitHub org details across multiple policy files.
+
+kyvernoPolicies:
+  # Namespace references used across multiple policies
+  # Centralised here so renaming a namespace only requires one change
+  namespaces:
+    app: "" # This must match the namespace where all microservices are deployed in
+    istioSystem: istio-system
+    kubeSystem: kube-system
+
+  # ECR registry details — used by image verification policies
+  # to validate that images come from your registry only
+  # OVERRIDE: replace with your actual AWS account ID and region
+  ecr:
+    accountId: "" #AWS account id
+    region: "us-east-2"
+    # prefix: the ECR repository prefix for all microservices images
+    # Images are expected to be: <accountId>.dkr.ecr.<region>.amazonaws.com/<prefix>/<service>
+    prefix: ""
+
+  # GitHub Actions OIDC details — used by Cosign keyless image verification policy
+  # Validates that images were signed by YOUR CI pipeline specifically
+  # not just any valid Sigstore signature
+  # OVERRIDE: replace with your GitHub org, repo, and branch per environment
+  github:
+    org: ""
+    repo: ""
+    # Branch changes per environment - e.g. dev for dev cluster, main for prod
+    branch: ""
+    # Workflow files that are authorised to sign images
+    # Adding a workflow here means its signatures will be trusted
+    workflowRef:
+      buildPush: build-push.yaml # your build-push workflow file name
+      additionalWorkflows: 
+        - "" # any additional workflows that push images used in the cluster
+    # GitHub Actions OIDC token issuer
+    tokenIssuer: https://token.actions.githubusercontent.com
+
+# networkPolicies — shared configuration for all NetworkPolicy templates.
+# These values are referenced in NetworkPolicy templates in k8s/policies/templates/
+#
+# NetworkPolicies use Cilium CNI for enforcement via eBPF.
+# Both Ingress and Egress are controlled — default deny-all is applied
+# to the petclinic namespace with explicit allow rules per service.
+
+networkPolicies:
+  # RDS instance CIDR — used in egress rules for services that need DB access
+  # Currently: customers-service, visits-service, vets-service
+  # Replace with the actual RDS private IP 
+  # This can be gotte via aws rds describe-db-instances --query 'DBInstances[*].Endpoint.Address'
+  rds:
+    cidr: ""
+
+  # Service ports — used in both ingress and egress NetworkPolicy rules
+  # Must match the containerPort defined in each microservice's Helm values (refer to the /microservice chart)
+  ports:
+    apiGateway: 8080
+    configServer: 8888
+    discoveryServer: 8761
+    adminServer: 9090
+    customersService: 8081
+    visitsService: 8082
+    vetsService: 8083
+    genaiService: 8084
+    rdsMysql: 3306
+
+  # Pod selector labels — must match the app label on each service's pods
+  # Used in podSelector.matchLabels in NetworkPolicy ingress/egress rules
+  # These must match the appName set in each microservice's Helm values
+  matchLabels:
+    apiGateway: api-gateway
+    configServer: config-server
+    discoveryServer: discovery-server
+    adminServer: admin-server
+    customersService: customers-service
+    visitsService: visits-service
+    vetsService: vets-service
+    genaiService: genai-service
+    istioIngressGateway: istio-ingressgateway
+
+  # Namespace references — used in namespaceSelector rules
+  # to allow cross-namespace traffic (e.g. Istio control plane, monitoring)
+  namespaces:
+    istioSystem: "istio-system" #istio system namespace
+    istioIngress: "" #istio gateway namespace
+    kubeSystem: "kube-system" #kube system namespace
+    app: "" #microservice namespace

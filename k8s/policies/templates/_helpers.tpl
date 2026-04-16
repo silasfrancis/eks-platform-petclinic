@@ -1,62 +1,51 @@
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "policies.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{/* ECR Image Glob Pattern */}}
+{{- define "kyverno.ecr.glob" -}}
+{{- printf "%s.dkr.ecr.%s.amazonaws.com/%s/*" .Values.kyvernoPolicies.ecr.accountId .Values.kyvernoPolicies.ecr.region .Values.kyvernoPolicies.ecr.prefix -}}
+{{- end -}}
+
+{{/* GitHub Workflow Subject Builder */}}
+{{- define "kyverno.github.subject" -}}
+{{- $context := index . 0 -}}
+{{- $workflow := index . 1 -}}
+{{- printf "https://github.com/%s/%s/.github/workflows/%s@refs/heads/%s" $context.Values.kyvernoPolicies.github.org $context.Values.kyvernoPolicies.github.repo $workflow $context.Values.kyvernoPolicies.github.branch -}}
+{{- end -}}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
+Generates dynamic Kyverno attestors based on the buildPush and additionalWorkflows list
 */}}
-{{- define "policies.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- define "kyverno.attestors.list" -}}
+{{- $dot := . -}}
+{{/* Primary build-push workflow */}}
+- name: attestor-primary
+  cosign:
+    keyless:
+      identities:
+        - subject: {{ include "kyverno.github.subject" (list $dot $dot.Values.kyvernoPolicies.github.workflowRef.buildPush) | quote }}
+          issuer: {{ $dot.Values.kyvernoPolicies.github.tokenIssuer | quote }}
+{{/* Loop through additional workflows to create additional attestors */}}
+{{- range $index, $workflow := .Values.kyvernoPolicies.github.workflowRef.additionalWorkflows }}
+- name: {{ printf "attestor-additional-%d" $index }}
+  cosign:
+    keyless:
+      identities:
+        - subject: {{ include "kyverno.github.subject" (list $dot $workflow) | quote }}
+          issuer: {{ $dot.Values.kyvernoPolicies.github.tokenIssuer | quote }}
 {{- end }}
-{{- end }}
-{{- end }}
+{{- end -}}
 
 {{/*
-Create chart name and version as used by the chart label.
+Generates the CEL expression logic to check all defined attestors
 */}}
-{{- define "policies.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{- define "kyverno.attestations.expression" -}}
+{{- $parts := list "verifyImageSignatures(image, [attestors['attestor-primary']]) > 0" -}}
+{{- range $index, $workflow := .Values.kyvernoPolicies.github.workflowRef.additionalWorkflows -}}
+  {{- $parts = append $parts (printf "verifyImageSignatures(image, [attestors['attestor-additional-%d']]) > 0" $index) -}}
+{{- end -}}
+{{- join " || " $parts -}}
+{{- end -}}
 
-{{/*
-Common labels
-*/}}
-{{- define "policies.labels" -}}
-helm.sh/chart: {{ include "policies.chart" . }}
-{{ include "policies.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
+{{/* NetworkPolicy Common Labels */}}
+{{- define "policies.netpol.labels" -}}
+protected: "true"
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-*/}}
-{{- define "policies.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "policies.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "policies.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "policies.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
+{{- end -}}

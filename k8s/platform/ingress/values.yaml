@@ -16,15 +16,6 @@
 # DNS flow:
 #   ExternalDNS reads Gateway annotations → creates CNAME records in Cloudflare
 #   All subdomains (petclinic, argocd, grafana) point to the same NLB DNS name
-#
-# OVERRIDE REQUIRED:
-#   loadbalancer.annotations.service.beta.kubernetes.io/aws-load-balancer-subnets
-#   loadbalancer.annotations.service.beta.kubernetes.io/aws-load-balancer-security-groups
-#   loadbalancer.annotations.external-dns.alpha.kubernetes.io/hostname
-#   certificate.spec.dnsNames (if domain changes)
-#   external-dns.txtOwnerId (must be unique per cluster)
-#   clusterIssuer.spec.acme.email
-#   secretStore and externalSecret (Cloudflare token path)
 
 # isitio gateway resources default values
 gateway:
@@ -118,7 +109,14 @@ gateway:
   # Vertical pod autoscaler configurations for istio gateway
   # this is used in recommendation mode to get Goldilocks suggestions
   vpa:
-
+    enabled: true
+    # Default limits for Goldilocks/Recommendation mode
+    minAllowed:
+      cpu: 500m
+      memory: 512Mi
+    maxAllowed:
+      cpu: 1100m
+      memory: 1Gi
   # podDisruptionBudget for istio gateway
   # Prevents all gateway replicas being evicted simultaneously
   # during Karpenter node consolidation or node drain
@@ -159,7 +157,7 @@ gateway:
     spec:
       secretName: ""   # referenced by Gateway tls.credentialName
       issuerRef:
-        name: ""
+        name: "" # Cluster issuer name (Reference the platform/security chart)
         kind: ClusterIssuer
     dnsNames:
       - "lefrancis.org"
@@ -201,7 +199,7 @@ external-dns:
     - name: CF_API_TOKEN
       valueFrom:
         secretKeyRef:
-          name: platform-ingress-secrets    # created by ESO externalSecret below
+          name: external-dns-secrets    # created by ESO externalSecret below
           key: cloudflare_api_token
 
   domainFilters:
@@ -246,12 +244,14 @@ external-dns:
 # Used by ExternalDNS to get the Cloudflare API token
 secretStore:
   enabled: true
+  name: ""
   kind: SecretStore
   awsRegion: us-east-2
 
 # ExternalSecret — pulls security-related secrets from AWS Secrets Manager
 externalSecret:
   enabled: true
+  name: ""
   refreshInterval: 1h
   creationPolicy: Owner
   data: {}
@@ -262,11 +262,11 @@ externalSecret:
     #     property: cloudflare_api_token
 
 # Service Account
-# IRSA annotations go here for services that need AWS API access.
+# IRSA annotations go here to allow external dns get the cloudflare api token need to auto create dns records.
 # Example:
 #   annotations:
 #     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
-irsa:
+externalDnsServiceAccount:
   create: true
   name: ""          # defaults to Chart.Name via _helpers.tpl
   annotations: {}

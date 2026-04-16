@@ -1,3 +1,29 @@
+gateway:
+
+  loadbalancer:
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
+      service.beta.kubernetes.io/aws-load-balancer-type: "external"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+      service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
+      service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
+      external-dns.alpha.kubernetes.io/managed: "true"
+      external-dns.alpha.kubernetes.io/hostname: >
+        petclinic-dev.lefrancis.org,
+        grafana-dev.lefrancis.org
+      external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+      external-dns.alpha.kubernetes.io/ttl: "120"
+  
+  certificate:
+    spec:
+      secretName: ""   
+      issuerRef:
+        name: "" 
+        kind: ClusterIssuer
+    dnsNames:
+      - "lefrancis.org"
+      - "*.lefrancis.org"
+      
 external-dns:
   env:
     - name: CF_API_TOKEN
@@ -5,3 +31,23 @@ external-dns:
         secretKeyRef:
           name: platform-ingress-secrets 
           key: cloudflare_api_token
+
+secretStore:
+  enabled: true
+  name: ""
+
+externalSecret:
+  enabled: true
+  name: ""
+  refreshInterval: 1h
+  creationPolicy: Owner
+  data:
+    - secretKey: cloudflare_api_token
+      remoteRef:
+        key: "" 
+        property: cloudflare_api_token
+
+externalDnsServiceAccount:
+  name: ""      
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>

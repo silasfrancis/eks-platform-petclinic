@@ -211,20 +211,28 @@ Certificate DNS names
 SecretStore name — referenced by ExternalSecret secretStoreRef
 */}}
 {{- define "external-dns.secretStoreName" -}}
-{{- .Values.secretStore.name | default "platform-ingress-secretstore" }}
+{{- .Values.secretStore.name | default "external-dns-secretstore" }}
 {{- end }}
 
 {{/*
-ExternalSecret name — referenced by ExternalSecret secretStoreRef
+ExternalSecret name
 */}}
 {{- define "external-dns.externalSecretName" -}}
-{{- .Values.externalSecret.name | default "platform-ingress-secrets" }}
+{{- .Values.externalSecret.name | default "external-dns-secrets" }}
 {{- end }}
+
+{{/*
+Secret name — created by ExternalSecret secretStoreRef.target.name
+*/}}
+{{- define "external-dns.secretName" -}}
+{{- .Values.secret.name | default "external-dns-secrets" }}
+{{- end }}
+
 
 {{/*irsa service account*/}}
 {{/*
 Service account name for external dns secret store
 */}}
-{{- define "irsa.serviceAccountName" -}}
-{{- .Values.irsa.serviceAccount.name | default "platform-ingress-irsa" }}
+{{- define "external-dns.serviceAccountName" -}}
+{{- .Values.  .name | default "external-dns-sa" }}
 {{- end }}

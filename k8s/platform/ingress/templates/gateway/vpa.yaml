@@ -1,0 +1,29 @@
+{{- if .Values.gateway.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "gateway.vpaName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gateway.labels" . | nindent 4 }}
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "gateway.deploymentName" . }}
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: {{ .Values.gateway.container.name }}
+        minAllowed:
+          cpu: {{ .Values.gateway.vpa.minAllowed.cpu | quote }}
+          memory: {{ .Values.gateway.vpa.minAllowed.memory | quote }}
+        maxAllowed:
+          cpu: {{ .Values.gateway.vpa.maxAllowed.cpu | quote }}
+          memory: {{ .Values.gateway.vpa.maxAllowed.memory | quote }}
+        controlledResources:
+          - cpu
+          - memory
+        controlledValues: RequestsAndLimits
+{{- end }}

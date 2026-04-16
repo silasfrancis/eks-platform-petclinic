@@ -182,6 +182,7 @@ service:
   enabled: true
   port: ""        # service port — usually same as containerPort
   targetPort: ""  # container port to forward to — usually same as port
+  portName: "http"
   protocol: TCP
 
 # VirtualService
@@ -226,7 +227,6 @@ serviceAccount:
   create: true
   name: ""          # defaults to appName via _helpers.tpl
   annotations: {}
-  portName: http
 
 # ServiceMonitor for Prometheus scraping
 serviceMonitor:

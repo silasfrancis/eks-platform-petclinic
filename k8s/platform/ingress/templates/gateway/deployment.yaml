@@ -1,0 +1,41 @@
+{{- if .Values.deployment.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gateway.deploymentName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gateway.labels" . | nindent 4 }}
+  annotations:
+    {{- include "gateway.deploymentAnnotations" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "gateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gateway.podLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.gateway.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.gateway.podSecurityContext | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "gateway.serviceAccountName" . }}
+      {{- $tolerations := include "gateway.tolerations" . }}
+      {{- if $tolerations }}
+      tolerations:
+        {{- $tolerations | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.gateway.container.name }}
+          image: {{ .Values.gateway.container.image }}
+          ports:
+            {{- toYaml .Values.gateway.container.ports | nindent 12 }}
+          resources:
+            {{- include "gateway.containerResources" . | nindent 12 }}
+          {{- if .Values.gateway.securityContext }}
+          securityContext:
+            {{- toYaml .Values.gateway.securityContext | nindent 12 }}
+          {{- end }}
+{{- end }}

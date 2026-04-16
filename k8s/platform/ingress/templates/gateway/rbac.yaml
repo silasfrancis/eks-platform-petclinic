@@ -1,0 +1,29 @@
+{{- if .Values.gateway.role.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "gateway.roleName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gateway.labels" . | nindent 4 }}
+rules:
+  {{- toYaml .Values.gateway.role.rules | nindent 2 }}
+---
+{{- end }}
+{{- if .Values.gateway.roleBinding.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "gateway.roleBindingName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gateway.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "gateway.roleName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "gateway.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

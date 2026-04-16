@@ -1,20 +1,14 @@
-{{- if .Values.gateway.enabled }}
+{{- if .Values.gateway.gateway.enabled }}
 apiVersion: networking.istio.io/v1
-kind: Gateway 
+kind: Gateway
 metadata:
-  name: {{ .Values.gateway.name }}
-  namespace: {{ .Values.namespace }}
-  {{- with .Values.labels }}
+  name: {{ include "gateway.gatewayName" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- include "gateway.labels" . | nindent 4 }}
 spec:
-  {{- with .Values.selectors }}
   selector:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with .Values.gateway.servers }}
+    {{- include "gateway.selectorLabels" . | nindent 4 }}
   servers:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- include "gateway.servers" . | nindent 4 }}
 {{- end }}

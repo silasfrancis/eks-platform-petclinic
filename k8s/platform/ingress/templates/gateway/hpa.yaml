@@ -1,22 +1,18 @@
-{{- if .Values.horizontalPodAutoscaler.enabled }}
+{{- if .Values.gateway.hpa.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ .Values.horizontalPodAutoscaler.name }}
-  namespace: {{ .Values.namespace }}
-  {{- with .Values.labels }}
+  name: {{ include "gateway.hpaName" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- include "gateway.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ .Values.deployment.name }}
-  minReplicas: {{ .Values.horizontalPodAutoscaler.minReplicas }}
-  maxReplicas: {{ .Values.horizontalPodAutoscaler.maxReplicas }}
+    name: {{ include "gateway.deploymentName" . }}
+  minReplicas: {{ .Values.gateway.hpa.minReplicas }}
+  maxReplicas: {{ .Values.gateway.hpa.maxReplicas }}
   metrics:
-  {{- with .Values.horizontalPodAutoscaler.metrics }}
-  {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- include "gateway.hpaMetrics" . | nindent 4 }}
 {{- end }}

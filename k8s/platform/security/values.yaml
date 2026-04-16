@@ -32,14 +32,12 @@ clusterIssuer:
 secretStore:
   enabled: true
   kind: SecretStore
-  name: platform-security-secretstore
   awsRegion: us-east-2
 
 # ExternalSecret — pulls security-related secrets from AWS Secrets Manager
 externalSecret:
   enabled: true
   refreshInterval: 1h
-  name: platform-security-secrets
   creationPolicy: Owner
   data: {}
     # Slack webhook for Falcosidekick security alerts
@@ -62,7 +60,6 @@ serviceAccount:
   create: true
   name: ""          # defaults to Chart.Name via _helpers.tpl
   annotations: {}
-  portName: http
 
 # Trivy Operator — continuous vulnerability scanning
 # Scans only petclinic namespace — reduces noise from system workloads

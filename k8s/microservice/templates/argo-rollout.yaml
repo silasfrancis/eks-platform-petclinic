@@ -7,7 +7,9 @@ metadata:
   labels:
     {{- include "microservice.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
   revisionHistoryLimit: {{ .Values.workload.revisionHistoryLimit | default 5 }}
   minReadySeconds: {{ .Values.workload.minReadySeconds | default 30 }}
   selector:

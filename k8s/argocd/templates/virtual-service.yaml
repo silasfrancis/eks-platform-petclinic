@@ -1,0 +1,21 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ .Release.Name }}-argocd
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.argocd.host | quote }}
+spec:
+  hosts:
+    - {{ .Values.ingress.argocd.host | quote }}
+  gateways:
+    - {{ .Values.ingress.gateway | quote }}
+  http:
+    - name: "argocd-server"
+      route:
+        - destination:
+            host: {{ printf "%s.%s.svc.cluster.local" .Values.ingress.argocd.serviceName .Release.Namespace | quote }}
+            port:
+              number: {{ .Values.ingress.argocd.port }}
+{{- end }}

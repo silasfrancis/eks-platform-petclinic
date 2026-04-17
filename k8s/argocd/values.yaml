@@ -571,3 +571,11 @@ argocdBootstrap:
           jqPathExpressions:
             - ".spec.containers[].resources.requests.cpu"
             - ".spec.containers[].resources.requests.memory"
+
+ingress:
+  enabled: true
+  gateway: istio-ingress/petclinic-gateway # istio gateway namespace/name
+  argocd:
+    host: argocd.lefrancis.org
+    serviceName: argocd-server
+    port: 80

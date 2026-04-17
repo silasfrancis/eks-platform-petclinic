@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: git@github.com:silasfrancis/spring_boot_micro_services.git
     targetRevision: main
-    path: k8s/argocd/apps/clusters 
+    path: k8s/argocd/apps 
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

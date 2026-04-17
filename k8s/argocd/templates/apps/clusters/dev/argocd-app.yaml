@@ -1,6 +1,0 @@
-# spec:
-#   source:
-#     targetRevision: dev         # ← dev branch
-#   destination:
-#     server: https://dev-cluster-endpoint    # ← dev cluster (remote)
-#     namespace: petclinic

@@ -374,7 +374,7 @@ argocdBootstrap:
         maxDuration: 5m
 
   apps:
-    # --- 1. ARGOCD (Self-Managed) ---
+    # Argocd (Self-Managed)
     argocd:
       path: k8s/argocd
       namespace: argocd
@@ -394,7 +394,7 @@ argocdBootstrap:
           kind: ValidatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
 
-    # --- 2. POLICIES ---
+    # Policies
     policies:
       path: k8s/policies
       namespace: kyverno
@@ -410,7 +410,7 @@ argocdBootstrap:
           kind: ValidatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
 
-    # --- 3. PLATFORM: COMPUTE ---
+    # Platform: Compute
     compute:
       path: k8s/platform/compute
       namespace: karpenter
@@ -426,7 +426,7 @@ argocdBootstrap:
           kind: EC2NodeClass
           jsonPointers: ["/status"]
 
-    # --- 4. PLATFORM: INGRESS ---
+    # Platform: Ingress
     ingress:
       path: k8s/platform/ingress
       namespace: istio-ingress
@@ -443,7 +443,7 @@ argocdBootstrap:
           kind: HorizontalPodAutoscaler
           jsonPointers: ["/spec/metrics", "/spec/behavior"]
 
-    # --- 5. PLATFORM: MONITORING ---
+    # Platform: Monitoring
     monitoring:
       path: k8s/platform/monitoring
       namespace: monitoring
@@ -456,7 +456,7 @@ argocdBootstrap:
           kind: MutatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
 
-    # --- 6. PLATFORM: SECURITY ---
+    # Platform: Security
     security:
       path: k8s/platform/security
       namespace: security-system
@@ -465,21 +465,21 @@ argocdBootstrap:
       syncOptions:
         - ServerSideApply=true
 
-    # --- 7. PLATFORM: AUTOSCALING ---
+    # Platform: Autoscaling
     autoscaling:
       path: k8s/platform/autoscaling
       namespace: autoscaling
       project: platform
       syncWave: "2"
 
-    # --- 8. PLATFORM: BACKUP ---
+    # Platform: Backup
     backup:
       path: k8s/platform/backup
       namespace: velero
       project: platform
       syncWave: "2"
 
-    # --- 9. MICROSERVICES (Grouped Releases) ---
+    # Microservices (Grouped Releases)
     microservices:
       isServiceGroup: true
       path: k8s/apps/microservice

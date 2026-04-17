@@ -173,95 +173,222 @@ kyverno:
     autoUpdateWebhooks:
       enabled: true
 
-# kyvernoPolicies — shared configuration for all Kyverno policy templates.
-# These values are referenced in policy templates via .Values.kyvernoPolicies.*
+# clusterPolicy — single source of truth for all policy and network configuration.
 #
-# Policies live in k8s/policies/templates/kyverno as individual YAML files.
-# Each policy uses these shared values to avoid repeating ECR account IDs,
-# namespace names, and GitHub org details across multiple policy files.
-
-kyvernoPolicies:
-  # Namespace references used across multiple policies
-  # Centralised here so renaming a namespace only requires one change
-  namespaces:
-    app: "" # This must match the namespace where all microservices are deployed in
-    istioSystem: istio-system
-    kubeSystem: kube-system
-
-  # ECR registry details — used by image verification policies
-  # to validate that images come from your registry only
-  # OVERRIDE: replace with your actual AWS account ID and region
-  ecr:
-    accountId: "" #AWS account id
-    region: "us-east-2"
-    # prefix: the ECR repository prefix for all microservices images
-    # Images are expected to be: <accountId>.dkr.ecr.<region>.amazonaws.com/<prefix>/<service>
-    prefix: ""
-
-  # GitHub Actions OIDC details — used by Cosign keyless image verification policy
-  # Validates that images were signed by YOUR CI pipeline specifically
-  # not just any valid Sigstore signature
-  # OVERRIDE: replace with your GitHub org, repo, and branch per environment
-  github:
-    org: ""
-    repo: ""
-    # Branch changes per environment - e.g. dev for dev cluster, main for prod
-    branch: ""
-    # Workflow files that are authorised to sign images
-    # Adding a workflow here means its signatures will be trusted
-    workflowRef:
-      buildPush: build-push.yaml # your build-push workflow file name
-      additionalWorkflows: 
-        - "" # any additional workflows that push images used in the cluster
-    # GitHub Actions OIDC token issuer
-    tokenIssuer: https://token.actions.githubusercontent.com
-
-# networkPolicies — shared configuration for all NetworkPolicy templates.
-# These values are referenced in NetworkPolicy templates in k8s/policies/templates/
+# Design: policy-as-data pattern.
+# Templates loop over this structure rather than hardcoding rules.
+# Adding a new service = add one entry to services + reference it in namespace toggles.
+# Adding a new namespace = add one entry to managedNamespaces.
 #
-# NetworkPolicies use Cilium CNI for enforcement via eBPF.
-# Both Ingress and Egress are controlled — default deny-all is applied
-# to the petclinic namespace with explicit allow rules per service.
+# Three template types consume this:
+#   NetworkPolicy templates    → loop over services[*].ingressFrom / egressTo
+#   Kyverno ValidatingPolicy   → loop over managedNamespaces where kyvernoStatic=true
+#   Kyverno MutatingPolicy     → loop over managedNamespaces where kyvernoMutate=true
+#
+# OVERRIDE REQUIRED:
+#   kyverno.ecr.accountId
+#   kyverno.ecr.region
+#   kyverno.github.org / repo / branch (branch changes per environment)
+#   network.rds.cidr (changes per environment — dev RDS vs prod RDS)
 
-networkPolicies:
-  # RDS instance CIDR — used in egress rules for services that need DB access
-  # Currently: customers-service, visits-service, vets-service
-  # Replace with the actual RDS private IP 
-  # This can be gotte via aws rds describe-db-instances --query 'DBInstances[*].Endpoint.Address'
-  rds:
-    cidr: ""
+clusterPolicy:
 
-  # Service ports — used in both ingress and egress NetworkPolicy rules
-  # Must match the containerPort defined in each microservice's Helm values (refer to the /microservice chart)
-  ports:
-    apiGateway: 8080
-    configServer: 8888
-    discoveryServer: 8761
-    adminServer: 9090
-    customersService: 8081
-    visitsService: 8082
-    vetsService: 8083
-    genaiService: 8084
-    rdsMysql: 3306
+  # MANAGED NAMESPACES
+  # Master list of namespaces this policy chart manages.
+  # Each flag enables or disables a category of policy for that namespace.
+  # Templates use: range $ns, $cfg := .Values.clusterPolicy.managedNamespaces
+  managedNamespaces:
+    petclinic:
+      # defaultDeny: true installs a default-deny-all NetworkPolicy
+      # All traffic is blocked unless explicitly allowed by a service policy below
+      defaultDeny: true
+      # dns: true allows egress to CoreDNS — required for service discovery
+      # Disable only if the namespace uses hostNetwork (not recommended)
+      dns: true
+      # istio: true allows egress to Istio control plane ports
+      # and ingress from the Istio ingress gateway
+      # Disable for namespaces that do not participate in the service mesh
+      istio: true
+      # kyvernoStatic: true applies ValidatingPolicy to this namespace
+      # Enforces pod security standards (no privileged, read-only root fs etc)
+      kyvernoStatic: true
+      # kyvernoMutate: true applies MutatingPolicy to this namespace
+      # Auto-injects security context defaults onto pods that do not set them
+      kyvernoMutate: true
+      # kyvernoImageVerify: true enforces Cosign image signature verification
+      # Blocks images not signed by your CI pipeline
+      kyvernoImageVerify: true
 
-  # Pod selector labels — must match the app label on each service's pods
-  # Used in podSelector.matchLabels in NetworkPolicy ingress/egress rules
-  # These must match the appName set in each microservice's Helm values
-  matchLabels:
-    apiGateway: api-gateway
-    configServer: config-server
-    discoveryServer: discovery-server
-    adminServer: admin-server
-    customersService: customers-service
-    visitsService: visits-service
-    vetsService: vets-service
-    genaiService: genai-service
-    istioIngressGateway: istio-ingressgateway
+  # NETWORK SPECIFICATIONS
+  # Shared network configuration referenced by NetworkPolicy templates.
+  # These are the infrastructure endpoints all services may need to reach.
+  network:
+    dns:
+      # CoreDNS pod label — used in namespaceSelector + podSelector
+      label: kube-dns
+      namespace: kube-system
+      port: 53    # UDP + TCP
 
-  # Namespace references — used in namespaceSelector rules
-  # to allow cross-namespace traffic (e.g. Istio control plane, monitoring)
-  namespaces:
-    istioSystem: "istio-system" #istio system namespace
-    istioIngress: "" #istio gateway namespace
-    kubeSystem: "kube-system" #kube system namespace
-    app: "" #microservice namespace
+    istioControlPlane:
+      # Istiod pod label
+      label: istiod
+      namespace: istio-system
+      # Ports Envoy sidecars need to reach istiod for xDS config and cert rotation
+      egressPorts:
+        - 15012    # xDS gRPC (Envoy → Istiod)
+        - 15014    # control plane metrics
+        - 15017    # webhook
+      # Ports Prometheus and Istio use to scrape Envoy metrics
+      ingressPorts:
+        - 15090    # Envoy Prometheus metrics
+        - 15020    # merged Prometheus metrics
+        - 15021    # health check
+
+    istioIngress:
+      # The Istio ingress gateway — only api-gateway needs ingressFrom this
+      label: istio-ingressgateway
+      namespace: istio-ingress
+
+    rds:
+      # OVERRIDE: replace with actual RDS private IP per environment
+      # dev RDS and prod RDS will have different IPs
+      cidr: "10.0.1.50/32"
+      port: 3306
+
+    # Prometheus scraping — allow monitoring namespace to scrape all services
+    prometheus:
+      label: prometheus
+      namespace: monitoring
+      # Spring Boot Actuator metrics port — must match containerPort in service values
+      port: 8080
+
+  # KYVERNO POLICY CONSTANTS
+  # Used by image verification and supply chain security policies.
+  # These values identify YOUR CI pipeline as the trusted signer.
+  kyverno:
+    ecr:
+      # OVERRIDE: replace with your AWS account ID
+      accountId: "509194952955"
+      region: "us-east-2"
+      # All petclinic images are under this ECR repository prefix
+      # Pattern: <accountId>.dkr.ecr.<region>.amazonaws.com/<prefix>/<service>
+      prefix: "springboot"
+
+    github:
+      # OVERRIDE: replace with your GitHub organisation and repository
+      org: "silasfrancis"
+      repo: "spring_boot_micro_services"
+      # OVERRIDE: changes per environment
+      # dev cluster validates images signed by dev branch workflows
+      # main cluster validates images signed by main branch workflows
+      branch: "dev"
+      # GitHub Actions OIDC issuer — do not change
+      tokenIssuer: https://token.actions.githubusercontent.com
+      # Workflows authorised to sign images
+      # All workflows listed here are trusted signers
+      # OVERRIDE: add workflow files as your CI pipeline grows
+      authorizedWorkflows:
+        - build-push.yaml
+        - build-migrations.yaml
+
+  # SERVICE TOPOLOGY
+  # Defines every service, its port, and its allowed traffic relationships.
+  # NetworkPolicy templates loop over this to generate per-service policies.
+  #
+  # Fields:
+  #   label          — pod selector label value (must match app label in Helm values)
+  #   port           — container port (must match containerPort in service Helm values)
+  #   ingressFrom    — list of service keys allowed to send traffic IN
+  #   ingressFromAll — allow ingress from all services in the namespace (use sparingly)
+  #   egressTo       — list of service keys this service is allowed to call
+  #   allowRds       — adds egress rule to reach RDS on network.rds.cidr:3306
+  #   allowEureka    — adds egress rule to reach discoveryServer
+  #   allowConfig    — adds egress rule to reach configServer
+  #   istioIngress   — adds ingress rule from the Istio ingress gateway
+  #   allowPrometheus— adds ingress rule allowing Prometheus to scrape metrics
+  services:
+    adminServer:
+      label: admin-server
+      port: 9090
+      # Admin server receives traffic from all internal services for health dashboards
+      ingressFromAll: true
+      allowEureka: true
+      allowConfig: true
+      allowPrometheus: true
+
+    apiGateway:
+      label: api-gateway
+      port: 8080
+      # External traffic enters via Istio ingress gateway
+      istioIngress: true
+      # apiGateway fans out to all business services
+      egressTo:
+        - customersService
+        - visitsService
+        - vetsService
+        - genaiService
+      allowEureka: true
+      allowConfig: true
+      allowPrometheus: true
+
+    configServer:
+      label: config-server
+      port: 8888
+      # All services pull config from configServer at startup
+      # ingressFromAll covers this without listing every service
+      ingressFromAll: true
+      allowPrometheus: true
+
+    discoveryServer:
+      label: discovery-server
+      port: 8761
+      # All services register with Eureka
+      ingressFromAll: true
+      # discoveryServer itself fetches config at startup
+      allowConfig: true
+      allowPrometheus: true
+
+    customersService:
+      label: customers-service
+      port: 8081
+      ingressFrom:
+        - apiGateway
+        - adminServer
+      allowRds: true
+      allowEureka: true
+      allowConfig: true
+      allowPrometheus: true
+
+    visitsService:
+      label: visits-service
+      port: 8082
+      ingressFrom:
+        - apiGateway
+        - adminServer
+      allowRds: true
+      allowEureka: true
+      allowConfig: true
+      allowPrometheus: true
+
+    vetsService:
+      label: vets-service
+      port: 8083
+      ingressFrom:
+        - apiGateway
+        - adminServer
+      allowRds: true
+      allowEureka: true
+      allowConfig: true
+      allowPrometheus: true
+
+    genaiService:
+      label: genai-service
+      port: 8084
+      ingressFrom:
+        - apiGateway
+        - adminServer
+      # genaiService does not use RDS — it has its own vector store
+      allowRds: false
+      allowEureka: true
+      allowConfig: true
+      allowPrometheus: true

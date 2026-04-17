@@ -1,51 +1,56 @@
 {{/* ECR Image Glob Pattern */}}
 {{- define "kyverno.ecr.glob" -}}
-{{- printf "%s.dkr.ecr.%s.amazonaws.com/%s/*" .Values.kyvernoPolicies.ecr.accountId .Values.kyvernoPolicies.ecr.region .Values.kyvernoPolicies.ecr.prefix -}}
+{{- $kyv := .Values.clusterPolicy.kyverno -}}
+{{- printf "%s.dkr.ecr.%s.amazonaws.com/%s/*" $kyv.ecr.accountId $kyv.ecr.region $kyv.ecr.prefix -}}
 {{- end -}}
 
 {{/* GitHub Workflow Subject Builder */}}
 {{- define "kyverno.github.subject" -}}
 {{- $context := index . 0 -}}
 {{- $workflow := index . 1 -}}
-{{- printf "https://github.com/%s/%s/.github/workflows/%s@refs/heads/%s" $context.Values.kyvernoPolicies.github.org $context.Values.kyvernoPolicies.github.repo $workflow $context.Values.kyvernoPolicies.github.branch -}}
+{{- $kyv := $context.Values.clusterPolicy.kyverno -}}
+{{- printf "https://github.com/%s/%s/.github/workflows/%s@refs/heads/%s" $kyv.github.org $kyv.github.repo $workflow $kyv.github.branch -}}
 {{- end -}}
 
 {{/*
-Generates dynamic Kyverno attestors based on the buildPush and additionalWorkflows list
+Generates dynamic Kyverno attestors based on the authorizedWorkflows list
 */}}
 {{- define "kyverno.attestors.list" -}}
 {{- $dot := . -}}
-{{/* Primary build-push workflow */}}
-- name: attestor-primary
-  cosign:
-    keyless:
-      identities:
-        - subject: {{ include "kyverno.github.subject" (list $dot $dot.Values.kyvernoPolicies.github.workflowRef.buildPush) | quote }}
-          issuer: {{ $dot.Values.kyvernoPolicies.github.tokenIssuer | quote }}
-{{/* Loop through additional workflows to create additional attestors */}}
-{{- range $index, $workflow := .Values.kyvernoPolicies.github.workflowRef.additionalWorkflows }}
-- name: {{ printf "attestor-additional-%d" $index }}
+{{- $kyv := .Values.clusterPolicy.kyverno -}}
+{{- range $index, $workflow := $kyv.github.authorizedWorkflows }}
+- name: {{ printf "attestor-%d" $index }}
   cosign:
     keyless:
       identities:
         - subject: {{ include "kyverno.github.subject" (list $dot $workflow) | quote }}
-          issuer: {{ $dot.Values.kyvernoPolicies.github.tokenIssuer | quote }}
+          issuer: {{ $kyv.github.tokenIssuer | quote }}
 {{- end }}
 {{- end -}}
 
 {{/*
-Generates the CEL expression logic to check all defined attestors
+Generates the CEL expression logic to check if ANY of the defined workflows signed the image.
+The expression will look like: 
+verifyImageSignatures(image, [attestors['attestor-0']]) > 0 || verifyImageSignatures(image, [attestors['attestor-1']]) > 0
 */}}
 {{- define "kyverno.attestations.expression" -}}
-{{- $parts := list "verifyImageSignatures(image, [attestors['attestor-primary']]) > 0" -}}
-{{- range $index, $workflow := .Values.kyvernoPolicies.github.workflowRef.additionalWorkflows -}}
-  {{- $parts = append $parts (printf "verifyImageSignatures(image, [attestors['attestor-additional-%d']]) > 0" $index) -}}
+{{- $kyv := .Values.clusterPolicy.kyverno -}}
+{{- $parts := list -}}
+{{- range $index, $workflow := $kyv.github.authorizedWorkflows -}}
+  {{- $parts = append $parts (printf "verifyImageSignatures(image, [attestors['attestor-%d']]) > 0" $index) -}}
 {{- end -}}
 {{- join " || " $parts -}}
 {{- end -}}
 
+{{/* Kyverno Policy Common Labels */}}
+{{- define "policies.kyverno.labels" -}}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: platform-policies
+policy.kyverno.io/version: v1
+{{- end -}}
+
 {{/* NetworkPolicy Common Labels */}}
 {{- define "policies.netpol.labels" -}}
-protected: "true"
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: platform-policies
 {{- end -}}

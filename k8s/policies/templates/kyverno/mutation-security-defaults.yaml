@@ -10,7 +10,7 @@ spec:
     mutateExisting:
       enabled: false
   webhookConfiguration:
-    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    timeoutSeconds: 
   matchConstraints:
     resourceRules:
       - apiGroups: [""]
@@ -27,7 +27,7 @@ spec:
           ? Object{
               metadata: Object.metadata{
                 labels: (has(object.metadata.labels) ? object.metadata.labels : {})
-                  + {"environment": "{{ .Values.environment }}"}
+                  + {"app": "{{  }}"}
               }
             }
           : object

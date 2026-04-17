@@ -1,0 +1,105 @@
+{{- $root := . -}}
+{{- $net := .Values.clusterPolicy.network -}}
+{{- $services := .Values.clusterPolicy.services -}}
+
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- range $serviceKey, $spec := $services }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $spec.label }}-policy
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.netpol.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ $spec.label }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if $spec.istioIngress }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $net.istioIngress.namespace }}
+          podSelector:
+            matchLabels:
+              app: {{ $net.istioIngress.label }}
+    {{- end }}
+
+    {{- if $spec.ingressFromAll }}
+    - from:
+        - podSelector: {}
+    {{- end }}
+
+    {{- range $spec.ingressFrom }}
+        {{- $fromService := index $services . }}
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: {{ $fromService.namespace | default $nsName }}
+              podSelector:
+                matchLabels:
+                  app: {{ $fromService.label }}
+    {{- end }}
+
+    {{- if $spec.allowPrometheus }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $net.prometheus.namespace }}
+          podSelector:
+            matchLabels:
+              app: {{ $net.prometheus.label }}
+      ports:
+        - port: {{ $spec.port }}
+          protocol: TCP
+    {{- end }}
+
+  egress:
+    {{- if $spec.allowRds }}
+    - to:
+        - ipBlock:
+            cidr: {{ $net.rds.cidr }}
+      ports:
+        - port: {{ $net.rds.port }}
+          protocol: TCP
+    {{- end }}
+
+    {{- if $spec.allowEureka }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ $services.discoveryServer.label }}
+      ports:
+        - port: {{ $services.discoveryServer.port }}
+          protocol: TCP
+    {{- end }}
+
+    {{- if $spec.allowConfig }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ $services.configServer.label }}
+      ports:
+        - port: {{ $services.configServer.port }}
+          protocol: TCP
+    {{- end }}
+
+    {{- range $spec.egressTo }}
+    {{- $toService := index $services . }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $toService.namespace | default $nsName }}
+          podSelector:
+            matchLabels:
+              app: {{ $toService.label }}
+      ports:
+        - port: {{ $toService.port }}
+          protocol: TCP
+    {{- end }}
+
+{{- end }}
+{{- end }}

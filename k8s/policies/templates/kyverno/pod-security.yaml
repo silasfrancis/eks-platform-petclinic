@@ -5,14 +5,14 @@ metadata:
   namespace: {{ .Values.namespaces.app }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    timeoutSeconds: 15
   evaluation:
     admission:
       enabled: true
     background:
       enabled: false
     mode: Kubernetes
-  validationActions: {{ .Values.spec.validationActions }}
+  validationActions: DENY
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
@@ -25,8 +25,8 @@ spec:
     - name: appContainers
       expression: >-
         object.spec.containers.filter(c,
-          !c.image.startsWith("docker.io/istio/") &&
-          !c.image.startsWith("gcr.io/istio-release/")
+          !c.image.contains('istio-proxy') &&
+          !c.image.contains('istio-pilot')
         )
 
   validations:
@@ -41,9 +41,8 @@ spec:
     - message: 'Containers must run as non-root'
       expression: >-
         variables.appContainers.all(c,
-          has(c.securityContext) &&
-          has(c.securityContext.runAsNonRoot) &&
-          c.securityContext.runAsNonRoot == true
+          (has(c.securityContext) && has(c.securityContext.runAsNonRoot) && c.securityContext.runAsNonRoot == true) ||
+          (has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot == true)
         )
 
     - message: 'hostPath volumes are not allowed'
@@ -51,18 +50,12 @@ spec:
         !has(object.spec.volumes) ||
         object.spec.volumes.all(v, !has(v.hostPath))
 
-    - message: 'Images must use immutable digest (sha256)'
-      expression: >-
-        variables.appContainers.all(c,
-          c.image.contains('@sha256:')
-        )
-
     - message: 'Default service account must not be used'
       expression: >-
         has(object.spec.serviceAccountName) &&
         object.spec.serviceAccountName != "default"
 
-    - message: 'Memory requests and limits are required, CPU requests required'
+    - message: 'Memory requests/limits and CPU requests are required'
       expression: >-
         variables.appContainers.all(c,
           has(c.resources) &&
@@ -73,15 +66,11 @@ spec:
           has(c.resources.limits.memory)
         )
 
-    - message: 'Host network access is not allowed'
+    - message: 'Host network, PID, and IPC access are not allowed'
       expression: >-
-        !has(object.spec.hostNetwork) ||
-        object.spec.hostNetwork == false
-
-    - message: 'Host PID access is not allowed'
-      expression: >-
-        !has(object.spec.hostPID) ||
-        object.spec.hostPID == false
+        (!has(object.spec.hostNetwork) || object.spec.hostNetwork == false) &&
+        (!has(object.spec.hostPID) || object.spec.hostPID == false) &&
+        (!has(object.spec.hostIPC) || object.spec.hostIPC == false)
 
     - message: 'Privilege escalation is not allowed'
       expression: >-
@@ -91,20 +80,12 @@ spec:
           c.securityContext.allowPrivilegeEscalation == false
         )
 
-    # - message: 'Seccomp profile must be RuntimeDefault'
-    #   expression: >-
-    #     has(object.spec.securityContext) &&
-    #     has(object.spec.securityContext.seccompProfile) &&
-    #     object.spec.securityContext.seccompProfile.type == "RuntimeDefault"
-
     - message: 'Capabilities must not be added, ALL must be dropped'
       expression: >-
         variables.appContainers.all(c,
-          !has(c.securityContext) ||
-          !has(c.securityContext.capabilities) ||
-          (
-            !has(c.securityContext.capabilities.add) &&
-            has(c.securityContext.capabilities.drop) &&
-            c.securityContext.capabilities.drop.exists(d, d == "ALL")
-          )
+          has(c.securityContext) &&
+          has(c.securityContext.capabilities) &&
+          !has(c.securityContext.capabilities.add) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(d, d == "ALL")
         )

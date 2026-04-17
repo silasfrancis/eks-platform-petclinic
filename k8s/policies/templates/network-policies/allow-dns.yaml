@@ -1,24 +1,29 @@
+{{- $net := .Values.clusterPolicy.network -}}
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.dns }}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-dns
-  namespace: {{ .Values.namespaces.app }}
+  namespace: {{ $nsName }}
   labels:
-    protected: true
+    {{- include "policies.netpol.labels" $ | nindent 4 }}
 spec:
   podSelector: {}
-  policyTypes:
-    - Egress
+  policyTypes: [Egress]
   egress:
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.namespaces.kubeSystem }}
-        - podSelector:          
+              kubernetes.io/metadata.name: {{ $net.dns.namespace }}
+          podSelector:
             matchLabels:
-              k8s-app: kube-dns # verify this shit
+              k8s-app: {{ $net.dns.label }}
       ports:
-        - port: 53
+        - port: {{ $net.dns.port }}
           protocol: UDP
-        - port: 53
+        - port: {{ $net.dns.port }}
           protocol: TCP
+{{- end }}
+{{- end }}

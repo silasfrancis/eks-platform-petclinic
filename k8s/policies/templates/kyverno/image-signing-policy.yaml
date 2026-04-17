@@ -1,0 +1,57 @@
+{{- $kyv := .Values.clusterPolicy.kyverno -}}
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.kyvernoImageVerify }}
+---
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedImageValidatingPolicy
+metadata:
+  name: verify-image-signatures
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.kyverno.labels" $ | nindent 4 }}
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    admission:
+      enabled: true
+    background:
+      enabled: false
+    mode: Kubernetes
+  validationActions: [DENY]
+  failurePolicy: Fail
+  validationConfigurations:
+    mutateDigest: true
+    required: true
+    verifyDigest: true
+  matchConstraints:                          
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']                  
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+  credentials:
+    allowInsecureRegistry: false
+    providers:
+      - amazon
+  matchImageReferences:
+    - glob: {{ include "kyverno.ecr.glob" $ | quote }}
+  
+  attestors:
+    {{- include "kyverno.attestors.list" $ | nindent 4 }}
+
+  validations:
+    - message: 'Container Images must be signed by an authorized GitHub workflow'
+      expression: >-
+        images.containers.map(image,
+          {{ include "kyverno.attestations.expression" $ }}
+        ).all(e, e)
+
+    - message: 'Init container image must be signed by an authorized GitHub workflow'
+      expression: >-
+        !has(object.spec.initContainers) ||
+        images.initContainers.map(image,
+          {{ include "kyverno.attestations.expression" $ }}
+        ).all(e, e)
+{{- end }}
+{{- end }}

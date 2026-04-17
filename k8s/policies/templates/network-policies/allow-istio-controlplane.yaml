@@ -1,31 +1,39 @@
+{{- $net := .Values.clusterPolicy.network -}}
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.istio }}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-istio-controlplane
-  namespace: {{ .Values.namespaces.app }}
+  namespace: {{ $nsName }}
   labels:
-    protected: true
+    {{- include "policies.netpol.labels" $ | nindent 4 }}
 spec:
   podSelector: {}
-  policyTypes:
-    - Egress
-    - Ingress
+  policyTypes: [Ingress, Egress]
   egress:
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.namespaces.istioSystem }}
+              kubernetes.io/metadata.name: {{ $net.istioControlPlane.namespace }}
+          podSelector:
+            matchLabels:
+              app: {{ $net.istioControlPlane.label }}
       ports:
-        - port: 15012    # xDS - Envoy gets routing rules from istiod
-        - port: 15014    # istiod monitoring
-        - port: 15017    # istiod webhook
-        - port: 443      # istio webhook
+        {{- range $net.istioControlPlane.egressPorts }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
   ingress:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.namespaces.istioSystem }}
+              kubernetes.io/metadata.name: {{ $net.istioControlPlane.namespace }}
       ports:
-        - port: 15090    # Envoy metrics scraping
-        - port: 15000    # Envoy admin port
-        - port: 15020    # Istio agent metrics
+        {{- range $net.istioControlPlane.ingressPorts }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
+{{- end }}
+{{- end }}

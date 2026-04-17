@@ -1,0 +1,110 @@
+{{- $root := . -}}
+{{- $boot := .Values.argocdBootstrap -}}
+{{- $env  := $boot.envName -}}
+
+{{- range $appName, $appCfg := $boot.apps }}
+
+  {{- $releases := dict $appName (dict) }}
+  {{- if $appCfg.isServiceGroup }}
+    {{- $releases = $appCfg.services }}
+  {{- end }}
+
+  {{- range $relName, $relCfg := $releases }}
+
+    {{- $name := $appName }}
+    {{- if $appCfg.isServiceGroup }}
+      {{- $name = $relName }}
+    {{- end }}
+
+    {{- $fullName := printf "%s-%s" $appName $name | trunc 63 | trimSuffix "-" }}
+
+    {{- $repoURL        := $relCfg.repoURL        | default $appCfg.repoURL        | default $boot.defaults.repoURL }}
+    {{- $targetRevision := $relCfg.targetRevision | default $appCfg.targetRevision | default $boot.defaults.targetRevision }}
+    {{- $project        := $relCfg.project        | default $appCfg.project        | default $boot.defaults.project }}
+    {{- $syncWave       := $relCfg.syncWave       | default $appCfg.syncWave       | default "1" }}
+    {{- $namespace      := $relCfg.namespace      | default $appCfg.namespace      | default "default" }}
+    {{- $path           := $relCfg.path           | default $appCfg.path }}
+
+    {{- $prune    := $boot.defaults.automated.prune }}
+    {{- $selfHeal := $boot.defaults.automated.selfHeal }}
+
+    {{- if hasKey $appCfg "automated" }}
+      {{- if hasKey $appCfg.automated "prune"    }}{{ $prune    = $appCfg.automated.prune    }}{{- end }}
+      {{- if hasKey $appCfg.automated "selfHeal" }}{{ $selfHeal = $appCfg.automated.selfHeal }}{{- end }}
+    {{- end }}
+
+    {{- if hasKey ($relCfg | default dict) "automated" }}
+      {{- if hasKey $relCfg.automated "prune"    }}{{ $prune    = $relCfg.automated.prune    }}{{- end }}
+      {{- if hasKey $relCfg.automated "selfHeal" }}{{ $selfHeal = $relCfg.automated.selfHeal }}{{- end }}
+    {{- end }}
+
+    {{- $syncOptions := $boot.defaults.syncOptions | default list }}
+
+    {{- if $appCfg.syncOptions }}
+      {{- $syncOptions = concat $syncOptions $appCfg.syncOptions | uniq }}
+    {{- end }}
+
+    {{- if $relCfg.syncOptions }}
+      {{- $syncOptions = concat $syncOptions $relCfg.syncOptions | uniq }}
+    {{- end }}
+
+    {{- $retry := $relCfg.retry | default $appCfg.retry | default $boot.defaults.retry }}
+
+    {{- $ignoreDiffs := $relCfg.ignoreDifferences | default $appCfg.ignoreDifferences }}
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $fullName }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $syncWave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: {{ $project }}
+
+  source:
+    repoURL: {{ $repoURL }}
+    targetRevision: {{ $targetRevision }}
+    path: {{ $path }}
+
+    helm:
+      valueFiles:
+        - values.yaml
+        {{- if $appCfg.isServiceGroup }}
+        - values/env/{{ $env }}/{{ $relName }}.yaml
+        {{- else }}
+        - values/env/{{ $env }}/values.yaml
+        {{- end }}
+
+      parameters:
+        - name: service.name
+          value: {{ $name }}
+
+  destination:
+    server: {{ $boot.defaults.destination.server }}
+    namespace: {{ $namespace }}
+
+  syncPolicy:
+    automated:
+      prune: {{ $prune }}
+      selfHeal: {{ $selfHeal }}
+
+    syncOptions:
+      {{- range $syncOptions }}
+      - {{ . }}
+      {{- end }}
+
+    retry:
+      {{- toYaml $retry | nindent 6 }}
+
+  {{- if $ignoreDiffs }}
+  ignoreDifferences:
+    {{- toYaml $ignoreDiffs | nindent 4 }}
+  {{- end }}
+
+  {{- end }}
+{{- end }}

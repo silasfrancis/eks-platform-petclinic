@@ -457,4 +457,10 @@ alloy:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring
+      release: platform-monitoring # this is the release label for the monitoring stack
+
+monitoring:
+  releaseLabel: platform-monitoring # this is the release label for the monitoring stack
+  # The application namespaces to be alerted on
+  managedNamespaces: # list of namespaces that are being monitored
+    - petclinic

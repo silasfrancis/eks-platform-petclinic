@@ -1,10 +1,11 @@
+{{- $namespaces := join "|" .Values.monitoring.managedNamespaces -}}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: petclinic-istio
-  namespace: monitoring
+  name: {{ .Release.Name }}-istio
+  namespace: {{ .Release.Namespace }}
   labels:
-    release: kube-prometheus-stack
+    release: {{ .Values.monitoring.releaseLabel }}
 spec:
   groups:
     - name: istio.mtls
@@ -12,37 +13,21 @@ spec:
       rules:
         - alert: IstioMTLSFailureRateHigh
           expr: |
-            sum(rate(istio_requests_total{
-              destination_service_namespace="petclinic",
-              response_code="403"
-            }[5m])) by (source_workload, destination_workload) > 0
+            sum(rate(istio_requests_total{destination_service_namespace=~"{{ $namespaces }}",response_code="403"}[5m])) by (source_workload, destination_workload) > 0
           for: 2m
           labels:
             severity: critical
-          annotations:
-            summary: "mTLS failures between {{ $labels.source_workload }} and {{ $labels.destination_workload }}"
-            description: "Authentication failures detected between {{ $labels.source_workload }} and {{ $labels.destination_workload }}. mTLS policy may be misconfigured or certificates have expired."
-            runbook_url: ""
 
     - name: istio.sidecar
       interval: 60s
       rules:
         - alert: IstioSidecarNotInjected
           expr: |
-            count(kube_pod_labels{
-              namespace="petclinic"
-            } unless on(pod, namespace)
-            kube_pod_labels{
-              namespace="petclinic",
-              label_security_istio_io_tlsMode="istio"
-            }) > 0
+            count(kube_pod_labels{namespace=~"{{ $namespaces }}"} unless on(pod, namespace)
+            kube_pod_labels{namespace=~"{{ $namespaces }}",label_security_istio_io_tlsMode="istio"}) > 0
           for: 5m
           labels:
             severity: warning
-          annotations:
-            summary: "Pod(s) in petclinic namespace missing Istio sidecar"
-            description: "One or more pods in the petclinic namespace are running without an Envoy sidecar. These pods are outside the service mesh and not covered by mTLS policies."
-            runbook_url: ""
 
     - name: istio.traffic
       interval: 30s
@@ -50,18 +35,10 @@ spec:
         - alert: IstioHighRetryRate
           expr: |
             (
-              sum(rate(envoy_cluster_upstream_rq_retry{
-                namespace="petclinic"
-              }[5m])) by (pod, namespace)
+              sum(rate(envoy_cluster_upstream_rq_retry{namespace=~"{{ $namespaces }}"}[5m])) by (pod, namespace)
               /
-              sum(rate(envoy_cluster_upstream_rq_total{
-                namespace="petclinic"
-              }[5m])) by (pod, namespace)
+              sum(rate(envoy_cluster_upstream_rq_total{namespace=~"{{ $namespaces }}"}[5m])) by (pod, namespace)
             ) > 0.05
           for: 5m
           labels:
             severity: warning
-          annotations:
-            summary: "High Envoy retry rate for {{ $labels.pod }}"
-            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} Envoy proxy is retrying {{ $value | humanizePercentage }} of upstream requests. Upstream service may be unstable."
-            runbook_url: ""

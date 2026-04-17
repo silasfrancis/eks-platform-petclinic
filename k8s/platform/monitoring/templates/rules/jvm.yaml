@@ -1,10 +1,11 @@
+{{- $namespaces := join "|" .Values.monitoring.managedNamespaces -}}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: petclinic-jvm
-  namespace: monitoring
+  name: {{ .Release.Name }}-jvm
+  namespace: {{ .Release.Namespace }}
   labels:
-    release: kube-prometheus-stack
+    release: {{ .Values.monitoring.releaseLabel }}
 spec:
   groups:
     - name: jvm.heap
@@ -13,90 +14,20 @@ spec:
         - alert: JVMHeapUsageWarning
           expr: |
             (
-              sum(jvm_memory_used_bytes{
-                namespace="petclinic",
-                area="heap"
-              }) by (job, namespace, pod)
+              sum(jvm_memory_used_bytes{namespace=~"{{ $namespaces }}",area="heap"}) by (job, namespace, pod)
               /
-              sum(jvm_memory_max_bytes{
-                namespace="petclinic",
-                area="heap"
-              }) by (job, namespace, pod)
+              sum(jvm_memory_max_bytes{namespace=~"{{ $namespaces }}",area="heap"}) by (job, namespace, pod)
             ) > 0.85
           for: 10m
           labels:
             severity: warning
-          annotations:
-            summary: "JVM heap usage high for {{ $labels.pod }}"
-            description: "Pod {{ $labels.pod }} in service {{ $labels.job }} has JVM heap usage at {{ $value | humanizePercentage }}. GC pressure may increase."
-            runbook_url: ""
-
-        - alert: JVMHeapUsageCritical
-          expr: |
-            (
-              sum(jvm_memory_used_bytes{
-                namespace="petclinic",
-                area="heap"
-              }) by (job, namespace, pod)
-              /
-              sum(jvm_memory_max_bytes{
-                namespace="petclinic",
-                area="heap"
-              }) by (job, namespace, pod)
-            ) > 0.95
-          for: 5m
-          labels:
-            severity: critical
-          annotations:
-            summary: "JVM heap usage critical for {{ $labels.pod }}"
-            description: "Pod {{ $labels.pod }} in service {{ $labels.job }} has JVM heap usage at {{ $value | humanizePercentage }}. OOMKill imminent — increase heap size or memory limits."
-            runbook_url: ""
-
-    - name: jvm.gc
-      interval: 30s
-      rules:
-        - alert: JVMHighGCPauseRate
-          expr: |
-            rate(jvm_gc_pause_seconds_sum{
-              namespace="petclinic"
-            }[5m])
-            /
-            rate(jvm_gc_pause_seconds_count{
-              namespace="petclinic"
-            }[5m]) > 0.2
-          for: 10m
-          labels:
-            severity: warning
-          annotations:
-            summary: "High GC pause rate for {{ $labels.pod }}"
-            description: "Pod {{ $labels.pod }} in service {{ $labels.job }} average GC pause is {{ $value | humanizeDuration }}. Application throughput may be impacted."
-            runbook_url: ""
 
     - name: jvm.database
       interval: 30s
       rules:
         - alert: HikariPoolExhausted
           expr: |
-            hikaricp_connections_pending{
-              namespace="petclinic"
-            } > 0
+            hikaricp_connections_pending{namespace=~"{{ $namespaces }}"} > 0
           for: 5m
           labels:
             severity: critical
-          annotations:
-            summary: "HikariCP connection pool exhausted for {{ $labels.pod }}"
-            description: "Pod {{ $labels.pod }} in service {{ $labels.job }} has {{ $value }} threads waiting for a database connection. Pool is exhausted — queries will fail or timeout."
-            runbook_url: ""
-
-        - alert: DBConnectionTimeoutRateHigh
-          expr: |
-            rate(hikaricp_connections_timeout_total{
-              namespace="petclinic"
-            }[5m]) > 0
-          for: 0m
-          labels:
-            severity: critical
-          annotations:
-            summary: "DB connection timeouts for {{ $labels.pod }}"
-            description: "Pod {{ $labels.pod }} in service {{ $labels.job }} is experiencing database connection timeouts. Rate: {{ $value }} timeouts/sec. Check RDS connectivity and pool sizing."
-            runbook_url: ""

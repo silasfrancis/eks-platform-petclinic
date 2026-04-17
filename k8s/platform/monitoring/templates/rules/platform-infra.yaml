@@ -1,10 +1,11 @@
+{{- $namespaces := join "|" .Values.monitoring.managedNamespaces -}}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: petclinic-platform-infra
-  namespace: monitoring
+  name: {{ .Release.Name }}-platform
+  namespace: {{ .Release.Namespace }}
   labels:
-    release: kube-prometheus-stack
+    release: {{ .Values.monitoring.releaseLabel }}
 spec:
   groups:
     - name: platform.infra.nodes
@@ -15,49 +16,6 @@ spec:
           for: 2m
           labels:
             severity: critical
-          annotations:
-            summary: "Node {{ $labels.node }} is not ready"
-            description: "Node {{ $labels.node }} has been in a not-ready state for more than 2 minutes."
-            runbook_url: "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubenodenotready"
-
-        - alert: NodeCPUSustainedHigh
-          expr: instance:node_cpu:rate:sum > 0.85
-          for: 15m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Node {{ $labels.instance }} CPU sustained high"
-            description: "Node {{ $labels.instance }} CPU utilization has been above 85% for 15 minutes. Current value: {{ $value | humanizePercentage }}."
-            runbook_url: ""
-
-        - alert: NodeMemoryPressure
-          expr: |
-            (
-              node_memory_MemAvailable_bytes
-              /
-              node_memory_MemTotal_bytes
-            ) < 0.10
-          for: 10m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Node {{ $labels.instance }} memory critically low"
-            description: "Node {{ $labels.instance }} has less than 10% memory available. Current available: {{ $value | humanizePercentage }}."
-            runbook_url: ""
-
-        - alert: NodeDiskWillFillIn4Hours
-          expr: |
-            predict_linear(
-              node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[1h],
-              4 * 3600
-            ) < 0
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Node {{ $labels.instance }} disk will fill in 4 hours"
-            description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is predicted to run out of space within 4 hours."
-            runbook_url: ""
 
     - name: platform.infra.storage
       interval: 30s
@@ -65,27 +23,10 @@ spec:
         - alert: PVCUsageHigh
           expr: |
             (
-              kubelet_volume_stats_used_bytes
+              kubelet_volume_stats_used_bytes{namespace=~"{{ $namespaces }}"}
               /
               kubelet_volume_stats_capacity_bytes
             ) > 0.85
           for: 5m
           labels:
             severity: warning
-          annotations:
-            summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} usage high"
-            description: "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} is {{ $value | humanizePercentage }} full."
-            runbook_url: ""
-
-    - name: platform.infra.prometheus
-      interval: 30s
-      rules:
-        - alert: PrometheusTSDBHighCardinality
-          expr: prometheus_tsdb_head_series > 2000000
-          for: 10m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Prometheus TSDB cardinality too high"
-            description: "Prometheus has {{ $value | humanize }} active series. High cardinality will impact performance and storage."
-            runbook_url: ""

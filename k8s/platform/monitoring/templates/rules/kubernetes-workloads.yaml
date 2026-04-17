@@ -1,10 +1,11 @@
+{{- $namespaces := join "|" .Values.monitoring.managedNamespaces -}}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: petclinic-kubernetes-workloads
-  namespace: monitoring
+  name: {{ .Release.Name }}-kubernetes
+  namespace: {{ .Release.Namespace }}
   labels:
-    release: kube-prometheus-stack
+    release: {{ .Values.monitoring.releaseLabel }}
 spec:
   groups:
     - name: kubernetes.workloads.pods
@@ -12,87 +13,17 @@ spec:
       rules:
         - alert: PodCrashLooping
           expr: |
-            increase(kube_pod_container_status_restarts_total{
-              namespace="petclinic"
-            }[15m]) > 5
+            increase(kube_pod_container_status_restarts_total{namespace=~"{{ $namespaces }}"}[15m]) > 5
           for: 0m
           labels:
             severity: critical
-          annotations:
-            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
-            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 15 minutes."
-            runbook_url: ""
-
-        - alert: PodOOMKilled
-          expr: |
-            kube_pod_container_status_last_terminated_reason{
-              reason="OOMKilled",
-              namespace="petclinic"
-            } == 1
-          for: 0m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} was OOMKilled"
-            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} was killed due to out of memory. Consider increasing memory limits."
-            runbook_url: ""
-
-        - alert: PodPendingTooLong
-          expr: |
-            kube_pod_status_phase{
-              phase="Pending",
-              namespace="petclinic"
-            } == 1
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} pending for too long"
-            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been in Pending state for more than 5 minutes. Possible scheduling failure — check node resources or resource quotas."
-            runbook_url: ""
-
-    - name: kubernetes.workloads.deployments
-      interval: 30s
-      rules:
-        - alert: DeploymentNotProgressing
-          expr: |
-            kube_deployment_status_observed_generation{namespace="petclinic"}
-            !=
-            kube_deployment_spec_generation{namespace="petclinic"}
-          for: 10m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} not progressing"
-            description: "Deployment {{ $labels.deployment }} in namespace {{ $labels.namespace }} has not progressed for 10 minutes. Observed generation does not match spec generation."
-            runbook_url: ""
-
-        - alert: HPAAtMaxReplicas
-          expr: |
-            kube_horizontalpodautoscaler_status_current_replicas{namespace="petclinic"}
-            ==
-            kube_horizontalpodautoscaler_spec_max_replicas{namespace="petclinic"}
-          for: 10m
-          labels:
-            severity: warning
-          annotations:
-            summary: "HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} at max replicas"
-            description: "HPA {{ $labels.horizontalpodautoscaler }} in namespace {{ $labels.namespace }} has been at maximum replicas for 10 minutes. The workload may need more capacity."
-            runbook_url: ""
 
     - name: kubernetes.workloads.rollouts
       interval: 30s
       rules:
         - alert: ArgoRolloutDegraded
           expr: |
-            rollout_phase{
-              namespace="petclinic",
-              phase="Degraded"
-            } == 1
+            rollout_phase{namespace=~"{{ $namespaces }}",phase="Degraded"} == 1
           for: 2m
           labels:
             severity: critical
-          annotations:
-            summary: "Argo Rollout {{ $labels.namespace }}/{{ $labels.rollout }} is degraded"
-            description: "Argo Rollout {{ $labels.rollout }} in namespace {{ $labels.namespace }} is in a degraded state. Canary or blue-green deployment may have failed."
-            runbook_url: ""

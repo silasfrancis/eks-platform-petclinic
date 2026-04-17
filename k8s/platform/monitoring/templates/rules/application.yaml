@@ -1,10 +1,11 @@
+{{- $namespaces := join "|" .Values.monitoring.managedNamespaces -}}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: petclinic-application
-  namespace: monitoring
+  name: {{ .Release.Name }}-application
+  namespace: {{ .Release.Namespace }}
   labels:
-    release: kube-prometheus-stack
+    release: {{ .Values.monitoring.releaseLabel }}
 spec:
   groups:
     - name: application.error_rate
@@ -13,42 +14,27 @@ spec:
         - alert: ServiceErrorRateWarning
           expr: |
             (
-              sum(rate(http_server_requests_seconds_count{
-                namespace="petclinic",
-                status=~"5.."
-              }[5m])) by (job, namespace)
+              sum(rate(http_server_requests_seconds_count{namespace=~"{{ $namespaces }}",status=~"5.."}[5m])) by (job, namespace)
               /
-              sum(rate(http_server_requests_seconds_count{
-                namespace="petclinic"
-              }[5m])) by (job, namespace)
+              sum(rate(http_server_requests_seconds_count{namespace=~"{{ $namespaces }}"}[5m])) by (job, namespace)
             ) > 0.01
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "Service {{ $labels.job }} error rate above 1%"
-            description: "Service {{ $labels.job }} in namespace {{ $labels.namespace }} has a 5xx error rate of {{ $value | humanizePercentage }} over the last 5 minutes."
-            runbook_url: ""
+            summary: "Service {{ "{{" }} $labels.job {{ "}}" }} error rate above 1%"
+            description: "Service {{ "{{" }} $labels.job {{ "}}" }} in namespace {{ "{{" }} $labels.namespace {{ "}}" }} has a 5xx error rate."
 
         - alert: ServiceErrorRateCritical
           expr: |
             (
-              sum(rate(http_server_requests_seconds_count{
-                namespace="petclinic",
-                status=~"5.."
-              }[5m])) by (job, namespace)
+              sum(rate(http_server_requests_seconds_count{namespace=~"{{ $namespaces }}",status=~"5.."}[5m])) by (job, namespace)
               /
-              sum(rate(http_server_requests_seconds_count{
-                namespace="petclinic"
-              }[5m])) by (job, namespace)
+              sum(rate(http_server_requests_seconds_count{namespace=~"{{ $namespaces }}"}[5m])) by (job, namespace)
             ) > 0.05
           for: 5m
           labels:
             severity: critical
-          annotations:
-            summary: "Service {{ $labels.job }} error rate above 5%"
-            description: "Service {{ $labels.job }} in namespace {{ $labels.namespace }} has a critical 5xx error rate of {{ $value | humanizePercentage }} over the last 5 minutes."
-            runbook_url: ""
 
     - name: application.latency
       interval: 30s
@@ -56,93 +42,15 @@ spec:
         - alert: ServiceLatencyP99Warning
           expr: |
             histogram_quantile(0.99,
-              sum(rate(http_server_requests_seconds_bucket{
-                namespace="petclinic"
-              }[5m])) by (job, namespace, le)
+              sum(rate(http_server_requests_seconds_bucket{namespace=~"{{ $namespaces }}"}[5m])) by (job, namespace, le)
             ) > 1
           for: 5m
           labels:
             severity: warning
-          annotations:
-            summary: "Service {{ $labels.job }} p99 latency above 1s"
-            description: "Service {{ $labels.job }} p99 latency is {{ $value | humanizeDuration }} over the last 5 minutes."
-            runbook_url: ""
-
-        - alert: ServiceLatencyP99Critical
-          expr: |
-            histogram_quantile(0.99,
-              sum(rate(http_server_requests_seconds_bucket{
-                namespace="petclinic"
-              }[5m])) by (job, namespace, le)
-            ) > 3
-          for: 5m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Service {{ $labels.job }} p99 latency above 3s"
-            description: "Service {{ $labels.job }} p99 latency is critically high at {{ $value | humanizeDuration }} over the last 5 minutes."
-            runbook_url: ""
 
         - alert: ServiceZeroTraffic
           expr: |
-            sum(rate(http_server_requests_seconds_count{
-              namespace="petclinic"
-            }[5m])) by (job, namespace) == 0
+            sum(rate(http_server_requests_seconds_count{namespace=~"{{ $namespaces }}"}[5m])) by (job, namespace) == 0
           for: 5m
           labels:
             severity: critical
-          annotations:
-            summary: "Service {{ $labels.job }} has zero traffic"
-            description: "Service {{ $labels.job }} in namespace {{ $labels.namespace }} has received no requests in the last 5 minutes. Possible service outage or routing issue."
-            runbook_url: ""
-
-    - name: application.slo
-      interval: 30s
-      rules:
-        # Recording rules for SLO burn rate calculations
-        - record: job:slo_errors:rate1h
-          expr: |
-            sum(rate(http_server_requests_seconds_count{
-              namespace="petclinic",
-              status=~"5.."
-            }[1h])) by (job)
-            /
-            sum(rate(http_server_requests_seconds_count{
-              namespace="petclinic"
-            }[1h])) by (job)
-
-        - record: job:slo_errors:rate6h
-          expr: |
-            sum(rate(http_server_requests_seconds_count{
-              namespace="petclinic",
-              status=~"5.."
-            }[6h])) by (job)
-            /
-            sum(rate(http_server_requests_seconds_count{
-              namespace="petclinic"
-            }[6h])) by (job)
-
-        # SLO target: 99.9% availability (0.1% error budget)
-        - alert: SLOBurnRateCritical
-          expr: |
-            job:slo_errors:rate1h > (14.4 * 0.001)
-            and
-            job:slo_errors:rate6h > (14.4 * 0.001)
-          for: 2m
-          labels:
-            severity: critical
-          annotations:
-            summary: "SLO burn rate critical for {{ $labels.job }}"
-            description: "Service {{ $labels.job }} is burning through its error budget at 14.4x the normal rate on both 1h and 6h windows. At this rate the monthly error budget will be exhausted in less than 1 hour."
-            runbook_url: ""
-
-        - alert: SLOBurnRateWarning
-          expr: |
-            job:slo_errors:rate6h > (6 * 0.001)
-          for: 15m
-          labels:
-            severity: warning
-          annotations:
-            summary: "SLO burn rate elevated for {{ $labels.job }}"
-            description: "Service {{ $labels.job }} is burning through its error budget at 6x the normal rate on the 6h window. At this rate the monthly error budget will be exhausted in less than 5 days."
-            runbook_url: ""

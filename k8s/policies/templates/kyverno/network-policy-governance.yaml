@@ -28,7 +28,7 @@ spec:
           (object.metadata.labels.protected == "true" || object.metadata.labels.protected == "false")
         )
 
-    - message: 'This NetworkPolicy is protected and cannot be deleted.'
+    - message: 'This NetworkPolicy is protected and cannot be deleted, set policy label.protected=false to delete'
       expression: >-
         request.operation != 'DELETE' || !(
           has(object.metadata.labels) &&

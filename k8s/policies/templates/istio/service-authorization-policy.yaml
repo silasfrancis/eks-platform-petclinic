@@ -1,0 +1,42 @@
+{{- $root := . -}}
+{{- $net := .Values.clusterPolicy.network -}}
+
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.istio }}
+
+{{- range $svcKey, $svcSpec := $root.Values.clusterPolicy.services }}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ $svcSpec.label }}-authz
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.istio.labels" $ | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $svcSpec.label }}
+      app.kubernetes.io/name: {{ $svcSpec.label }}
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              {{- if $svcSpec.istioIngress }}
+              - cluster.local/ns/{{ $net.istioIngress.namespace }}/sa/{{ $net.istioIngress.label }}
+              {{- end }}
+
+              {{- range $clientKey := $svcSpec.ingressFrom }}
+              {{- $clientSvc := index $root.Values.clusterPolicy.services $clientKey }}
+              - cluster.local/ns/{{ $nsName }}/sa/{{ $clientSvc.label }}
+              {{- end }}
+
+              {{- if $svcSpec.ingressFromAll }}
+              {{- range $allKey, $allSpec := $root.Values.clusterPolicy.services }}
+              - cluster.local/ns/{{ $nsName }}/sa/{{ $allSpec.label }}
+              {{- end }}
+              {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

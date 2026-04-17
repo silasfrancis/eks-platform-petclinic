@@ -2,15 +2,14 @@
 {{- if $nsConfig.istio }}
 ---
 apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
+kind: AuthorizationPolicy
 metadata:
-  name: {{ $nsName }}-strict-mtls
+  name: deny-all
   namespace: {{ $nsName }}
   labels:
-    protected: "true"
     {{- include "policies.istio.labels" $ | nindent 4 }}
 spec:
-  mtls:
-    mode: STRICT
+  action: DENY
+  rules: [{}]
 {{- end }}
 {{- end }}

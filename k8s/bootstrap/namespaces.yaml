@@ -22,7 +22,6 @@ kind: Namespace
 metadata:
   name: monitoring
   labels:
-    istio-injection: enabled
     goldilocks.fairwinds.com/enabled: "true"
 
 --- 

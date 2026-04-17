@@ -248,9 +248,9 @@ clusterPolicy:
       namespace: istio-ingress
 
     rds:
-      # OVERRIDE: replace with actual RDS private IP per environment
+      # Replace with actual RDS private IP per environment
       # dev RDS and prod RDS will have different IPs
-      cidr: "10.0.1.50/32"
+      cidr: ""
       port: 3306
 
     # Prometheus scraping — allow monitoring namespace to scrape all services
@@ -266,11 +266,11 @@ clusterPolicy:
   kyverno:
     ecr:
       # OVERRIDE: replace with your AWS account ID
-      accountId: "509194952955"
+      accountId: ""
       region: "us-east-2"
       # All petclinic images are under this ECR repository prefix
       # Pattern: <accountId>.dkr.ecr.<region>.amazonaws.com/<prefix>/<service>
-      prefix: "springboot"
+      prefix: ""
 
     github:
       # OVERRIDE: replace with your GitHub organisation and repository

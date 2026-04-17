@@ -1,0 +1,23 @@
+{{- $net := .Values.clusterPolicy.network -}}
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.istio }}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.istio.labels" $ | nindent 4 }}
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ $net.prometheus.namespace }}/sa/platform-monitoring-prometheus"]
+      to:
+        - operation:
+            paths: ["/actuator/prometheus"]
+            methods: ["GET"]
+{{- end }}
+{{- end }}

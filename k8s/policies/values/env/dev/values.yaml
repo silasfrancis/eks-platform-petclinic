@@ -1,46 +1,29 @@
-kyvernoPolicies:
-  namespaces:
-    app: petclinic 
-  ecr:
-    accountId: "509194952955"
-    region: "us-east-2"
-    prefix: "petclinic"
-  github:
-    org: "silasfrancis"
-    repo: ""
-    branch: "dev"
-    workflowRef:
-      buildPush: build-push.yaml
-      additionalWorkflows: 
-        - build-migrations.yaml 
-    tokenIssuer: https://token.actions.githubusercontent.com
+clusterPolicy:
+  network:
+    istioIngress:
+      label: istio-ingressgateway
+      namespace: istio-ingress
 
-networkPolicies:
-  rds:
-    cidr: "10.0.2.15/32"
-  ports:
-    apiGateway: 8080
-    configServer: 8888
-    discoveryServer: 8761
-    adminServer: 9090
-    customersService: 8081
-    visitsService: 8082
-    vetsService: 8083
-    genaiService: 8084
-    rdsMysql: 3306
-  matchLabels:
-    apiGateway: api-gateway
-    configServer: config-server
-    discoveryServer: discovery-server
-    adminServer: admin-server
-    customersService: customers-service
-    visitsService: visits-service
-    vetsService: vets-service
-    genaiService: genai-service
-    istioIngressGateway: istio-ingressgateway
+    rds:
+      cidr: "10.0.1.50/32"
+      port: 3306
 
-  namespaces:
-    istioSystem: "istio-system"
-    istioIngress: ""
-    kubeSystem: "kube-system"
-    app: ""
+    prometheus:
+      label: prometheus
+      namespace: monitoring
+      port: 8080
+
+  kyverno:
+    ecr:
+      accountId: "509194952955"
+      region: "us-east-2"
+      prefix: ""
+
+    github:
+      org: "silasfrancis"
+      repo: ""
+      branch: ""
+      tokenIssuer: https://token.actions.githubusercontent.com
+      authorizedWorkflows:
+        - build-push.yaml
+        - build-migrations.yaml

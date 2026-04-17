@@ -277,16 +277,15 @@ clusterPolicy:
     github:
       # OVERRIDE: replace with your GitHub organisation and repository
       org: "silasfrancis"
-      repo: "spring_boot_micro_services"
+      repo: ""
       # OVERRIDE: changes per environment
       # dev cluster validates images signed by dev branch workflows
       # main cluster validates images signed by main branch workflows
-      branch: "dev"
+      branch: ""
       # GitHub Actions OIDC issuer — do not change
       tokenIssuer: https://token.actions.githubusercontent.com
       # Workflows authorised to sign images
       # All workflows listed here are trusted signers
-      # OVERRIDE: add workflow files as your CI pipeline grows
       authorizedWorkflows:
         - build-push.yaml
         - build-migrations.yaml

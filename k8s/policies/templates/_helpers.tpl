@@ -52,5 +52,6 @@ policy.kyverno.io/version: v1
 {{/* NetworkPolicy Common Labels */}}
 {{- define "policies.netpol.labels" -}}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-app.kubernetes.io/part-of: platform-policies
+app.kubernetes.io/part-of: petclinic-network
+protected: "true"
 {{- end -}}

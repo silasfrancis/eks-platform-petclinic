@@ -1,16 +1,16 @@
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.kyvernoMutate }}
+---
 apiVersion: policies.kyverno.io/v1
 kind: NamespacedMutatingPolicy
 metadata:
-  name: mutation-defaults
-  namespace: {{ .Values.namespaces.app }}
+  name: security-and-label-mutation
+  namespace: {{ $nsName }}
 spec:
   evaluation:
     admission:
       enabled: true
-    mutateExisting:
-      enabled: false
-  webhookConfiguration:
-    timeoutSeconds: 
+
   matchConstraints:
     resourceRules:
       - apiGroups: [""]
@@ -18,77 +18,80 @@ spec:
         operations: ["CREATE"]
         resources: ["pods"]
 
+  variables:
+    - name: mainContainerName
+      expression: >-
+        object.spec.containers.filter(c, 
+          c.name != 'istio-proxy' && 
+          c.name != 'istio-init' && 
+          c.name != 'queue-proxy'
+        ).size() > 0
+        ? object.spec.containers.filter(c, 
+            c.name != 'istio-proxy' && 
+            c.name != 'istio-init' && 
+            c.name != 'queue-proxy'
+          )[0].name
+        : "unknown"
+
   mutations:
-    # Add environment label
+
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-
-          !has(object.metadata.labels) || !has(object.metadata.labels.environment)
-          ? Object{
-              metadata: Object.metadata{
-                labels: (has(object.metadata.labels) ? object.metadata.labels : {})
-                  + {"app": "{{  }}"}
+          variables.mainContainerName == "unknown"
+          ? Object{}
+          : Object{
+              metadata: Object{
+                labels: object.metadata.labels + {
+                  "app.kubernetes.io/name": variables.mainContainerName,
+                  "app": variables.mainContainerName,
+                  "environment": "{{ $.Values.clusterPolicy.kyverno.github.branch }}"
+                }
               }
             }
-          : object
-
-    # Container level security defaults
-    - patchType: ApplyConfiguration
-      applyConfiguration:
-        expression: >-
-            Object{
-            spec: Object.spec{
-                containers: object.spec.containers.map(c,
-                Object.spec.containers{
-                    name: c.name,
-                    securityContext:
-                    (has(c.securityContext) ? c.securityContext : {})
-                    + {
-                        "runAsNonRoot": true,
-                        "privileged": false,
-                        "allowPrivilegeEscalation": false,
-                        "readOnlyRootFilesystem": true,
-
-                        "capabilities":
-                            (has(c.securityContext) && has(c.securityContext.capabilities)
-                            ? c.securityContext.capabilities
-                            : {})
-                            + {
-                                "drop": ["ALL"]
-                            },
-
-                        "seccompProfile":
-                            (has(c.securityContext) && has(c.securityContext.seccompProfile)
-                            ? c.securityContext.seccompProfile
-                            : {})
-                            + {
-                                "type": "RuntimeDefault"
-                            }
-                        }
-                }
-                )
-            }
-            }
-
-    # Pod-level security defaults
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-
           Object{
-            spec: Object.spec{
+            spec: Object{
+              containers: object.spec.containers.map(c,
+                c.name == 'istio-proxy' || c.name == 'istio-init' || c.name == 'queue-proxy'
+                ? c
+                : Object{
+                    name: c.name,
+                    securityContext: (has(c.securityContext) ? c.securityContext : {}) + {
+                      "runAsNonRoot": true,
+                      "privileged": false,
+                      "allowPrivilegeEscalation": false,
+                      "readOnlyRootFilesystem": true,
+                      "capabilities": {
+                        "drop": ["ALL"]
+                      },
+                      "seccompProfile": {
+                        "type": "RuntimeDefault"
+                      }
+                    }
+                  }
+              )
+            }
+          }
+
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object{
               hostNetwork: false,
               hostPID: false,
               hostIPC: false,
-              securityContext: 
-              has(object.spec.securityContext) ? object.spec.securityContext : {}
-              + {
+              securityContext: (has(object.spec.securityContext) ? object.spec.securityContext : {}) + {
                 "runAsNonRoot": true,
-                "seccompProfile":
-                  (has(object.spec.securityContext) && has(object.spec.securityContext.seccompProfile)
-                  ? object.spec.securityContext.seccompProfile : {})
-                  + {
-                    "type": "RuntimeDefault"
-                  }  
+                "seccompProfile": {
+                  "type": "RuntimeDefault"
+                }
               }
             }
           }
+
+{{- end }}
+{{- end }}

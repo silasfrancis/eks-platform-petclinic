@@ -9,11 +9,20 @@ Full image reference using registry + repository + digest/tag
 {{- end -}}
 {{- end }}
 
+{{/*Microservice name*/}}
+{{- define "microservice.name" -}}
+{{- if .Values.appName -}}
+{{- .Values.appName }}
+{{- else -}}
+{{- .Release.Name }}
+{{- end -}}
+{{- end }}
+
 {{/*
 Common labels
 */}}
 {{- define "microservice.labels" -}}
-app.kubernetes.io/name: {{ .Values.appName | default .Release.Name }}
+app.kubernetes.io/name: {{ include "microservice.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Values.image.tag | default "latest" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}

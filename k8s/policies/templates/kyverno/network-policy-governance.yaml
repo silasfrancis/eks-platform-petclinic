@@ -1,0 +1,38 @@
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+---
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: network-policy-governance
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.kyverno.labels" $ | nindent 4 }}
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['networking.k8s.io']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE', 'DELETE']
+        resources: ['networkpolicies']
+  
+  validations:
+    - message: 'NetworkPolicies must have a "protected" label set to "true" or "false"'
+      expression: >-
+        request.operation == 'DELETE' || (
+          has(object.metadata.labels) &&
+          has(object.metadata.labels.protected) &&
+          (object.metadata.labels.protected == "true" || object.metadata.labels.protected == "false")
+        )
+
+    - message: 'This NetworkPolicy is protected and cannot be deleted.'
+      expression: >-
+        request.operation != 'DELETE' || !(
+          has(object.metadata.labels) &&
+          has(object.metadata.labels.protected) &&
+          object.metadata.labels.protected == "true"
+        )
+{{- end }}

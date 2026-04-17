@@ -1,19 +1,20 @@
+{{- $kyv := .Values.clusterPolicy.kyverno -}}
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.kyvernoStatic }}
+---
 apiVersion: policies.kyverno.io/v1
 kind: NamespacedValidatingPolicy
 metadata:
   name: restrict-image-registries
-  namespace: {{ .Values.namespaces.app }}
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.kyverno.labels" $ | nindent 4 }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: {{ .Values.spec.webhook.timeoutSeconds }}
+    timeoutSeconds: 15
   evaluation:
-    admission:
-      enabled: true
-    background:
-      enabled: false
-    mode: Kubernetes
-  validationActions: {{ .Values.spec.validationActions }}
-  failurePolicy: Fail
+    admission: { enabled: true }
+  validationActions: [Deny]
   matchConstraints:
     resourceRules:
       - apiGroups: ['']
@@ -25,27 +26,17 @@ spec:
     - name: allowedRegistries
       expression: >-
         [
-          "{{ .Values.ecr.accountId }}.dkr.ecr.{{ .Values.ecr.region }}.amazonaws.com/{{ .Values.ecr.prefix }}/",
+          "{{ include "kyverno.ecr.glob" $ | replace "*" "" }}", 
           "docker.io/istio/",
-          "gcr.io/istio-release/"
+          "gcr.io/istio-release/",
+          "quay.io/kiwigrid/"
         ]
 
-    validations:
-        - message: 'Image must be from an approved registry'
-        messageExpression: >-
-            "Container '" + c.name + "' uses image '" + c.image + 
-            "' which is not from an approved registry. Allowed: ECR springboot, docker.io/istio/, gcr.io/istio-release/"
-        expression: >-
-            object.spec.containers.all(c,
-            variables.allowedRegistries.exists(r, c.image.startsWith(r))
-            )
-
-        - message: 'Init container image must be from an approved registry'
-        messageExpression: >-
-            "Init container '" + c.name + "' uses image '" + c.image +
-            "' which is not from an approved registry. Allowed: ECR springboot, docker.io/istio/, gcr.io/istio-release/"
-        expression: >-
-            !has(object.spec.initContainers) ||
-            object.spec.initContainers.all(c,
-            variables.allowedRegistries.exists(r, c.image.startsWith(r))
-            )
+  validations:
+    - message: 'Image must be from an approved registry'
+      expression: >-
+        object.spec.containers.all(c,
+          variables.allowedRegistries.exists(r, c.image.startsWith(r))
+        )
+{{- end }}
+{{- end }}

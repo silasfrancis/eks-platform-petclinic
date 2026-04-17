@@ -1,8 +1,13 @@
+{{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
+{{- if $nsConfig.kyvernoStatic }}
+---
 apiVersion: policies.kyverno.io/v1
 kind: NamespacedValidatingPolicy
 metadata:
   name: pod-security
-  namespace: {{ .Values.namespaces.app }}
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "policies.kyverno.labels" $ | nindent 4 }}
 spec:
   webhookConfiguration:
     timeoutSeconds: 15
@@ -12,7 +17,7 @@ spec:
     background:
       enabled: false
     mode: Kubernetes
-  validationActions: DENY
+  validationActions: [DENY]
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
@@ -30,62 +35,42 @@ spec:
         )
 
   validations:
-    - message: 'Privileged containers are not allowed'
+    - message: 'Privileged containers or host access (Network/PID/IPC) not allowed'
       expression: >-
-        variables.appContainers.all(c,
-          !has(c.securityContext) ||
-          !has(c.securityContext.privileged) ||
-          c.securityContext.privileged == false
-        )
-
-    - message: 'Containers must run as non-root'
-      expression: >-
-        variables.appContainers.all(c,
-          (has(c.securityContext) && has(c.securityContext.runAsNonRoot) && c.securityContext.runAsNonRoot == true) ||
-          (has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot == true)
-        )
-
-    - message: 'hostPath volumes are not allowed'
-      expression: >-
-        !has(object.spec.volumes) ||
-        object.spec.volumes.all(v, !has(v.hostPath))
-
-    - message: 'Default service account must not be used'
-      expression: >-
-        has(object.spec.serviceAccountName) &&
-        object.spec.serviceAccountName != "default"
-
-    - message: 'Memory requests/limits and CPU requests are required'
-      expression: >-
-        variables.appContainers.all(c,
-          has(c.resources) &&
-          has(c.resources.requests) &&
-          has(c.resources.requests.memory) &&
-          has(c.resources.requests.cpu) &&
-          has(c.resources.limits) &&
-          has(c.resources.limits.memory)
-        )
-
-    - message: 'Host network, PID, and IPC access are not allowed'
-      expression: >-
+        variables.appContainers.all(c, 
+          !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false
+        ) &&
         (!has(object.spec.hostNetwork) || object.spec.hostNetwork == false) &&
         (!has(object.spec.hostPID) || object.spec.hostPID == false) &&
         (!has(object.spec.hostIPC) || object.spec.hostIPC == false)
 
-    - message: 'Privilege escalation is not allowed'
+    - message: 'Containers must run as non-root (check Pod or Container level)'
       expression: >-
         variables.appContainers.all(c,
-          !has(c.securityContext) ||
-          !has(c.securityContext.allowPrivilegeEscalation) ||
-          c.securityContext.allowPrivilegeEscalation == false
+          (has(c.securityContext) && c.securityContext.runAsNonRoot == true) ||
+          (has(object.spec.securityContext) && object.spec.securityContext.runAsNonRoot == true)
         )
 
-    - message: 'Capabilities must not be added, ALL must be dropped'
+    - message: 'hostPath volumes and default service accounts are forbidden'
+      expression: >-
+        (!has(object.spec.volumes) || object.spec.volumes.all(v, !has(v.hostPath))) &&
+        (has(object.spec.serviceAccountName) && object.spec.serviceAccountName != "default")
+
+    - message: 'Resources: Memory limits and CPU/Memory requests are required'
       expression: >-
         variables.appContainers.all(c,
-          has(c.securityContext) &&
-          has(c.securityContext.capabilities) &&
-          !has(c.securityContext.capabilities.add) &&
-          has(c.securityContext.capabilities.drop) &&
-          c.securityContext.capabilities.drop.exists(d, d == "ALL")
+          has(c.resources.requests.memory) &&
+          has(c.resources.requests.cpu) &&
+          has(c.resources.limits.memory)
         )
+
+    - message: 'Security: Privilege escalation forbidden and ALL capabilities must be dropped'
+      expression: >-
+        variables.appContainers.all(c,
+          (!has(c.securityContext.allowPrivilegeEscalation) || c.securityContext.allowPrivilegeEscalation == false) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(d, d == "ALL") &&
+          !has(c.securityContext.capabilities.add)
+        )
+{{- end }}
+{{- end }}

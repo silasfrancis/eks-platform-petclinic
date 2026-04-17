@@ -60,3 +60,28 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "argocd.secretStoreName" -}}
+{{- if .Values.secretStore.enabled }}
+{{- default (include "argocd.fullname" .) .Values.secretStore.name }}
+{{- else }}
+{{- default "default" .Values.secretStore.name }}
+{{- end }}
+{{- end }}
+
+{{- define "argocd.externalSecretName" -}}
+{{- if .Values.externalSecret.enabled }}
+{{- default (include "argocd.fullname" .) .Values.externalSecret.name }}
+{{- else }}
+{{- default "default" .Values.externalSecret.name }}
+{{- end }}
+{{- end }}
+
+{{- define "argocd.secretName" -}}
+{{- if .Values.secretStore.enabled }}
+{{- default (include "argocd.fullname" .) .Values.secretStore.name }}
+{{- else }}
+{{- default "default" .Values.secretStore.name }}
+{{- end }}
+{{- end }}
+

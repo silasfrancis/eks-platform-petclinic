@@ -94,11 +94,11 @@ argocd:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
       rules:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
         spec:
           - alert: ArgoAppNotSynced
             expr: argocd_app_info{sync_status!="Synced"} == 1
@@ -140,7 +140,7 @@ argocd:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
   repoServer:
     replicas: 1
@@ -161,7 +161,7 @@ argocd:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
   applicationSet:
     replicas: 1
@@ -182,7 +182,7 @@ argocd:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
   dex:
     enabled: false
@@ -221,7 +221,7 @@ argocd:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: kube-prometheus-stack
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
     secret:
       create: false
     notifiers:
@@ -297,3 +297,52 @@ argocd:
           - on-deployed
           - on-health-degraded
           - on-sync-failed
+
+# Service Account
+# AWS IAM Role for Service Accounts (IRSA) configuration.
+# This ServiceAccount must be annotated with an IAM Role that has 
+# permissions to 'secretsmanager:GetSecretValue' for the ArgoCD repo credentials.
+serviceAccount:
+  create: true
+  name: ""          # defaults to appName via _helpers.tpl
+  annotations: 
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/argocd-irsa-role
+
+# Secret Store
+# Defines the connection to AWS Secrets Manager.
+# The SecretStore uses the IRSA ServiceAccount above to authenticate.
+# This is a namespaced provider for ExternalSecrets to consume.
+secretStore:
+  enabled: true
+  awsRegion: us-east-2
+
+# Eexternal secrets
+# Bridges AWS Secrets Manager to Kubernetes Secrets.
+# The 'argocd.argoproj.io/secret-type: repository' label tells ArgoCD 
+# to automatically use this secret as a Git/Helm repository credential.
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  target: ""    # K8s secret name — defaults to <chartName>-secrets via _helpers.tpl
+  template:
+    metadata:
+      labels:
+        # ArgoCD discovery label - identifies this secret as a repository config
+        argocd.argoproj.io/secret-type: repository
+      data:
+        url: "git@github.com:silasfrancis/.git" # repo url
+        sshPrivateKey: "{{ .sshPrivateKey }}" # ssh private key
+        insecure: "false" 
+        type: git
+  data: 
+    - secretKey: sshPrivateKey # SSH Key for private repo access
+      remoteRef:
+        key: prod/argocd # AWS Secrets Manager secret name
+        property: ssh-key # AWS Secrets Manager secret property
+
+# Argocd Applications
+# Defines the App-of-Apps or individual Application resources.
+# These will be looped over in the templates to generate ArgoCD Application CRDs.
+applications: {}
+
+    

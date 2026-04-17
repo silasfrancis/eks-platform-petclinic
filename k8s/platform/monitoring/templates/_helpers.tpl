@@ -29,6 +29,40 @@ Create chart name and version as used by the chart label.
 {{- define "monitoring.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "monitoring.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "monitoring.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{- define "monitoring.secretStoreName" -}}
+{{- if .Values.secretStore.enabled }}
+{{- default (include "monitoring.fullname" .) .Values.secretStore.name }}
+{{- else }}
+{{- default "default" .Values.secretStore.name }}
+{{- end }}
+{{- end }}
+
+{{- define "monitoring.externalSecretName" -}}
+{{- if .Values.externalSecret.enabled }}
+{{- default (include "monitoring.fullname" .) .Values.externalSecret.name }}
+{{- else }}
+{{- default "default" .Values.externalSecret.name }}
+{{- end }}
+{{- end }}
+
+{{- define "monitoring.secretName" -}}
+{{- if .Values.secretStore.enabled }}
+{{- default (include "monitoring.fullname" .) .Values.secretStore.name }}
+{{- else }}
+{{- default "default" .Values.secretStore.name }}
+{{- end }}
+{{- end }}
 
 {{/*
 Common labels
@@ -50,13 +84,3 @@ app.kubernetes.io/name: {{ include "monitoring.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "monitoring.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "monitoring.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}

@@ -332,7 +332,6 @@ externalSecret:
       data:
         url: "git@github.com:silasfrancis/.git" # repo url
         sshPrivateKey: "{{ .sshPrivateKey }}" # ssh private key
-        insecure: "false" 
         type: git
   data: 
     - secretKey: sshPrivateKey # SSH Key for private repo access
@@ -340,9 +339,177 @@ externalSecret:
         key: prod/argocd # AWS Secrets Manager secret name
         property: ssh-key # AWS Secrets Manager secret property
 
-# Argocd Applications
-# Defines the App-of-Apps or individual Application resources.
-# These will be looped over in the templates to generate ArgoCD Application CRDs.
-applications: {}
+# Argocd bootsrap configuration
+# This block defines the "App-of-Apps" structure for the cluster.
+#
+# KEY DEFINITIONS:
+#   envName           - Dynamic variable to resolve environment folders 
+#                       (e.g., values/env/dev/service.yaml).
+#   defaults          - Global settings inherited by all Applications.
+#   syncWave          - Orchestration order. 0 = Core, 1 = Infra, 2 = Platform, 3 = Apps.
+#   isServiceGroup    - Boolean flag: if true, the template loops through the 
+#                       'services' map to create individual Argo Applications.
+#   ignoreDifferences - Prevents ArgoCD "Sync-Fights" with dynamic controllers 
+#                       (HPA, VPA, Istio Canaries, AWS LoadBalancers).
 
-    
+argocdBootstrap:
+  envName: dev 
+
+  defaults:
+    repoURL: git@github.com:silasfrancis/spring_boot_micro_services.git
+    targetRevision: main
+    destination:
+      server: https://kubernetes.default.svc
+    project: platform
+    syncOptions:
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 3
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+
+  apps:
+    # --- 1. ARGOCD (Self-Managed) ---
+    argocd:
+      path: k8s/argocd
+      namespace: argocd
+      project: platform
+      syncWave: "0"
+      repoURL: git@github.com:silasfrancis/spring_boot_micro_services.git
+      automated:
+        prune: false 
+        selfHeal: false  # Safer for the controller to not self-correct during upgrades
+      syncOptions:
+        - ServerSideApply=true
+      ignoreDifferences:
+        - group: admissionregistration.k8s.io
+          kind: MutatingWebhookConfiguration
+          jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+        - group: admissionregistration.k8s.io
+          kind: ValidatingWebhookConfiguration
+          jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+
+    # --- 2. POLICIES ---
+    policies:
+      path: k8s/policies
+      namespace: kyverno
+      project: platform
+      syncWave: "1"
+      syncOptions:
+        - ServerSideApply=true
+      ignoreDifferences:
+        - group: admissionregistration.k8s.io
+          kind: MutatingWebhookConfiguration
+          jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+        - group: admissionregistration.k8s.io
+          kind: ValidatingWebhookConfiguration
+          jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+
+    # --- 3. PLATFORM: COMPUTE ---
+    compute:
+      path: k8s/platform/compute
+      namespace: karpenter
+      project: platform
+      syncWave: "1"
+      syncOptions:
+        - ServerSideApply=true
+      ignoreDifferences:
+        - group: karpenter.sh
+          kind: NodePool
+          jsonPointers: ["/status"]
+        - group: karpenter.k8s.aws
+          kind: EC2NodeClass
+          jsonPointers: ["/status"]
+
+    # --- 4. PLATFORM: INGRESS ---
+    ingress:
+      path: k8s/platform/ingress
+      namespace: istio-ingress
+      project: platform
+      syncWave: "1"
+      ignoreDifferences:
+        - group: ""
+          kind: Service
+          jsonPointers: ["/status/loadBalancer"]
+        - group: apps
+          kind: Deployment
+          jsonPointers: ["/spec/replicas"]
+        - group: autoscaling
+          kind: HorizontalPodAutoscaler
+          jsonPointers: ["/spec/metrics", "/spec/behavior"]
+
+    # --- 5. PLATFORM: MONITORING ---
+    monitoring:
+      path: k8s/platform/monitoring
+      namespace: monitoring
+      project: platform
+      syncWave: "1"
+      syncOptions:
+        - ServerSideApply=true
+      ignoreDifferences:
+        - group: admissionregistration.k8s.io
+          kind: MutatingWebhookConfiguration
+          jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+
+    # --- 6. PLATFORM: SECURITY ---
+    security:
+      path: k8s/platform/security
+      namespace: security-system
+      project: platform
+      syncWave: "2"
+      syncOptions:
+        - ServerSideApply=true
+
+    # --- 7. PLATFORM: AUTOSCALING ---
+    autoscaling:
+      path: k8s/platform/autoscaling
+      namespace: autoscaling
+      project: platform
+      syncWave: "2"
+
+    # --- 8. PLATFORM: BACKUP ---
+    backup:
+      path: k8s/platform/backup
+      namespace: velero
+      project: platform
+      syncWave: "2"
+
+    # --- 9. MICROSERVICES (Grouped Releases) ---
+    microservices:
+      isServiceGroup: true
+      path: k8s/apps/microservice
+      namespace: petclinic
+      project: apps
+      syncWave: "3"
+      services:
+        config-server: {}
+        discovery-server: {}
+        api-gateway: {}
+        customers-service: {}
+        vets-service: {}
+        visits-service: {}
+        genai-service: {}
+        admin-server: {}
+      ignoreDifferences:
+        - group: networking.istio.io
+          kind: VirtualService
+          jqPathExpressions: [".spec.http[].route[].weight"]
+        - group: apps
+          kind: Deployment
+          jsonPointers: ["/spec/replicas"]
+        - group: argoproj.io
+          kind: Rollout
+          jsonPointers: ["/spec/replicas", "/status"]
+        - group: autoscaling
+          kind: HorizontalPodAutoscaler
+          jsonPointers: ["/spec/metrics", "/spec/behavior"]
+        - group: ""
+          kind: Pod
+          jqPathExpressions:
+            - ".spec.containers[].resources.requests.cpu"
+            - ".spec.containers[].resources.requests.memory"

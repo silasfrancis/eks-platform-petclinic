@@ -1,10 +1,3 @@
-# spec:
-#   source:
-#     targetRevision: main        # ← main branch
-#   destination:
-#     server: https://kubernetes.default.svc    # ← main cluster (local)
-#     namespace: petclinic
-
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

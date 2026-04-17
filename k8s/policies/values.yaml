@@ -1,4 +1,10 @@
 # Policy enforcement platform values.
+# This chart manages two distinct layers:
+# 1. ENGINE: Installs Kyverno (controllers, webhooks, monitors).
+# 2. GOVERNANCE: Deploys dynamic NetworkPolicies and Kyverno Policies 
+#    driven by the 'clusterPolicy' data block at the bottom of this file.
+
+# KYVERNO ENGINE CONFIGURATION
 # Kyverno is a Kubernetes-native policy engine that validates, mutates
 # and generates resources using admission webhooks.
 #
@@ -7,10 +13,6 @@
 #   backgroundController:  applies generate and mutateExisting policies
 #   cleanupController:     enforces TTL-based resource cleanup policies
 #   reportsController:     generates policy compliance reports
-#
-# Policies live in k8s/policies/templates/ as separate YAML files.
-# Values for policy templates can be found after the kyverno dependency section.
-# This chart installs the Kyverno engine and the policies templates.
 
 kyverno:
   # global.nodeSelector applies to all four controllers
@@ -173,23 +175,19 @@ kyverno:
     autoUpdateWebhooks:
       enabled: true
 
-# clusterPolicy — single source of truth for all policy and network configuration.
+# CLUSTER POLICY & NETWORK GOVERNANCE
+# Single source of truth for all security and network configuration.
 #
-# Design: policy-as-data pattern.
-# Templates loop over this structure rather than hardcoding rules.
-# Adding a new service = add one entry to services + reference it in namespace toggles.
-# Adding a new namespace = add one entry to managedNamespaces.
+# Design: Policy-as-Data Pattern.
+# Instead of manual YAML rules, Helm templates loop over this data structure.
 #
-# Three template types consume this:
-#   NetworkPolicy templates    → loop over services[*].ingressFrom / egressTo
-#   Kyverno ValidatingPolicy   → loop over managedNamespaces where kyvernoStatic=true
-#   Kyverno MutatingPolicy     → loop over managedNamespaces where kyvernoMutate=true
+# TO ADD A SERVICE:   Add entry to 'services' map below.
+# TO SECURE A NAMESPACE: Add entry to 'managedNamespaces' with desired flags.
 #
-# OVERRIDE REQUIRED:
-#   kyverno.ecr.accountId
-#   kyverno.ecr.region
-#   kyverno.github.org / repo / branch (branch changes per environment)
-#   network.rds.cidr (changes per environment — dev RDS vs prod RDS)
+# REQUIRED OVERRIDES PER ENVIRONMENT:
+#   - kyverno.ecr.accountId / region
+#   - kyverno.github.org / repo / branch
+#   - network.rds.cidr (e.g., Dev vs. Prod database IPs)
 
 clusterPolicy:
 

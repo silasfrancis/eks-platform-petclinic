@@ -9,13 +9,6 @@
 #   task deploy_root_app   → applies root-app.yaml (once)
 #   root-app watches       → k8s/argocd/apps/ → creates all Applications below
 #   ArgoCD syncs           → everything else deploys itself
-#
-# OVERRIDE REQUIRED:
-#   argocd.global.domain               — your ArgoCD hostname
-#   argocd.configs.repositories        — your Git repo URL
-#   argocdBootstrap.envName            — dev or main per cluster
-#   argocdBootstrap.defaults.repoURL   — SSH URL for private repo
-#   externalSecret.data.remoteRef.key  — AWS Secrets Manager path per environment
 
 # ArgoCD Helm subchart configuration
 # Ref: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
@@ -103,10 +96,10 @@ argocd:
           - BackgroundScanReport
           - ClusterBackgroundScanReport
 
-    # OVERRIDE: update URL to your actual repository
+    # Update URL to your actual repository
     repositories:
       petclinic-gitops:
-        url: https://github.com/silasfrancis/spring_boot_micro_services
+        url: ""
         name: petclinic-gitops
         type: git
 
@@ -358,7 +351,6 @@ argocd:
 # Service Account
 # IRSA annotation gives ArgoCD permission to read Git credentials
 # from AWS Secrets Manager via ESO.
-# OVERRIDE: add role ARN after creating the IAM role in Terraform
 serviceAccount:
   create: true
   name: ""
@@ -394,7 +386,7 @@ externalSecret:
   data:
     - secretKey: sshPrivateKey
       remoteRef:
-        # OVERRIDE: update path per environment (dev/argocd, prod/argocd)
+        # Update path per environment (dev/argocd, prod/argocd)
         key: prod/argocd
         property: ssh-key
 

@@ -1,0 +1,41 @@
+argocd:
+  global:
+    domain: argocd.lefrancis.org
+  configs:
+    repositories:
+      petclinic-gitops:
+        url: ""
+        name: petclinic-gitops
+        type: git
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: 
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  target: ""
+  template:
+    metadata:
+      labels:
+        argocd.argoproj.io/secret-type: repository
+    data:
+      url: "git@github.com:silasfrancis/.git"
+      sshPrivateKey: "{{ .sshPrivateKey }}"
+      type: git
+  data:
+    - secretKey: sshPrivateKey
+      remoteRef:
+        key: prod/argocd
+        property: ssh-key
+
+argocdBootstrap:
+  envName: main
+
+  defaults:
+    repoURL: 
+    targetRevision: main
+    destination:
+      server: https://kubernetes.default.svc

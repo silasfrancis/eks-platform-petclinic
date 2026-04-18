@@ -10,14 +10,17 @@ jobs:
   filter-updated-directories:
     uses: ./.github/workflows/path-filter.yaml
 
-  update-helm-manifest:
+  update-helm-values:
     runs-on: ubuntu-24.04
     environment: >-
       ${{ (github.ref_name == 'main' || github.base_ref == 'main')
       && 'production'
       || 'development' }}
     needs: filter-updated-directories
-    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != '' && github.event.workflow_run.conclusion == 'success'}} 
+    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' 
+            && needs.filter-updated-directories.outputs.dir_changed != '' 
+            && github.event.workflow_run.conclusion == 'success'
+        }} 
     permissions:
       contents: write
       checks: write
@@ -55,7 +58,7 @@ jobs:
             echo "SHORT_SHA=${SHA::8}" >> $GITHUB_ENV
             echo "BUILD_RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
 
-        - name: Download Manifest from S3
+        - name: Download Build Manifest from S3
           id: download_manifest
           run: |
             MANIFEST_KEY="manifests/${{ env.BUILD_RUN_ID }}/${{ env.SHORT_SHA }}/build-manifest.json"
@@ -83,9 +86,9 @@ jobs:
             echo "Processing service: $SERVICE"
             echo "Values file: $VALUES_FILE"
 
-            echo "Extracting image for ${{ matrix.dir }}"
-            NEW_IMAGE=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image' "$TARGET_FILE")
+            echo "Extracting image for $SERVICE"
             REGISTRY_URI=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .registry_uri' "$TARGET_FILE")
+            IMAGE_REPO=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_repo' "$TARGET_FILE")
             NEW_IMAGE_TAG=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_tag' "$TARGET_FILE")
             NEW_IMAGE_DIGEST=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_digest' "$TARGET_FILE")
 
@@ -97,14 +100,16 @@ jobs:
             echo "New image: $NEW_IMAGE"
             echo "New Image Digest: $NEW_IMAGE_DIGEST"
 
-            CURRENT_REGISTRY=$(yq '.image.repository' "$VALUES_FILE")
+            CURRENT_REGISTRY=$(yq '.image.registry' "$VALUES_FILE")
+            CURRENT_IMAGE_REPO=$(yq '.image.repository' "$VALUES_FILE")
             CURRENT_TAG=$(yq '.image.tag' "$VALUES_FILE")
             CURRENT_TAG=$(yq '.image.digest' "$VALUES_FILE")
 
             echo "Current $SERVICE Image: $CURRENT_REGISTRY:$CURRENT_TAG"
             echo "Updating $SERVICE Image -> $NEW_IMAGE"
 
-            yq -i ".image.repository = \"$REGISTRY_URI\"" "$VALUES_FILE"
+            yq -i ".image.registry = \"$REGISTRY_URI\"" "$VALUES_FILE"
+            yq -i ".image.repository = \"$IMAGE_REPO\"" "$VALUES_FILE"
             yq -i ".image.tag = \"$NEW_IMAGE_TAG\"" "$VALUES_FILE"
             yq -i ".image.digest = \"$NEW_IMAGE_DIGEST\"" "$VALUES_FILE"
 
@@ -167,3 +172,98 @@ jobs:
               }
             webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
             webhook-type: incoming-webhook
+            
+  update-chart-version:
+    runs-on: ubuntu-24.04
+    environment: >-
+      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      && 'production'
+      || 'development' }}
+    needs: update-helm-values
+    if: ${{ needs.update-helm-values.result == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      - name: Setup jq and yq
+        uses: ./.github/actions/install_jq_yq
+
+      - name: Set short SHA and Build Run ID
+        run: |
+          SHA=${{ github.event.workflow_run.head_sha }}
+          echo "SHORT_SHA=${SHA::8}" >> $GITHUB_ENV
+          echo "BUILD_RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
+
+      - name: Update chart version
+        run: |
+          CHART_FILE="k8s/microservice/Chart.yaml"
+
+          echo "Reading current version..."
+          CURRENT_VERSION=$(yq '.version' "$CHART_FILE")
+
+          echo "Current version: $CURRENT_VERSION"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          PATCH=$((PATCH + 1))
+
+          if [ "$PATCH" -gt 9 ]; then
+            PATCH=0
+            MINOR=$((MINOR + 1))
+          fi
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+
+          # Git SHA (short)
+          GIT_SHA=${{ github.event.workflow_run.head_sha }}
+          SHORT_SHA=${GIT_SHA:0:8}
+
+          echo "New chart version: $NEW_VERSION"
+          echo "App version (git sha): $SHORT_SHA"
+
+          echo "Updating Chart.yaml..."
+
+          yq -i ".version = \"$NEW_VERSION\"" "$CHART_FILE"
+          yq -i ".appVersion = \"$SHORT_SHA\"" "$CHART_FILE"
+
+          echo "Updated Chart.yaml:"
+          cat "$CHART_FILE"
+
+          echo "Git diff:"
+          git diff "$CHART_FILE"
+
+      - name: Commit and push Chart vesion
+        env: 
+          GIT_USER: ${{ github.actor }}
+          GIT_USER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+        run: |
+          git config user.name "$GIT_USER"
+          git config user.email "$GIT_USER_EMAIL"
+
+          CHART_FILE="k8s/microservice/Chart.yaml"
+
+          echo "Staging changes..."
+          git add "$CHART_FILE"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update chart version ($SHORT_SHA) on ${{ github.ref_name }}"
+
+            PUSHED=false
+            for i in 1 2 3 4 5; do
+              if git pull --rebase origin ${{ github.ref_name }} && \
+                git push https://x-access-token:${{github.token}}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }}; then
+                PUSHED=true
+                break
+              fi
+              echo "Push failed, retrying ($i/5)..."
+              sleep $((i * 3))
+            done
+
+            if [ "$PUSHED" = false ]; then
+              echo "All 5 push attempts failed"
+              exit 1
+            fi
+          fi

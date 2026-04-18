@@ -1,36 +1,58 @@
-gateway:
+gateways:
+  public:
+    loadbalancer:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
+    certificate:
+      enabled: true
+      spec:
+        secretName: "petclinic-public-tls"
+        issuerRef:
+          name: "letsencrypt-cloudflare"
+          kind: ClusterIssuer
+        
+  internal:
+    loadbalancer:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-internal-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
+    certificate:
+      enabled: true
+      spec:
+        secretName: "petclinic-internal-tls"
+        issuerRef:
+          name: "letsencrypt-cloudflare"
+          kind: ClusterIssuer
 
-  loadbalancer:
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
-      service.beta.kubernetes.io/aws-load-balancer-type: "external"
-      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-      service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
-      service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
-      external-dns.alpha.kubernetes.io/managed: "true"
-      external-dns.alpha.kubernetes.io/hostname: >
-        petclinic-dev.lefrancis.org,
-        grafana-dev.lefrancis.org
-      external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
-      external-dns.alpha.kubernetes.io/ttl: "120"
-  
-  certificate:
-    spec:
-      secretName: ""   
-      issuerRef:
-        name: "" 
-        kind: ClusterIssuer
-    dnsNames:
-      - "lefrancis.org"
-      - "*.lefrancis.org"
-      
-external-dns:
+external-dns-cloudflare:
   env:
     - name: CF_API_TOKEN
       valueFrom:
         secretKeyRef:
           name: platform-ingress-secrets 
           key: cloudflare_api_token
+
+  registry: txt
+  txtOwnerId: "eks-cluster-01-cloudflare"
+  txtPrefix: "cloudflare-"
+
+
+external-dns-route53:
+  provider:
+    name: aws    
+  serviceAccount:
+    create: true
+    name: external-dns-route53
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-external-dns"
+
+  registry: txt
+  txtOwnerId: "eks-cluster-01-route53"
+  txtPrefix: "route53-"
+
 
 secretStore:
   enabled: true
@@ -47,7 +69,7 @@ externalSecret:
         key: "" 
         property: cloudflare_api_token
 
-externalDnsServiceAccount:
+esoServiceAccount:
   name: ""      
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>

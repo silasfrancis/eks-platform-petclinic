@@ -1,41 +1,40 @@
-{{- if .Values.deployment.enabled }}
+{{- range $name, $cfg := .Values.gateways }}
+{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
+{{- if $cfg.deployment.enabled }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "gateway.deploymentName" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "gateway.resourceName" $ctx }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "gateway.labels" . | nindent 4 }}
+    {{- include "gateway.labels" $ctx | nindent 4 }}
   annotations:
-    {{- include "gateway.deploymentAnnotations" . | nindent 4 }}
+    {{- include "gateway.deploymentAnnotations" $ctx | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "gateway.selectorLabels" . | nindent 6 }}
+      {{- include "gateway.selectorLabels" $ctx | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "gateway.podLabels" . | nindent 8 }}
+        {{- include "gateway.podLabels" $ctx | nindent 8 }}
     spec:
-      {{- if .Values.gateway.podSecurityContext }}
+      serviceAccountName: {{ include "gateway.serviceAccountName" $ctx }}
       securityContext:
-        {{- toYaml .Values.gateway.podSecurityContext | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "gateway.serviceAccountName" . }}
-      {{- $tolerations := include "gateway.tolerations" . }}
-      {{- if $tolerations }}
+        {{- toYaml ($.Values.gatewayDefaults.podSecurityContext) | nindent 8 }}
+      {{- with (include "gateway.tolerations" $ctx) }}
       tolerations:
-        {{- $tolerations | nindent 8 }}
+        {{- . | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ .Values.gateway.container.name }}
-          image: {{ .Values.gateway.container.image }}
+        - name: {{ $.Values.gatewayDefaults.container.name }}
+          image: {{ $.Values.gatewayDefaults.container.image }}
           ports:
-            {{- toYaml .Values.gateway.container.ports | nindent 12 }}
+            {{- toYaml $.Values.gatewayDefaults.container.ports | nindent 12 }}
           resources:
-            {{- include "gateway.containerResources" . | nindent 12 }}
-          {{- if .Values.gateway.securityContext }}
+            {{- include "gateway.containerResources" $ctx | nindent 12 }}
           securityContext:
-            {{- toYaml .Values.gateway.securityContext | nindent 12 }}
-          {{- end }}
+            {{- toYaml $.Values.gatewayDefaults.securityContext | nindent 12 }}
+{{- end }}
 {{- end }}

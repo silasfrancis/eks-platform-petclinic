@@ -77,11 +77,3 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{- define "argocd.secretName" -}}
-{{- if .Values.secretStore.enabled }}
-{{- default (include "argocd.fullname" .) .Values.secretStore.name }}
-{{- else }}
-{{- default "default" .Values.secretStore.name }}
-{{- end }}
-{{- end }}
-

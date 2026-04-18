@@ -1,16 +1,20 @@
-{{- if .Values.gateway.certificate.enabled }}
+{{- range $name, $cfg := .Values.gateways }}
+{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
+{{- if $cfg.certificate.enabled }}
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ include "gateway.certificateName" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "gateway.certificateName" $ctx }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "gateway.labels" . | nindent 4 }}
+    {{- include "gateway.labels" $ctx | nindent 4 }}
 spec:
-  secretName: {{ include "gateway.certificateSecretName" . }}
+  secretName: {{ include "gateway.certificateSecretName" $ctx }}
   issuerRef:
-    name: {{ .Values.gateway.certificate.spec.issuerRef.name }}
-    kind: {{ .Values.gateway.certificate.spec.issuerRef.kind }}
+    name: {{ $cfg.certificate.spec.issuerRef.name }}
+    kind: {{ $cfg.certificate.spec.issuerRef.kind }}
   dnsNames:
-    {{- include "gateway.certificateDnsNames" . | nindent 4 }}
+    {{- include "gateway.certificateDnsNames" $ctx | nindent 4 }}
+{{- end }}
 {{- end }}

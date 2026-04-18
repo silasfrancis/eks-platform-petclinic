@@ -1,29 +1,36 @@
-{{- if .Values.gateway.vpa.enabled }}
+{{- range $name, $cfg := .Values.gateways }}
+{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
+{{- if $cfg.vpa.enabled }}
+---
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: {{ include "gateway.vpaName" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "gateway.vpaName" $ctx }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "gateway.labels" . | nindent 4 }}
+    {{- include "gateway.labels" $ctx | nindent 4 }}
 spec:
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "gateway.deploymentName" . }}
+    name: {{ include "gateway.resourceName" $ctx }}
   updatePolicy:
+    # Off — recommendation mode only
+    # Goldilocks reads these recommendations and displays them in the dashboard
+    # Never change to Auto — would evict and restart gateway pods
     updateMode: "Off"
   resourcePolicy:
     containerPolicies:
-      - containerName: {{ .Values.gateway.container.name }}
+      - containerName: {{ $.Values.gatewayDefaults.container.name }}
         minAllowed:
-          cpu: {{ .Values.gateway.vpa.minAllowed.cpu | quote }}
-          memory: {{ .Values.gateway.vpa.minAllowed.memory | quote }}
+          cpu: {{ ($cfg.vpa.minAllowed).cpu | default $.Values.gatewayDefaults.vpa.minAllowed.cpu }}
+          memory: {{ ($cfg.vpa.minAllowed).memory | default $.Values.gatewayDefaults.vpa.minAllowed.memory }}
         maxAllowed:
-          cpu: {{ .Values.gateway.vpa.maxAllowed.cpu | quote }}
-          memory: {{ .Values.gateway.vpa.maxAllowed.memory | quote }}
+          cpu: {{ ($cfg.vpa.maxAllowed).cpu | default $.Values.gatewayDefaults.vpa.maxAllowed.cpu }}
+          memory: {{ ($cfg.vpa.maxAllowed).memory | default $.Values.gatewayDefaults.vpa.maxAllowed.memory }}
         controlledResources:
           - cpu
           - memory
         controlledValues: RequestsAndLimits
+{{- end }}
 {{- end }}

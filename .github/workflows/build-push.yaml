@@ -83,9 +83,11 @@ jobs:
         id: get_image_repo
         run: |
           REPO_NAME=$(task -t .github/workflows/utils/Taskfile.yaml get-repo SERVICE=${{ matrix.dir }})
-          REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${REPO_NAME}"
-          echo "IMAGE_REPO=$REPO_NAME" >> $GITHUB_OUTPUT
+          REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "REGISTRY_URI=$REGISTRY_URI" >> $GITHUB_OUTPUT
+          echo "IMAGE_REPO=${REGISTRY_URI}/${REPO_NAME}" >> $GITHUB_OUTPUT
+          echo "IMAGE=${REGISTRY_URI}/${REPO_NAME}:${{ env.SHORT_SHA }}" >> $GITHUB_OUTPUT
 
       - name: Build Single Arch image for Scan
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
@@ -94,7 +96,7 @@ jobs:
           file: ${{ matrix.dir }}/Dockerfile
           push: false
           load: true
-          tags: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
+          tags: ${{ steps.get_image_repo.outputs.IMAGE }}
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -102,7 +104,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
-          image-ref: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
+          image-ref: ${{ steps.get_image_repo.outputs.IMAGE }}
           format: 'json'
           output: '${{ matrix.dir }}_trivy-results.json'
           exit-code: '1'
@@ -126,7 +128,7 @@ jobs:
           context: .
           file: ${{ matrix.dir }}/Dockerfile
           push: true                              
-          tags: ${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}
+          tags: ${{ steps.get_image_repo.outputs.IMAGE }}
           platforms: linux/amd64,linux/arm64      
           cache-from: type=gha                    
           cache-to: type=gha,mode=max
@@ -136,21 +138,33 @@ jobs:
         run: |
           DIGEST=$(aws ecr describe-images \
             --region ${{ env.AWS_REGION }} \
-            --repository-name ${{ steps.get_image_repo.outputs.IMAGE_REPO }} \
+            --repository-name ${{ steps.get_image_repo.outputs.REPO_NAME }} \
             --image-ids imageTag=${{ env.SHORT_SHA }} \
             --query 'imageDetails[0].imageDigest' \
             --output text)
-          echo "IMAGE=${{ steps.get_image_repo.outputs.REGISTRY_URI }}:${{ env.SHORT_SHA }}" >> $GITHUB_OUTPUT
           echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Sign image with Cosign
-        run: cosign sign --yes "${{ steps.get_digest.outputs.IMAGE }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
+        run: cosign sign --yes "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
 
       - name: Verify Image Signature
         run: |
-          cosign verify "${{ steps.get_digest.outputs.IMAGE }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+          cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
           --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
           --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Attest scan results with Cosign
+        run: cosign attest \
+          --predicate '${{ matrix.dir }}_trivy-results.json' \
+          --type vuln \
+          "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
+
+      - name: Verify scan attestation
+        run: |
+          cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+            --type vuln \
+            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
                 
       - name: Save image metadata
         run: |
@@ -159,8 +173,8 @@ jobs:
           {
             "service": "${{ matrix.dir }}",
             "registry_uri": "${{ steps.get_image_repo.outputs.REGISTRY_URI }}",
+            "image_repo": "${{ steps.get_image_repo.outputs.REPO_NAME }}",
             "image_tag": "${{ env.SHORT_SHA }}",
-            "image": "${{ steps.get_digest.outputs.IMAGE }}",
             "image_digest": "${{ steps.get_digest.outputs.IMAGE_DIGEST }}",
             "scan_report": "s3://${{ env.CICD_BUCKET }}/security-scans/trivy/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}_trivy-results.json"
           }
@@ -192,7 +206,7 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
 
-  publish-manifest:
+  publish-build-manifest:
     needs: build-scan-push
     if: ${{ contains(fromJson('["success", "failure"]'), needs.build-scan-push.result) }}
     runs-on: ubuntu-24.04

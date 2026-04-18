@@ -268,10 +268,11 @@ argocd:
         additionalLabels:
           release: platform-monitoring
 
-    # ESO creates this secret — do not let Helm create it
+    # ESO creates this secret
     # Secret contains: slack-token
     secret:
       create: false
+      name: argocd-notifications-secret
 
     notifiers:
       # Slack notifier — token sourced from ESO-created secret
@@ -364,31 +365,48 @@ secretStore:
   enabled: true
   awsRegion: us-east-2
 
-# External Secret
-# Pulls the Git SSH deploy key from AWS Secrets Manager.
-# The argocd.argoproj.io/secret-type: repository label tells ArgoCD
-# to treat this secret as a repository credential automatically —
-# no manual repo registration needed.
-# OVERRIDE: update remoteRef.key per environment
-externalSecret:
+# External Secrets
+# Pulls credentials (e.g. Git SSH keys, notification tokens) from AWS Secrets Manager via ESO.
+#
+# - Repository secrets: require label argocd.argoproj.io/secret-type: repository
+#   → auto-registered by ArgoCD for Git access
+# - Notification secrets: no label needed
+#   → used by ArgoCD Notifications (Slack, webhooks, etc.)
+#
+# Keep secrets separate for clarity and easier rotation.
+# OVERRIDE: remoteRef.key per environment
+externalSecrets:
   enabled: true
   refreshInterval: 1h
-  target: ""
-  template:
-    metadata:
-      labels:
-        # ArgoCD discovers secrets with this label as repository credentials
-        argocd.argoproj.io/secret-type: repository
-    data:
-      url: "git@github.com:silasfrancis/.git"
-      sshPrivateKey: "{{ .sshPrivateKey }}"
-      type: git
-  data:
-    - secretKey: sshPrivateKey
-      remoteRef:
-        # Update path per environment (dev/argocd, prod/argocd)
-        key: prod/argocd
-        property: ssh-key
+
+  secrets:
+    repo:
+      target:
+        name: argocd-repo-secret
+      template:
+        metadata:
+          labels:
+            argocd.argoproj.io/secret-type: repository
+        data:
+          url: "git@github.com:silasfrancis/.git"
+          sshPrivateKey: "{{ .sshPrivateKey }}"
+          type: git
+      data:
+        - secretKey: sshPrivateKey
+          remoteRef:
+            key: prod/argocd
+            property: ssh-key
+
+    notifications:
+      target:
+        name: argocd-notifications-secret
+      template:
+        data: {}
+      data:
+        - secretKey: slack-token
+          remoteRef:
+            key: prod/argocd
+            property: slack-token
 
 # App of Apps bootstrap configuration.
 # Defines every ArgoCD Application this cluster should have.

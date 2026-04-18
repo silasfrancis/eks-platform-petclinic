@@ -25,12 +25,14 @@ Generates dynamic Kyverno attestors based on the authorizedWorkflows list
       identities:
         - subject: {{ include "kyverno.github.subject" (list $dot $workflow) | quote }}
           issuer: {{ $kyv.github.tokenIssuer | quote }}
+    ctlog:
+      url: 'https://rekor.sigstore.dev'
 {{- end }}
 {{- end -}}
 
 {{/*
 Generates the CEL expression logic to check if ANY of the defined workflows signed the image.
-The expression will look like: 
+This expression will look like: 
 verifyImageSignatures(image, [attestors['attestor-0']]) > 0 || verifyImageSignatures(image, [attestors['attestor-1']]) > 0
 */}}
 {{- define "kyverno.attestations.expression" -}}
@@ -38,6 +40,22 @@ verifyImageSignatures(image, [attestors['attestor-0']]) > 0 || verifyImageSignat
 {{- $parts := list -}}
 {{- range $index, $workflow := $kyv.github.authorizedWorkflows -}}
   {{- $parts = append $parts (printf "verifyImageSignatures(image, [attestors['attestor-%d']]) > 0" $index) -}}
+{{- end -}}
+{{- join " || " $parts -}}
+{{- end -}}
+
+{{/*
+Generates the CEL expression logic for Attestations.
+Checks if the 'vuln' attestation was signed by any authorized workflow.
+This expression will look like:
+verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-0']]) > 0 || 
+verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-1']]) > 0
+*/}}
+{{- define "kyverno.attestations.validation.expression" -}}
+{{- $kyv := .Values.clusterPolicy.kyverno -}}
+{{- $parts := list -}}
+{{- range $index, $workflow := $kyv.github.authorizedWorkflows -}}
+  {{- $parts = append $parts (printf "verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-%d']]) > 0" $index) -}}
 {{- end -}}
 {{- join " || " $parts -}}
 {{- end -}}

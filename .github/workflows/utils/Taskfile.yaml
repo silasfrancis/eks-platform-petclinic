@@ -10,4 +10,4 @@ tasks:
           echo "Error: Service name is required. Usage: task get-repo SERVICE=admin-service"
           exit 1
         fi
-        echo "springboot/{{.SERVICE}}"
+        echo "petclinic/{{.SERVICE}}"

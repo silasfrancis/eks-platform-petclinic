@@ -1,208 +1,197 @@
 {{/*
 _helpers.tpl for platform/ingress gateway chart.
-Provides template functions for all gateway resources:
-  certificate, deployment, rbac, gateway, hpa, load-balancer, pdb, service-account
+All helpers accept a dict context with:
+  name  — gateway key from the gateways map (e.g. "public", "internal")
+  gw    — merged gateway config (defaults merged with instance config)
+  root  — root context (.) for Release.Namespace etc
 */}}
 
 {{/*
-Common labels applied to all gateway resources
+Merge gateway instance config with defaults.
+Call this at the top of each template before passing to helpers.
+Usage:
+  {{- $gw := include "gateway.mergeDefaults" (dict "name" $name "gw" $cfg "root" $) | fromYaml }}
+*/}}
+{{- define "gateway.mergeDefaults" -}}
+{{- $defaults := .root.Values.gatewayDefaults }}
+{{- $gw := .gw }}
+{{- $merged := merge $gw $defaults }}
+{{- toYaml $merged }}
+{{- end }}
+
+{{/*
+Resource name — <name>-<suffix>
+All resources for a gateway share the same name prefix
+e.g. public → public-istio-ingressgateway
+     internal → internal-istio-ingressgateway
+*/}}
+{{- define "gateway.resourceName" -}}
+{{- printf "%s-istio-ingressgateway" .name }}
+{{- end }}
+
+{{/*
+Common labels applied to all resources for a given gateway instance
 */}}
 {{- define "gateway.labels" -}}
-app: istio-ingressgateway
-istio: ingressgateway
-"istio.io/dataplane-mode": "none"
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app: {{ include "gateway.resourceName" . }}
+istio: {{ include "gateway.resourceName" . }}
+app.kubernetes.io/name: {{ include "gateway.resourceName" . }}
+app.kubernetes.io/managed-by: {{ .root.Release.Service }}
 app.kubernetes.io/part-of: platform-ingress
-{{- if index .Values.labels "istio.io/dataplane-mode" }}
-"istio.io/dataplane-mode": {{ index .Values.labels "istio.io/dataplane-mode" | quote }}
-{{- end }}
+app.kubernetes.io/instance: {{ .name }}
+"istio.io/dataplane-mode": "none"
 {{- end }}
 
 {{/*
-Selector labels — used by Deployment, HPA, PDB and Service to find gateway pods
+Selector labels — must be unique per gateway deployment
+Used by HPA, PDB, Service to find the correct pods
 */}}
 {{- define "gateway.selectorLabels" -}}
-app: istio-ingressgateway
-istio: ingressgateway
+app: {{ include "gateway.resourceName" . }}
+istio: {{ include "gateway.resourceName" . }}
 {{- end }}
 
 {{/*
 Service account name
 */}}
 {{- define "gateway.serviceAccountName" -}}
-{{- .Values.gateway.serviceAccount.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-Deployment name
-*/}}
-{{- define "gateway.deploymentName" -}}
-{{- .Values.gateway.deployment.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-Load balancer service name
-*/}}
-{{- define "gateway.loadBalancerName" -}}
-{{- .Values.gateway.loadbalancer.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-HPA name
-*/}}
-{{- define "gateway.hpaName" -}}
-{{- .Values.gateway.hpa.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-VPA name
-*/}}
-{{- define "gateway.vpaName" -}}
-{{- .Values.gateway.vpa.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-PDB name
-*/}}
-{{- define "gateway.pdbName" -}}
-{{- .Values.gateway.pdb.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-Role name
-*/}}
-{{- define "gateway.roleName" -}}
-{{- .Values.gateway.role.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-RoleBinding name
-*/}}
-{{- define "gateway.roleBindingName" -}}
-{{- .Values.gateway.roleBinding.name | default "istio-ingressgateway" }}
-{{- end }}
-
-{{/*
-Gateway resource name
-*/}}
-{{- define "gateway.gatewayName" -}}
-{{- .Values.gateway.gateway.name | default "istio-ingressgateway" }}
+{{- include "gateway.resourceName" . }}
 {{- end }}
 
 {{/*
 Certificate name
 */}}
 {{- define "gateway.certificateName" -}}
-{{- .Values.gateway.certificate.name | default "istio-ingressgateway-tls" }}
+{{- printf "%s-tls-cert" (include "gateway.resourceName" .) }}
 {{- end }}
 
 {{/*
 Certificate secret name — referenced by Gateway tls.credentialName
-Must match certificate.spec.secretName in values
+Falls back to resourceName-tls if not explicitly set
 */}}
 {{- define "gateway.certificateSecretName" -}}
-{{- .Values.gateway.certificate.spec.secretName | default "istio-ingressgateway-tls" }}
+{{- .gw.certificate.spec.secretName | default (printf "%s-tls" (include "gateway.resourceName" .)) }}
 {{- end }}
 
 {{/*
 Deployment annotations
-Merges user-defined annotations with Istio injection and Prometheus scrape annotations
 */}}
 {{- define "gateway.deploymentAnnotations" -}}
-{{- if .Values.gateway.deployment.annotations }}
-{{- toYaml .Values.gateway.deployment.annotations }}
-{{- end }}
+{{- $defaults := .root.Values.gatewayDefaults.deployment.annotations }}
+{{- $override := .gw.deployment.annotations | default dict }}
+{{- merge $override $defaults | toYaml }}
 {{- end }}
 
 {{/*
-Deployment pod labels
-Merges common labels with Istio sidecar injection label
+VPA name
+*/}}
+{{- define "gateway.vpaName" -}}
+{{- printf "%s-vpa" (include "gateway.resourceName" .) }}
+{{- end }}
+
+{{/*
+Load balancer service name
+Updated to match new context pattern
+*/}}
+{{- define "gateway.loadBalancerName" -}}
+{{- printf "%s-lb" (include "gateway.resourceName" .) }}
+{{- end }}
+
+{{/*
+Pod labels — selector labels + injection label
 */}}
 {{- define "gateway.podLabels" -}}
 {{- include "gateway.selectorLabels" . }}
-{{- if .Values.gateway.deployment.labels }}
-{{ toYaml .Values.gateway.deployment.labels }}
+{{- $defaults := .root.Values.gatewayDefaults.deployment.labels | default dict }}
+{{- $override := .gw.deployment.labels | default dict }}
+{{- $merged := merge $override $defaults }}
+{{- if $merged }}
+{{ toYaml $merged }}
 {{- end }}
 {{- end }}
 
 {{/*
-Gateway tolerations
-*/}}
-{{- define "gateway.tolerations" -}}
-{{- if .Values.gateway.tolerations }}
-{{- toYaml .Values.gateway.tolerations }}
-{{- end }}
-{{- end }}
-
-{{/*
-Container resources block
+Container resources — merge instance over defaults
 */}}
 {{- define "gateway.containerResources" -}}
-requests:
-  cpu: {{ .Values.gateway.resources.requests.cpu | default "100m" }}
-  memory: {{ .Values.gateway.resources.requests.memory | default "128Mi" }}
-limits:
-  cpu: {{ .Values.gateway.resources.limits.cpu | default "1000m" }}
-  memory: {{ .Values.gateway.resources.limits.memory | default "512Mi" }}
+{{- $defaults := .root.Values.gatewayDefaults.resources }}
+{{- $override := .gw.resources | default dict }}
+{{- merge $override $defaults | toYaml }}
 {{- end }}
 
 {{/*
-Load balancer service annotations
-Combines AWS NLB annotations with ExternalDNS annotations
-All annotations are defined in values — this helper just renders them cleanly
+Load balancer annotations
 */}}
 {{- define "gateway.loadBalancerAnnotations" -}}
-{{- if .Values.gateway.loadbalancer.annotations }}
-{{- toYaml .Values.gateway.loadbalancer.annotations }}
+{{- if .gw.loadbalancer.annotations }}
+{{- toYaml .gw.loadbalancer.annotations }}
 {{- end }}
 {{- end }}
 
 {{/*
-HPA metrics block
-Renders the metrics array from values for the HPA spec
+HPA metrics — merge instance over defaults
 */}}
 {{- define "gateway.hpaMetrics" -}}
-{{- if .Values.gateway.hpa.metrics }}
-{{- toYaml .Values.gateway.hpa.metrics }}
+{{- $defaults := .root.Values.gatewayDefaults.hpa.metrics }}
+{{- $override := .gw.hpa.metrics | default list }}
+{{- if $override }}
+{{- toYaml $override }}
+{{- else }}
+{{- toYaml $defaults }}
 {{- end }}
 {{- end }}
 
 {{/*
-Istio Gateway Servers Spec
+Tolerations — merge instance over defaults
+*/}}
+{{- define "gateway.tolerations" -}}
+{{- $defaults := .root.Values.gatewayDefaults.tolerations | default list }}
+{{- $override := .gw.tolerations | default list }}
+{{- concat $defaults $override | toYaml }}
+{{- end }}
+
+{{/*
+Istio Gateway servers spec
+Builds the servers array from the gateway.servers config
 */}}
 {{- define "gateway.servers" -}}
-{{- if .Values.gateway.gateway.servers.http.enabled }}
+{{- with .gw.gateway.servers }}
+{{- if .http.enabled }}
 - port:
     number: 80
     name: http
     protocol: HTTP
   hosts:
-    {{- toYaml .Values.gateway.gateway.servers.http.hosts | nindent 4 }}
-  {{- if .Values.gateway.gateway.servers.http.tls.httpsRedirect }}
+    {{- toYaml .http.hosts | nindent 4 }}
+  {{- if .http.tls.httpsRedirect }}
   tls:
     httpsRedirect: true
   {{- end }}
 {{- end }}
-
-{{- if .Values.gateway.gateway.servers.https.enabled }}
+{{- if .https.enabled }}
 - port:
     number: 443
     name: https
     protocol: HTTPS
   hosts:
-    {{- toYaml .Values.gateway.gateway.servers.https.hosts | nindent 4 }}
+    {{- toYaml .https.hosts | nindent 4 }}
   tls:
-    mode: {{ .Values.gateway.gateway.servers.https.tls.mode | default "SIMPLE" }}
-    credentialName: {{ .Values.gateway.gateway.servers.https.tls.credentialName | default (include "gateway.certificateSecretName" .) }}
-{{- end -}}
-{{- end -}}
+    mode: {{ .https.tls.mode | default "SIMPLE" }}
+    credentialName: {{ .https.tls.credentialName | default (include "gateway.certificateSecretName" $) }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{/*
 Certificate DNS names
 */}}
 {{- define "gateway.certificateDnsNames" -}}
-{{- if .Values.gateway.certificate.dnsNames }}
-{{- toYaml .Values.gateway.certificate.dnsNames }}
+{{- $defaults := .root.Values.gatewayDefaults.certificate.dnsNames }}
+{{- $override := .gw.certificate.dnsNames | default list }}
+{{- if $override }}
+{{- toYaml $override }}
+{{- else }}
+{{- toYaml $defaults }}
 {{- end }}
 {{- end }}
 

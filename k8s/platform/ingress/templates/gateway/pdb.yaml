@@ -1,14 +1,18 @@
-{{- if .Values.gateway.pdb.enabled }}
+{{- range $name, $cfg := .Values.gateways }}
+{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
+{{- if $cfg.pdb.enabled }}
+---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "gateway.pdbName" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "gateway.resourceName" $ctx }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "gateway.labels" . | nindent 4 }}
+    {{- include "gateway.labels" $ctx | nindent 4 }}
 spec:
-  minAvailable: {{ .Values.gateway.pdb.minAvailable }}
+  minAvailable: {{ $cfg.pdb.minAvailable | default $.Values.gatewayDefaults.pdb.minAvailable }}
   selector:
     matchLabels:
-      {{- include "gateway.selectorLabels" . | nindent 6 }}
+      {{- include "gateway.selectorLabels" $ctx | nindent 6 }}
+{{- end }}
 {{- end }}

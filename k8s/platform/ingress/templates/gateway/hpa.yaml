@@ -1,18 +1,22 @@
-{{- if .Values.gateway.hpa.enabled }}
+{{- range $name, $cfg := .Values.gateways }}
+{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
+{{- if $cfg.hpa.enabled }}
+---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "gateway.hpaName" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "gateway.resourceName" $ctx }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "gateway.labels" . | nindent 4 }}
+    {{- include "gateway.labels" $ctx | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "gateway.deploymentName" . }}
-  minReplicas: {{ .Values.gateway.hpa.minReplicas }}
-  maxReplicas: {{ .Values.gateway.hpa.maxReplicas }}
+    name: {{ include "gateway.resourceName" $ctx }}
+  minReplicas: {{ $cfg.hpa.minReplicas | default $.Values.gatewayDefaults.hpa.minReplicas }}
+  maxReplicas: {{ $cfg.hpa.maxReplicas | default $.Values.gatewayDefaults.hpa.maxReplicas }}
   metrics:
-    {{- include "gateway.hpaMetrics" . | nindent 4 }}
+    {{- include "gateway.hpaMetrics" $ctx | nindent 4 }}
+{{- end }}
 {{- end }}

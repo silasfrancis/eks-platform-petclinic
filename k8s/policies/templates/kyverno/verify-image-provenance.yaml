@@ -5,7 +5,7 @@
 apiVersion: policies.kyverno.io/v1
 kind: NamespacedImageValidatingPolicy
 metadata:
-  name: verify-image-signatures
+  name: verify-image-provenance
   namespace: {{ $nsName }}
   labels:
     {{- include "policies.kyverno.labels" $ | nindent 4 }}
@@ -40,6 +40,11 @@ spec:
   attestors:
     {{- include "kyverno.attestors.list" $ | nindent 4 }}
 
+  attestations:
+    - name: vulnScan
+      intoto:
+        type: cosign.sigstore.dev/attestation/vuln/v1
+
   validations:
     - message: 'Container Images must be signed by an authorized GitHub workflow'
       expression: >-
@@ -52,6 +57,19 @@ spec:
         !has(object.spec.initContainers) ||
         images.initContainers.map(image,
           {{ include "kyverno.attestations.expression" $ }}
+        ).all(e, e)
+
+    - message: "Container Images must have a verified vulnerability scan attestation from an authorized GitHub workflow."
+      expression: >-
+        images.containers.map(image,
+          {{ include "kyverno.attestations.validation.expression" $ }}
+        ).all(e, e)
+
+    - message: "Init container image must have a verified vulnerability scan attestation from an authorized GitHub workflow."
+      expression: >-
+        !has(object.spec.initContainers) ||
+        images.initContainers.map(image,
+          {{ include "kyverno.attestations.validation.expression" $ }}
         ).all(e, e)
 {{- end }}
 {{- end }}

@@ -1,0 +1,86 @@
+{{- if and (eq .Values.controller.type "rollout") .Values.analysisTemplate.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "microservice.analysisTemplateName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service-name
+      value: {{ include "microservice.serviceName" . }}
+    - name: namespace
+      value: {{ .Release.Namespace }}
+    - name: canary-hash
+      valueFrom:
+        podTemplateHashValue: Latest
+
+  metrics:
+    - name: success-rate
+      interval: {{ .Values.analysisTemplate.interval | default "30s" }}
+      count: {{ .Values.analysisTemplate.count | default 5 }}
+      failureLimit: {{ .Values.analysisTemplate.failureLimit | default 3 }}
+      inconclusiveLimit: {{ .Values.analysisTemplate.inconclusiveLimit | default 3 }}
+      successCondition: {{ .Values.analysisTemplate.successCondition | default "result[0] >= 0.99" }}
+      failureCondition: {{ .Values.analysisTemplate.failureCondition | default "result[0] < 0.95" }}
+      provider:
+        prometheus:
+          address: {{ .Values.analysisTemplate.prometheusAddress }}
+          query: |
+            sum(
+              rate(istio_requests_total{
+                destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
+                destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                response_code!~"5.*",
+                reporter="destination"
+              }[2m])
+            )
+            /
+            sum(
+              rate(istio_requests_total{
+                destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
+                destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                reporter="destination"
+              }[2m])
+            ) or vector(0.99)
+
+    - name: latency-p99
+      interval: {{ .Values.analysisTemplate.interval | default "30s" }}
+      count: {{ .Values.analysisTemplate.count | default 5 }}
+      failureLimit: {{ .Values.analysisTemplate.failureLimit | default 3 }}
+      inconclusiveLimit: {{ .Values.analysisTemplate.inconclusiveLimit | default 3 }}
+      successCondition: "result[0] <= 2"
+      failureCondition: "result[0] > 5"
+      provider:
+        prometheus:
+          address: {{ .Values.analysisTemplate.prometheusAddress }}
+          query: |
+            histogram_quantile(0.99,
+              sum by (le) (
+                rate(istio_request_duration_milliseconds_bucket{
+                  destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
+                  destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                  reporter="destination"
+                }[2m])
+              )
+            ) / 1000
+
+    - name: error-count
+      interval: {{ .Values.analysisTemplate.interval | default "30s" }}
+      count: {{ .Values.analysisTemplate.count | default 5 }}
+      failureLimit: {{ .Values.analysisTemplate.failureLimit | default 3 }}
+      successCondition: "result[0] <= 10"
+      provider:
+        prometheus:
+          address: {{ .Values.analysisTemplate.prometheusAddress }}
+          query: |
+            sum(
+              increase(istio_requests_total{
+                destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
+                destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                response_code=~"5.*",
+                reporter="destination"
+              }[2m])
+            ) or vector(0)
+{{- end }}

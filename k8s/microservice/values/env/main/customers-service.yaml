@@ -59,3 +59,6 @@ virtualService:
 
 vpa:
   enabled: true
+
+analysisTemplate:
+  enabled: true

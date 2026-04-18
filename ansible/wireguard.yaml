@@ -1,0 +1,10 @@
+- hosts: wireguard
+  become: true
+
+  pre_tasks:
+    - name: Update package manager cache
+      package:
+        update_cache: yes
+
+  roles:
+    - wireguard

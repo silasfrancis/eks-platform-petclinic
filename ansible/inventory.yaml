@@ -1,0 +1,12 @@
+all:
+  vars:
+    ansible_connection: amazon.aws.aws_ssm
+    ansible_aws_ssm_region: us-east-2
+    ansible_aws_ssm_bucket_name: ansible-ssm-silas-main
+    ansible_aws_ssm_s3_addressing_style: virtual
+
+  children:
+    application:
+      hosts:
+        instance:
+          ansible_host: i-019dc8cdff9077110

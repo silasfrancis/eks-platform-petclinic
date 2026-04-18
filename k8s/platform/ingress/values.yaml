@@ -143,7 +143,8 @@ gateway:
       external-dns.alpha.kubernetes.io/hostname: >
         petclinic.lefrancis.org,
         argocd.lefrancis.org,
-        grafana.lefrancis.org
+        grafana.lefrancis.org,
+        loki.lefrancis.org
       # cloudflare-proxied: false keeps traffic direct to NLB
       external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
       external-dns.alpha.kubernetes.io/ttl: "120"

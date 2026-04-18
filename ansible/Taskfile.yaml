@@ -1,0 +1,22 @@
+version: "3"
+
+tasks:
+  ansible_env_setup:
+    cmds:
+      - python3 -m venv ~/ansible-venv
+
+  install_boto3:
+    cmds:
+      - pip install --upgrade pip
+      - pip install ansible boto3 botocore
+    desc: Install Boto3 for AWS interactions
+
+  ansible_ping:
+    cmds:
+      - ansible all -i inventory.yaml -m ping
+    desc: Test Ansible connectivity to host
+  
+  bootstrap_ec2_instance:
+    cmds:
+      - ansible-playbook -i inventory.yaml wireguard.yaml
+    desc: Configure wiregaurd server and set up clients

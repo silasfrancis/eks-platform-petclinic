@@ -22,7 +22,7 @@ Full image reference using registry + repository + digest/tag
 Common labels
 */}}
 {{- define "microservice.labels" -}}
-app.kubernetes.io/name: {{ include "microservice.name" . }}
+{{ include "microservice.selectorLabels" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Values.image.tag | default "latest" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -132,6 +132,10 @@ Resource names
 {{- printf "%s-service-monitor" .Values.appName }}
 {{- end }}
 
+{{- define "microservice.analysisTemplateName" -}}
+{{- printf "%s-analysis-template" .Values.appName }}
+{{- end }}
+
 {{- define "microservice.fqdn" -}}
 {{- printf "%s.%s.svc.cluster.local" (include "microservice.serviceName" .) .Release.Namespace -}}
 {{- end -}}
@@ -239,7 +243,15 @@ Deployment strategy for Canary (Argo Rollouts) or RollingUpdate (Standard Deploy
 */}}
 {{- define "microservice.strategy" -}}
 {{- if eq .Values.controller.type "rollout" }}
-canary: 
+canary:
+  analysis:
+    templates:
+      - templateName: {{ include "microservice.analysisTemplateName" . }}
+    args:
+      - name: service-name
+        value: {{ include "microservice.serviceName" . }}
+      - name: namespace
+        value: {{ .Release.Namespace }} 
   trafficRouting:
     istio:
       virtualService:
@@ -251,7 +263,20 @@ canary:
         stableSubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.stableSubsetName }}
         canarySubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.canarySubsetName }}
   steps:
-    {{- toYaml .Values.rollout.strategy.canary.steps | nindent 8 }}
+    {{- range .Values.rollout.strategy.canary.steps }}
+    - setWeight: {{ .weight }}
+    - pause: 
+        duration: {{ .pause }}
+    - analysis:
+        templates:
+          - templateName: {{ include "microservice.analysisTemplateName" . }}
+        args:
+          - name: service-name
+            value: {{ include "microservice.serviceName" . }}
+          - name: namespace
+            value: {{ .Release.Namespace }}
+    {{- end }}
+    - setWeight: 100
 
 {{- else if eq .Values.controller.type "deployment" }}
 type: RollingUpdate

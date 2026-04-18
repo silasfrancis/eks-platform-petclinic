@@ -8,6 +8,7 @@
 #   - PodDisruptionBudgets
 #   - External Secrets (AWS Secrets Manager via ESO)
 #   - SPOT and ON_DEMAND node scheduling
+#   - Analysis template for Prometheus-based automated canary validation
 #
 # Usage:
 #   Override only the fields that differ per service.
@@ -170,12 +171,16 @@ rollout:
             name: ""          # set per service — must match DR resource name
             stableSubsetName: stable
             canarySubsetName: canary
+    # Define traffic increments below (from 1-99). 
+    # The _helpers.tpl automatically runs a health analysis at every step and 
+    # promotes the service to 100% once your last step is finished.
       steps:
-        - setWeight: 20
-        - pause: { duration: 60s }
-        - setWeight: 50
-        - pause: { duration: 60s }
-        - setWeight: 100
+        - weight: 10
+          pause: 60s
+        - weight: 40
+          pause: 60s
+        - weight: 80
+          pause: 120s
 
 # Service
 service:
@@ -329,3 +334,41 @@ job:
   parallelism: 1
   annotations: {}
 
+# Analysis Template — Prometheus-based automated canary validation.
+# Argo Rollouts queries Prometheus during canary steps to validate
+# the new version is healthy before promoting to full traffic.
+#
+# Prerequisites:
+#   - Istio sidecar injected (provides istio_requests_total metric)
+#   - Prometheus scraping istio metrics (serviceMonitor configured)
+#   - kube-prometheus-stack deployed in monitoring namespace (refer to platform/monitoring chart)
+#
+# analysisTemplate.enabled must be true AND rollout steps must
+# include an analysis step for this to take effect.
+analysisTemplate:
+  enabled: false
+
+  # Prometheus server address — must be reachable from the petclinic namespace
+  prometheusAddress: http://platform-monitoring-prometheus.monitoring.svc.cluster.local:9090
+
+  # successCondition — PromQL expression result must satisfy this condition
+  # result >= 0.99 means at least 99% of requests to the canary are successful
+  successCondition: "result[0] >= 0.99"
+
+  # failureCondition — immediately fail the analysis if this is true
+  # result < 0.95 means more than 5% error rate
+  failureCondition: "result[0] < 0.95"
+
+  # How many consecutive failures before the analysis is marked failed
+  failureLimit: 3
+
+  # How many inconclusive results (no data) before failing
+  inconclusiveLimit: 3
+
+  # interval between each Prometheus query during the analysis
+  interval: 30s
+
+  # count — how many times to query Prometheus total
+  # count * interval = total analysis duration
+  # 5 * 30s = 2.5 minutes of analysis per canary step
+  count: 5

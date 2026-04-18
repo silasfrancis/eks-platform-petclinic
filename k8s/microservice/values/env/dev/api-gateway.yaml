@@ -74,3 +74,5 @@ virtualService:
             port:
               number: 8084
 
+analysisTemplate:
+  enabled: true

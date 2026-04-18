@@ -1,6 +1,6 @@
 # Install WireGuard
 - name: Install WireGuard packages
-  apt:
+  dnf:
     name:
       - wireguard
       - wireguard-tools

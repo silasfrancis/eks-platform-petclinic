@@ -40,8 +40,8 @@ resource "aws_iam_role" "worker_node_role" {
   }
 }
 
-resource "aws_iam_role" "jumphost_ec2_role" {
-  name = "${var.env}-${var.app}-jumphost-ec2-role"
+resource "aws_iam_role" "wireguard_server_role" {
+  name = "${var.env}-${var.app}-wireguard-server-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

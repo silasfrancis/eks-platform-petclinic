@@ -1,39 +1,33 @@
 # Ingress platform values.
-# Manages external traffic entry into the cluster via Istio Gateway and ExternalDNS.
+# Manages external traffic into the cluster via Istio Gateway, ExternalDNS and cert-manager.
 #
 # Architecture:
-#   - Istio ingress gateway: receives external traffic via AWS NLB
-#   - AWS NLB: created automatically by EKS Cloud Provider from Service annotations
-#     (no ALB controller required — NLB is handled natively by Kubernetes)
-#   - cert-manager: issues and renews wildcard TLS certificate via Let's Encrypt DNS-01
-#   - ExternalDNS: syncs DNS records to Cloudflare from Service/Gateway annotations
-#   - Cloudflare API token: pulled from AWS Secrets Manager via ESO
+#   Istio ingress gateway  → receives traffic via AWS NLB (EKS Cloud Provider)
+#   cert-manager           → issues wildcard TLS via Let's Encrypt DNS-01 + Cloudflare
+#   ExternalDNS Cloudflare → public DNS records for internet-facing services
+#   ExternalDNS Route53    → private DNS records for internal dashboards (VPN only)
+#
+# Two gateway deployments:
+#   public   → internet-facing NLB, petclinic app only
+#   internal → private NLB, dashboards only (Grafana, ArgoCD, Prometheus, Loki)
+#              only reachable via WireGuard VPN + Route53 private hosted zone
 #
 # Certificate flow:
-#   cert-manager → Let's Encrypt DNS-01 challenge → Cloudflare DNS → TLS secret
+#   cert-manager → Let's Encrypt DNS-01 → Cloudflare TXT record → wildcard TLS secret
 #   Istio Gateway reads TLS secret → terminates TLS for *.lefrancis.org
 #
-# DNS flow:
-#   ExternalDNS reads Gateway annotations → creates CNAME records in Cloudflare
-#   All subdomains (petclinic, argocd, grafana) point to the same NLB DNS name
+# OVERRIDE REQUIRED:
+#   gateways.public.loadbalancer.annotations    subnets + SG IDs
+#   gateways.internal.loadbalancer.annotations  subnets + SG IDs
+#   gateways.*.certificate.spec.secretName
+#   gateways.*.certificate.spec.issuerRef.name
+#   external-dns-route53.serviceAccount.annotations role ARN
+#   external-dns-cloudflare txtOwnerId + external-dns-route53 txtOwnerId
+#   secretStore.name
+#   esoServiceAccount.annotations role ARN
 
-# Ingress gateway values.
-# Supports multiple gateway deployments — public and internal.
-# Templates loop over the gateways map to create all resources.
-#
-# Each gateway entry creates:
-#   - ServiceAccount + Role + RoleBinding
-#   - Deployment
-#   - LoadBalancer Service
-#   - HPA + VPA + PDB
-#   - Certificate
-#   - Istio Gateway resource
-#
-# Adding a new gateway = add one entry to gateways map.
-# No template changes needed.
-
-# Shared defaults inherited by all gateway instances
-# Override per gateway entry as needed
+# Shared defaults inherited by all gateway instances.
+# Override per gateway entry only when the instance needs to differ.
 gatewayDefaults:
   deployment:
     annotations:
@@ -61,6 +55,7 @@ gatewayDefaults:
       cpu: 1000m
       memory: 512Mi
 
+  # runAsUser/runAsGroup 1337 is the Istio proxy UID
   securityContext:
     allowPrivilegeEscalation: false
     privileged: false
@@ -71,11 +66,14 @@ gatewayDefaults:
     capabilities:
       drop: ["ALL"]
 
+  # net.ipv4.ip_unprivileged_port_start=0 allows the proxy to bind
+  # to ports below 1024 (80, 443) without root
   podSecurityContext:
     sysctls:
       - name: net.ipv4.ip_unprivileged_port_start
         value: "0"
 
+  # Read access to TLS secrets required for cert-manager certificate mounting
   role:
     rules:
       - apiGroups: [""]
@@ -94,19 +92,22 @@ gatewayDefaults:
             type: Utilization
             averageUtilization: 80
 
+  # VPA in recommendation mode only — Goldilocks reads these for the dashboard
+  # updateMode: Off is enforced in the template
   vpa:
     enabled: true
     minAllowed:
-      cpu: 100m     
+      cpu: 100m
       memory: 128Mi
     maxAllowed:
-      cpu: 1100m 
+      cpu: 1100m
       memory: 1Gi
 
   pdb:
     enabled: true
     minAvailable: 1
 
+  # Wildcard cert covers all subdomains — both gateways use the same domain
   certificate:
     dnsNames:
       - "lefrancis.org"
@@ -114,14 +115,15 @@ gatewayDefaults:
 
   tolerations: []
 
-# Named gateway instances
-# Each entry generates a full set of gateway resources
-# Key is used as the base name for all resources
+# Named gateway instances.
+# Adding a new gateway = add one entry here. No template changes needed.
+# Each entry generates: ServiceAccount, Role, RoleBinding, Deployment,
+# LoadBalancer Service, HPA, VPA, PDB, Certificate, Istio Gateway.
 gateways:
 
   # Public gateway — internet-facing NLB
-  # Exposes petclinic app only
-  # DNS managed by Cloudflare ExternalDNS
+  # petclinic.lefrancis.org only
+  # OVERRIDE: subnets, SG, hostname
   public:
     serviceAccount:
       enabled: true
@@ -141,9 +143,9 @@ gateways:
         service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
         service.beta.kubernetes.io/aws-load-balancer-type: "external"
         service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-        # public subnets
+        # OVERRIDE: public subnet IDs
         service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
-        # NLB security group
+        # OVERRIDE: NLB security group ID
         service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
         external-dns.alpha.kubernetes.io/provider: "cloudflare"
         external-dns.alpha.kubernetes.io/hostname: "petclinic.lefrancis.org"
@@ -153,10 +155,10 @@ gateways:
     certificate:
       enabled: true
       spec:
-        # secret name for TLS cert
+        # OVERRIDE: TLS secret name
         secretName: "petclinic-public-tls"
         issuerRef:
-          # ClusterIssuer name from security chart
+          # OVERRIDE: must match ClusterIssuer name in security chart
           name: "letsencrypt-cloudflare"
           kind: ClusterIssuer
 
@@ -175,7 +177,6 @@ gateways:
             - "petclinic.lefrancis.org"
           tls:
             mode: SIMPLE
-            # resolved from certificate.spec.secretName by helper
 
     hpa:
       enabled: true
@@ -186,10 +187,10 @@ gateways:
     pdb:
       enabled: true
 
-  # Internal gateway — private NLB, VPN access only
-  # Exposes dashboards: Grafana, ArgoCD, Prometheus, Loki
-  # DNS managed by Route53 ExternalDNS (private hosted zone)
-  # Only reachable via WireGuard VPN
+  # Internal gateway — private NLB, WireGuard VPN access only
+  # Dashboards: Grafana, ArgoCD, Prometheus, Loki
+  # Route53 private hosted zone — hostnames not resolvable from public internet
+  # OVERRIDE: subnets, SG, hostnames
   internal:
     serviceAccount:
       enabled: true
@@ -208,10 +209,11 @@ gateways:
       annotations:
         service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-internal-nlb"
         service.beta.kubernetes.io/aws-load-balancer-type: "external"
+        # internal = private NLB — not reachable from internet
         service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
-        # private subnets
+        # OVERRIDE: private subnet IDs
         service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
-        # internal NLB security group
+        # OVERRIDE: internal NLB security group ID
         service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
         external-dns.alpha.kubernetes.io/provider: "route53"
         external-dns.alpha.kubernetes.io/hostname: >
@@ -224,7 +226,7 @@ gateways:
     certificate:
       enabled: true
       spec:
-        # OVERRIDE: separate secret for internal cert
+        # OVERRIDE: separate secret from public gateway
         secretName: "petclinic-internal-tls"
         issuerRef:
           name: "letsencrypt-cloudflare"
@@ -262,15 +264,15 @@ gateways:
       enabled: true
 
 # ExternalDNS — Cloudflare instance
-# Manages public DNS records for internet-facing services only.
-# Watches services/gateways annotated with provider=cloudflare.
+# Public DNS records for internet-facing services.
+# Picks up resources annotated with external-dns.alpha.kubernetes.io/provider=cloudflare
+# OVERRIDE: txtOwnerId must be unique per cluster
 external-dns-cloudflare:
   fullnameOverride: external-dns-cloudflare
 
   provider:
     name: cloudflare
 
-  # Cloudflare API token from ESO-created secret
   env:
     - name: CF_API_TOKEN
       valueFrom:
@@ -281,19 +283,13 @@ external-dns-cloudflare:
   domainFilters:
     - lefrancis.org
 
-  # sync: creates and deletes to match cluster state
   policy: sync
 
   sources:
     - service
     - istio-gateway
 
-  # Only manage resources with this annotation
   annotationFilter: "external-dns.alpha.kubernetes.io/provider=cloudflare"
-
-  # annotationPrefix differentiates this instance's annotations
-  # from the Route53 instance — prevents both instances processing same resource
-  annotationPrefix: ""
 
   registry: txt
   # OVERRIDE: unique per cluster
@@ -322,47 +318,39 @@ external-dns-cloudflare:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: platform-monitoring
 
 # ExternalDNS — Route53 instance
-# Manages private DNS records in Route53 private hosted zone.
-# Watches services/gateways annotated with provider=route53.
-# Uses IRSA for authentication — no API token needed.
-# OVERRIDE REQUIRED:
-#   serviceAccount.annotations.eks.amazonaws.com/role-arn
-#   txtOwnerId (must be unique per cluster)
+# Private DNS records in Route53 private hosted zone.
+# aws-zone-type: private ensures only private zones are managed —
+# hostnames resolve only from within the VPC (WireGuard VPN clients included).
+# Uses IRSA for auth — no API token needed.
+# OVERRIDE: serviceAccount role ARN, txtOwnerId
 external-dns-route53:
   fullnameOverride: external-dns-route53
 
   provider:
     name: aws
 
-  # IRSA handles authentication — no env vars needed
   env: []
 
-  # Route53-specific args
-  # zoneType: private — only manages records in private hosted zones
-  # This is what keeps internal dashboard URLs off the public internet
   extraArgs:
-    aws-zone-type: private          # only touch private hosted zones
-    aws-region: us-east-2          
+    aws-zone-type: private
+    aws-region: us-east-2
 
   domainFilters:
-    - lefrancis.org    # OVERRIDE: your domain
+    - lefrancis.org
 
-  # sync: creates and deletes to match cluster state
   policy: sync
 
   sources:
     - service
     - istio-gateway
 
-  # Only manage resources with this specific annotation value
-  # prevents Route53 instance from picking up Cloudflare-annotated resources
   annotationFilter: "external-dns.alpha.kubernetes.io/provider=route53"
 
   registry: txt
-  # Must be different from Cloudflare instance and unique per cluster
+  # OVERRIDE: must differ from Cloudflare instance — unique per cluster
   txtOwnerId: "eks-cluster-01-route53"
   txtPrefix: "route53-"
 
@@ -385,42 +373,40 @@ external-dns-route53:
     create: true
     name: external-dns-route53
     annotations:
-      # OVERRIDE: replace with actual role ARN from Terraform
+      # OVERRIDE: add role ARN annotation after Terraform creates the IAM role
       eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-external-dns-route53"
 
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: platform-monitoring
 
-# Secret Store — ESO ClusterSecretStore for pulling secrets from AWS Secrets Manager
-# Used by ExternalDNS to get the Cloudflare API token
+# ESO SecretStore — connects to AWS Secrets Manager
+# Used to pull the Cloudflare API token for ExternalDNS and cert-manager
 secretStore:
   enabled: true
   name: ""
   kind: SecretStore
   awsRegion: us-east-2
 
-# ExternalSecret — pulls security-related secrets from AWS Secrets Manager
+# ESO ExternalSecret — pulls Cloudflare API token from AWS Secrets Manager
+# Creates cloudflare-api-token Kubernetes secret consumed by ExternalDNS
+# OVERRIDE: remoteRef.key per environment
 externalSecret:
   enabled: true
   name: ""
   refreshInterval: 1h
   creationPolicy: Owner
-  data: {}
-    # Cloudflare API token for cert-manager DNS-01 challenge
-    # - secretKey: api-token
-    #   remoteRef:
-    #     key: "" # Update path to match your Secrets Manager structure
-    #     property: cloudflare_api_token
+  data: []
+  # - secretKey: cloudflare_api_token
+  #   remoteRef:
+  #     key: ""
+  #     property: cloudflare_api_token
 
-# Service Account
-# IRSA annotations go here to allow external dns get the cloudflare api token need to auto create dns records.
-# Example:
-#   annotations:
-#     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
+# ServiceAccount for ESO — IRSA allows reading from AWS Secrets Manager
+# OVERRIDE: add role ARN annotation after Terraform creates the IAM role
 esoServiceAccount:
   create: true
-  name: ""          # defaults to Chart.Name via _helpers.tpl
+  name: ""
   annotations: {}
-
+  # eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<cluster-name>-eso-ingress

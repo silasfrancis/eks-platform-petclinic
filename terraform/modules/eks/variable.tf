@@ -54,11 +54,11 @@ variable "jumphost_ec2_role_arn" {
   type = string
 }
 
-variable "ec2_security_group_id" {
+variable "wireguard_server_security_group_id" {
   type = string
 }
 
-variable "nlb_security_group_id" {
+variable "nlb_external_security_group_id" {
   type = string
 }
 

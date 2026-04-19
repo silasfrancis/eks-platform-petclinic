@@ -206,7 +206,7 @@ virtualService:
   enabled: false
   host: ""        # external hostname e.g. petclinic.lefrancis.org
                   # leave empty for mesh-only services
-  gateway: ""     # e.g. istio-ingress/petclinic-gateway
+  gateway: ""     # e.g. istio-ingress/public-istio-ingressgateway
                   # leave empty for mesh-only (uses 'mesh' gateway)
   prefix: /       # URI prefix for the primary catch-all route
   rewriteUri: /   # rewrite URI before forwarding to destination

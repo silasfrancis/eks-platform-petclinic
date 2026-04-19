@@ -6,7 +6,7 @@ resource "aws_default_security_group" "default" {
   }
 }
 
-resource "aws_security_group" "nlb-external" {
+resource "aws_security_group" "nlb_external" {
   description = "Security group for NLB external"
   name = "${var.env}-nlb-external-security_group"
   vpc_id = aws_vpc.main_vpc.id
@@ -15,7 +15,7 @@ resource "aws_security_group" "nlb-external" {
   }
 }
 
-resource "aws_security_group" "nlb-internal" {
+resource "aws_security_group" "nlb_internal" {
   description = "Security group for NLB internal"
   name = "${var.env}-nlb-internal-security_group"
   vpc_id = aws_vpc.main_vpc.id

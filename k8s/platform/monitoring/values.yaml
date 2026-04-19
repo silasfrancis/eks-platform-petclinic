@@ -467,7 +467,7 @@ monitoring:
 
 ingress:
   enabled: true
-  gateway: istio-ingress/petclinic-gateway
+  gateway: istio-ingress/internal-istio-ingressgateway
 
   monitoring:
     stacks:

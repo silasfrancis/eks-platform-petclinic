@@ -62,9 +62,9 @@ locals {
       }
     }
 
-  cluster_store = {
-    namespace = "external-secrets"
-    sas       = ["cluster-config-sa"]
+  argocd_secrets = {
+    namespace = "argocd"
+    sas       = ["argocd"]
 
     policy = {
       actions = [
@@ -72,7 +72,22 @@ locals {
         "secretsmanager:DescribeSecret"
       ]
       resources = [
-        "arn:aws:secretsmanager:*:*:secret:${var.cluster_config_secret_name}*"
+        "arn:aws:secretsmanager:*:*:secret:${var.argocd_secret_name}*"
+      ]
+    }
+  }
+
+  cert_manager_secrets = {
+    namespace = "security"
+    sas       = ["platform-security"]
+
+    policy = {
+      actions = [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ]
+      resources = [
+        "arn:aws:secretsmanager:*:*:secret:${var.platform_security_secret_name}*"
       ]
     }
   }
@@ -120,6 +135,43 @@ locals {
             "kms:Decrypt"
           ]
           Resource = [var.data_storage_kms_key_arn]
+      }]
+    }
+
+  external_dns_cloudflare_secrets = {
+    namespace = "istio-ingress"
+    sas       = ["external-dns-cloudflare"]
+
+    policy = {
+      actions = [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ]
+      resources = [
+        "arn:aws:secretsmanager:*:*:secret:${var.platform_ingress_secret_name}*"
+      ]
+    }
+  }
+  external_dns_route53 = {
+      namespace = "istio-ingress"
+      sas       = ["external-dns-route53"]
+      policy    = {
+        actions   = [
+          "route53:ChangeResourceRecordSets",
+          "route53:ListResourceRecordSets"
+          
+        ]
+        resources = [
+          "${var.route53_private_zone_arn}"
+        ]
+      }
+      extra_statements = [{
+        Effect = "Allow"
+        Action = [
+          "route53:ListHostedZones",
+          "route53:ListTagsForResource"
+        ]
+        Resource = ["*"]
       }]
     }
   }

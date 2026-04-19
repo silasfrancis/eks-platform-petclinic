@@ -1,3 +1,3 @@
-output "ec2_instance_id" {
-  value = aws_instance.ec2_instance.id
+output "wireguard_server_instance_id" {
+  value = aws_instance.wireguard_server.id
 }

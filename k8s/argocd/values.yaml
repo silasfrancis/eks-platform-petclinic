@@ -592,7 +592,7 @@ argocdBootstrap:
 
 ingress:
   enabled: true
-  gateway: istio-ingress/petclinic-gateway # istio gateway namespace/name
+  gateway: istio-ingress/internal-istio-ingressgateway # istio internal gateway namespace/name
   argocd:
     host: argocd.lefrancis.org
     serviceName: argocd-server

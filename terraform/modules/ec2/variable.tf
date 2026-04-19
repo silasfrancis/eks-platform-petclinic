@@ -14,11 +14,15 @@ variable "public_subnet_id" {
   type = string
 }
 
-variable "ec2_security_group_id" {
+variable "wireguard_server_security_group_id" {
   type = string
 }
 
-variable "iam_instance_profile" {
+variable "rds_security_group_id" {
+  type = string
+}
+
+variable "wireguard_server_instance_profile" {
   type = string
 }
 

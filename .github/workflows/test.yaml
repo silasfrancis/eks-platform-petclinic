@@ -2,7 +2,7 @@ name: Unit tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ dev, main ]
     paths:
       - 'admin-server/**'
       - 'api-gateway/**'
@@ -13,19 +13,7 @@ on:
       - 'visits-service/**'
       - 'genai-service/**'
       - 'pom.xml'
-  push:
-    branches: [ dev ]
-    paths:
-      - 'admin-server/**'
-      - 'api-gateway/**'
-      - 'config-server/**'
-      - 'discovery-server/**'
-      - 'customers-service/**'
-      - 'vets-service/**'
-      - 'visits-service/**'
-      - 'genai-service/**'
-      - 'pom.xml'
-
+      
 jobs:
   filter-updated-directories:
     uses: ./.github/workflows/path-filter.yaml
@@ -33,9 +21,9 @@ jobs:
   run-tests:
     runs-on: ubuntu-24.04
     environment: >-
-                ${{ (github.ref_name == 'main' || github.base_ref == 'main') 
-                && 'production' 
-                || 'development' }}
+      ${{ (github.base_ref || github.ref_name) == 'main'
+      && 'production'
+      || 'development' }}
     needs: filter-updated-directories
     if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != ''}}
     permissions:

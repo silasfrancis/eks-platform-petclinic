@@ -10,7 +10,7 @@ jobs:
   build-scan-push-migration-images:
     runs-on: ubuntu-24.04
     environment: >-
-      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      ${{ (github.base_ref || github.ref_name) == 'main'
       && 'production'
       || 'development' }}
     permissions:

@@ -13,7 +13,7 @@ jobs:
   update-helm-values:
     runs-on: ubuntu-24.04
     environment: >-
-      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      ${{ (github.base_ref || github.ref_name) == 'main'
       && 'production'
       || 'development' }}
     needs: filter-updated-directories

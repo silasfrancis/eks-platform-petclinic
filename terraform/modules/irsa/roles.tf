@@ -3,12 +3,12 @@ locals {
     app_secrets = {
       namespace = "petclinic"
       sas       = [
-        "config-server-sa", 
-        "customers-service-sa", 
-        "visits-service-sa", 
-        "vets-service-sa", 
-        "genai-service-sa", 
-        "db-migration-sa"
+        "config-server", 
+        "customers-service", 
+        "visits-service", 
+        "vets-service", 
+        "genai-service", 
+        "db-migration"
       ]
       policy    = {
         actions   = [
@@ -18,7 +18,7 @@ locals {
           "secretsmanager:ListSecretVersionIds"
         ]
         resources = [
-          "arn:aws:secretsmanager:*:*:secret:${var.app_secret_name}*"
+          var.app_secrets_arn
         ]
       }
     }
@@ -50,7 +50,7 @@ locals {
 
     cloudwatch_exporter = {
       namespace = "monitoring"
-      sas       = ["cloudwatch-exporter-sa"]
+      sas       = ["cloudwatch-exporter"]
       policy    = {
         actions   = [
           "cloudwatch:GetMetricData", 
@@ -72,12 +72,27 @@ locals {
         "secretsmanager:DescribeSecret"
       ]
       resources = [
-        "arn:aws:secretsmanager:*:*:secret:${var.argocd_secret_name}*"
+        var.argocd_secrets_arn
       ]
     }
   }
 
-  cert_manager_secrets = {
+  platform_monitoring_secrets = {
+    namespace = "monitoring"
+    sas       = ["platform-monitoring"]
+
+    policy = {
+      actions = [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ]
+      resources = [
+        var.platform_monitoring_secrets_arn
+      ]
+    }
+  }
+
+  platform_security_secrets = {
     namespace = "security"
     sas       = ["platform-security"]
 
@@ -87,7 +102,7 @@ locals {
         "secretsmanager:DescribeSecret"
       ]
       resources = [
-        "arn:aws:secretsmanager:*:*:secret:${var.platform_security_secret_name}*"
+        var.platform_security_secrets_arn
       ]
     }
   }
@@ -138,7 +153,7 @@ locals {
       }]
     }
 
-  external_dns_cloudflare_secrets = {
+  external_dns_secrets = {
     namespace = "istio-ingress"
     sas       = ["external-dns-cloudflare"]
 
@@ -148,7 +163,7 @@ locals {
         "secretsmanager:DescribeSecret"
       ]
       resources = [
-        "arn:aws:secretsmanager:*:*:secret:${var.platform_ingress_secret_name}*"
+        var.platform_dns_secrets_arn
       ]
     }
   }

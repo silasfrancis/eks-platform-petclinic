@@ -1,84 +1,83 @@
+{{- $cluster := .Values.cluster }}
+{{- $nc := .Values.nodeClass }}
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:
-  name: ${ENV}-${APP}-node-class
+  name: {{ $cluster.env }}-{{ $cluster.app }}-node-class
+  labels:
+    {{- include "compute.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  amiFamily: AL2023
+  amiFamily: {{ $nc.amiFamily }}
   amiSelectorTerms:
-    - alias: al2023@latest
+    - alias: {{ $nc.amiAlias }}
 
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        karpenter.sh/discovery: {{ $cluster.name | quote }}
 
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        karpenter.sh/discovery: {{ $cluster.name | quote }}
 
-  # ---- IAM -----------------------------------------------
-  # Just the role name — not ARN
-  # Matches your existing node role
-  role: "${ENV}-${APP}-node-role"
+  role: {{ $cluster.nodeRoleName | quote }}
 
   kubelet:
-    podsPerCore: 2
-    maxPods: 20
+    podsPerCore: {{ $nc.kubelet.podsPerCore }}
+    maxPods: {{ $nc.kubelet.maxPods }}
 
     systemReserved:
-      cpu: 100m
-      memory: 100Mi
-      ephemeral-storage: 1Gi
+      cpu: {{ $nc.kubelet.systemReserved.cpu }}
+      memory: {{ $nc.kubelet.systemReserved.memory }}
+      ephemeral-storage: {{ $nc.kubelet.systemReserved.ephemeralStorage }}
 
     kubeReserved:
-      cpu: 200m
-      memory: 100Mi
-      ephemeral-storage: 3Gi
+      cpu: {{ $nc.kubelet.kubeReserved.cpu }}
+      memory: {{ $nc.kubelet.kubeReserved.memory }}
+      ephemeral-storage: {{ $nc.kubelet.kubeReserved.ephemeralStorage }}
 
     evictionHard:
-      memory.available: 5%
-      nodefs.available: 10%
-      nodefs.inodesFree: 10%
+      memory.available: {{ $nc.kubelet.evictionHard.memoryAvailable | quote }}
+      nodefs.available: {{ $nc.kubelet.evictionHard.nodefsAvailable | quote }}
+      nodefs.inodesFree: {{ $nc.kubelet.evictionHard.nodefsInodesFree | quote }}
 
     evictionSoft:
-      memory.available: 500Mi
-      nodefs.available: 15%
-      nodefs.inodesFree: 15%
+      memory.available: {{ $nc.kubelet.evictionSoft.memoryAvailable | quote }}
+      nodefs.available: {{ $nc.kubelet.evictionSoft.nodefsAvailable | quote }}
+      nodefs.inodesFree: {{ $nc.kubelet.evictionSoft.nodefsInodesFree | quote }}
 
     evictionSoftGracePeriod:
-      memory.available: 1m
-      nodefs.available: 1m30s
-      nodefs.inodesFree: 2m
+      memory.available: {{ $nc.kubelet.evictionSoftGracePeriod.memoryAvailable | quote }}
+      nodefs.available: {{ $nc.kubelet.evictionSoftGracePeriod.nodefsAvailable | quote }}
+      nodefs.inodesFree: {{ $nc.kubelet.evictionSoftGracePeriod.nodefsInodesFree | quote }}
 
-    evictionMaxPodGracePeriod: 60
+    evictionMaxPodGracePeriod: {{ $nc.kubelet.evictionMaxPodGracePeriod }}
 
-    imageGCHighThresholdPercent: 85
-    imageGCLowThresholdPercent: 80
+    imageGCHighThresholdPercent: {{ $nc.kubelet.imageGCHighThresholdPercent }}
+    imageGCLowThresholdPercent: {{ $nc.kubelet.imageGCLowThresholdPercent }}
 
-    cpuCFSQuota: true
+    cpuCFSQuota: {{ $nc.kubelet.cpuCFSQuota }}
 
-    # CoreDNS ClusterIP — default for EKS with 172.20.0.0/16 service CIDR
-    # Verify with: kubectl get svc kube-dns -n kube-system
     clusterDNS:
-      - "172.20.0.10" #kubectl get svc kube-dns -n kube-system -o jsonpath='{.spec.clusterIP}'
+      {{- toYaml $cluster.clusterDNS | nindent 6 }}
 
   blockDeviceMappings:
-    - deviceName: /dev/xvda
+    - deviceName: {{ $nc.blockDevice.deviceName }}
       ebs:
-        volumeSize: 20Gi
-        volumeType: gp3
-        encrypted: true
-        kmsKeyID: "${KMS_KEY_ARN}"
-        deleteOnTermination: true
+        volumeSize: {{ $nc.blockDevice.volumeSize }}
+        volumeType: {{ $nc.blockDevice.volumeType }}
+        encrypted: {{ $nc.blockDevice.encrypted }}
+        kmsKeyID: {{ $cluster.kmsKeyArn | quote }}
+        deleteOnTermination: {{ $nc.blockDevice.deleteOnTermination }}
 
   metadataOptions:
-    httpEndpoint: enabled
-    httpProtocolIPv6: disabled
-    httpPutResponseHopLimit: 1 
-    httpTokens: required 
+    httpEndpoint: {{ $nc.metadataOptions.httpEndpoint }}
+    httpProtocolIPv6: {{ $nc.metadataOptions.httpProtocolIPv6 }}
+    httpPutResponseHopLimit: {{ $nc.metadataOptions.httpPutResponseHopLimit }}
+    httpTokens: {{ $nc.metadataOptions.httpTokens }}
 
   tags:
-    Environment: "${ENV}"
+    Environment: {{ $cluster.env | quote }}
     ManagedBy: karpenter
-    Application: "${APP}"
+    Application: {{ $cluster.app | quote }}

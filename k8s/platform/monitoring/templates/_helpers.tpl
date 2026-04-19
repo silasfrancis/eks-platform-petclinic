@@ -57,10 +57,10 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "monitoring.secretName" -}}
-{{- if .Values.secretStore.enabled }}
-{{- default (include "monitoring.fullname" .) .Values.secretStore.name }}
+{{- if .Values.externalSecret.enabled }}
+{{- default (include "monitoring.fullname" .) .Values.externalSecret.target.name }}
 {{- else }}
-{{- default "default" .Values.secretStore.name }}
+{{- default "default" .Values.externalSecret.target.name }}
 {{- end }}
 {{- end }}
 

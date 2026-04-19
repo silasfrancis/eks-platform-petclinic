@@ -343,7 +343,7 @@ argocd:
 
     subscriptions:
       - recipients:
-          - slack:#petclinic-gitops
+          - slack:#k8-alerts
         triggers:
           - on-deployed
           - on-health-degraded
@@ -395,7 +395,7 @@ externalSecrets:
         - secretKey: sshPrivateKey
           remoteRef:
             key: prod/argocd
-            property: ssh-key
+            property: petclinic-github-deploy-key
 
     notifications:
       target:

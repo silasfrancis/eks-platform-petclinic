@@ -2,7 +2,7 @@ variable "env" {
   type = string
 }
 
-variable "private_subnet_ids" {
+variable "private_subnets" {
   type = list(string)
 }
 

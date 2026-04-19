@@ -1,15 +1,3 @@
-locals {
-  service_accounts = [
-    "config-server-sa",
-    "customers-service-sa",
-    "visits-service-sa",
-    "vets-service-sa",
-    "genai-service-sa",
-    "db-migration-sa",
-    "cluster-config-sa"
-  ]
-}
-
 data "aws_availability_zones" "available" {
   state = "available"
 }
@@ -112,7 +100,7 @@ module "ec2" {
   ami                   = "ami-0b0b78dcacbab728f"
   instance_type         = "t4g.micro"
   vpc_id                = module.vpc.vpc_id
-  private_subnet_id     = module.vpc.subnets["private_subnet_1"]
+  public_subnet_id      = module.vpc.public_subnets[0]
   ec2_security_group_id = module.vpc.security_group["ec2"]
   iam_instance_profile  = module.iam.iam_instance_profile
 
@@ -131,8 +119,7 @@ module "eks" {
   k8_version             = "1.35"
   cluster_role_arn       = module.iam.roles["cluster_role"]
   node_role_arn          = module.iam.roles["worker_node_role"]
-  subnet_ids_for_cluster = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
-  subnet_ids_node_group  = module.vpc.private_subnets
+  private_subnets        = module.vpc.private_subnets
   node_scaling_config = {
     desired_size = 2
     max_size     = 3
@@ -161,7 +148,7 @@ module "rds" {
 
   env                     = var.environment
   app                     = var.app
-  private_subnet_ids      = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
+  private_subnets         = module.vpc.private_subnets
   mysql_version           = "8.0"
   db_instance_class       = "db.t3.medium"
   allocated_storage       = 20

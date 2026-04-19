@@ -152,7 +152,7 @@ See [RUNBOOK.md](docs/RUNBOOK.md#vpn-access) for setup instructions.
 <summary>Full component list</summary>
 
 **Infrastructure**
-- AWS EKS 1.32 — managed Kubernetes
+- AWS EKS 1.35 — managed Kubernetes
 - Karpenter 1.0.0 — node autoprovisioning
 - AWS RDS MySQL — application database
 - AWS S3 — log and backup storage

@@ -147,7 +147,6 @@ module "dns" {
 module "irsa" {
   source = "../../modules/irsa"
 
-  env                             = var.environment
   oidc_arn                        = module.eks.oidc_arn
   oidc_url                        = module.eks.oidc_url_stripped
   cluster_name                    = module.eks.cluster_name

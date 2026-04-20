@@ -17,7 +17,7 @@ resource "aws_instance" "wireguard_server" {
   root_block_device {
     encrypted = true
     kms_key_id = var.data_storage_kms_key_arn
-    volume_size = 20
+    volume_size = 30
     volume_type = "gp3"
   }
   tags = {

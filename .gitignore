@@ -7,3 +7,4 @@
 *terraform.tfstate*
 *secrets.tfvars
 *state.conf
+*ansible.log

@@ -1,4 +1,4 @@
-environment = "main"
+environment = "prod"
 aws_region  = "us-east-2"
 app         = "petclinic"
 owner       = "silasfrancis"

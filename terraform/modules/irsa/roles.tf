@@ -17,9 +17,7 @@ locals {
           "secretsmanager:GetResourcePolicy", 
           "secretsmanager:ListSecretVersionIds"
         ]
-        resources = [
-          var.app_secrets_arn
-        ]
+        resources = var.app_secrets_arn
       }
     }
 
@@ -71,9 +69,7 @@ locals {
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret"
       ]
-      resources = [
-        var.argocd_secrets_arn
-      ]
+      resources = var.argocd_secrets_arn
     }
   }
 
@@ -86,9 +82,7 @@ locals {
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret"
       ]
-      resources = [
-        var.platform_monitoring_secrets_arn
-      ]
+      resources = var.platform_monitoring_secrets_arn
     }
   }
 
@@ -101,9 +95,7 @@ locals {
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret"
       ]
-      resources = [
-        var.platform_security_secrets_arn
-      ]
+      resources = var.platform_security_secrets_arn
     }
   }
   velero = {
@@ -162,9 +154,7 @@ locals {
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret"
       ]
-      resources = [
-        var.platform_dns_secrets_arn
-      ]
+      resources = var.platform_dns_secrets_arn
     }
   }
   external_dns_route53 = {
@@ -176,9 +166,7 @@ locals {
           "route53:ListResourceRecordSets"
           
         ]
-        resources = [
-          var.route53_private_zone_arn
-        ]
+        resources = var.route53_private_zone_arn
       }
       extra_statements = [{
         Effect = "Allow"

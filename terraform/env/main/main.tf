@@ -147,7 +147,6 @@ module "dns" {
 module "irsa" {
   source = "../../modules/irsa"
 
-  env                             = var.environment
   oidc_arn                        = module.eks.oidc_arn
   oidc_url                        = module.eks.oidc_url_stripped
   cluster_name                    = module.eks.cluster_name
@@ -160,7 +159,7 @@ module "irsa" {
   loki_bucket_arn                 = module.s3.bucket_arn["loki_bucket_arn"]
   velero_bucket_arn               = module.s3.bucket_arn["velero_bucket_arn"]
   data_storage_kms_key_arn        = module.kms.kms_key_arn["data_storage"]
-
+  
 }
 
 # RDS

@@ -1,7 +1,8 @@
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 resource "aws_s3_bucket" "tf_state_bucket" {
-  bucket = "${data.aws_caller_identity.current.account_id}-${var.env}-tfstate"
+  bucket = "${var.env}-tfstate-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.id}"
   force_destroy = false
 
   tags = {

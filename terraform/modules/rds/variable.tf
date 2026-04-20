@@ -34,15 +34,15 @@ variable "rds_security_group_id" {
   type = string
 }
 
-variable "cluster_sg_id" {
+variable "eks_node_sg_id" {
   type = string
 }
 
-variable "ec2_security_group_id" {
+variable "wireguard_server_security_group_id" {
   type = string
 }
 
-variable "rds_data_kms_arn" {
+variable "data_storage_kms_key_arn" {
   type = string
 }
 

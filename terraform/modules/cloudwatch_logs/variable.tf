@@ -2,7 +2,7 @@ variable "env" {
   type = string
 }
 
-variable "kms_infra_logs_arn" {
+variable "infra_common_kms_key_arn" {
   type = string
 }
 

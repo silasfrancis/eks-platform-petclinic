@@ -20,8 +20,8 @@ resource "aws_iam_role" "cluster_role" {
   }
 }
 
-resource "aws_iam_role" "worker_node_role" {
-  name = "${var.env}-${var.app}-worker-node-role"
+resource "aws_iam_role" "node_role" {
+  name = "${var.env}-${var.app}-node-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -118,8 +118,8 @@ resource "aws_iam_role" "rds_enhanced_monitoring" {
   }
 }
 
-resource "aws_iam_role" "rds_export_lambda" {
-  name = "${var.env}-${var.app}-rds-export-lambda-role"
+resource "aws_iam_role" "lambda_backup" {
+  name = "${var.env}-${var.app}-lambda-backup-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -134,8 +134,8 @@ resource "aws_iam_role" "rds_export_lambda" {
   }
 }
 
-resource "aws_iam_role" "slack_notifier_lambda" {
-  name = "${var.env}-${var.app}-slack-notifier-lambda-role"
+resource "aws_iam_role" "lambda_notification" {
+  name = "${var.env}-${var.app}-lambda-notification-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

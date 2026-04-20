@@ -1,6 +1,6 @@
 resource "aws_cloudwatch_log_group" "rds_export_lambda" {
   name              = "/aws/lambda/${var.env}-${var.app}-rds-export-trigger"
-  retention_in_days = 3 #i'm broke hehe
+  retention_in_days = 3 
   kms_key_id        = var.rds_export_kms_key_arn
 
   tags = {

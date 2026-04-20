@@ -6,11 +6,7 @@ resource "aws_instance" "wireguard_server" {
   iam_instance_profile = var.wireguard_server_instance_profile 
   associate_public_ip_address = false
   source_dest_check = false
-  user_data = templatefile("${path.module}/templates/user-data.sh", {
-    cluster_name = var.cluster_name
-    region       = var.region
-    app          = var.app
-  })
+  user_data = file("${path.module}/templates/user-data.sh")
   user_data_replace_on_change = false
 
   metadata_options {
@@ -20,6 +16,7 @@ resource "aws_instance" "wireguard_server" {
   }
   root_block_device {
     encrypted = true
+    kms_key_id = var.data_storage_kms_key_arn
     volume_size = 20
     volume_type = "gp3"
   }

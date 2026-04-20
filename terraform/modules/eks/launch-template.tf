@@ -17,10 +17,10 @@ resource "aws_launch_template" "eks_nodes" {
   block_device_mappings {
     device_name = "/dev/xvda"
     ebs {
-      volume_size           = var.disk_size
+      volume_size           = "30"
       volume_type           = "gp3"
       encrypted             = true
-      kms_key_id            = var.kms_eks_nodes_ebs_arn
+      kms_key_id            = var.data_storage_kms_key_arn
       delete_on_termination = true
     }
   }

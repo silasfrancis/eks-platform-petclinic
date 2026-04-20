@@ -1,20 +1,20 @@
-resource "aws_vpc_security_group_ingress_rule" "rds_from_eks" {
+resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_nodes" {
     security_group_id = var.rds_security_group_id
     from_port = 3306
     to_port = 3306
     ip_protocol = "tcp"
-    referenced_security_group_id = var.cluster_sg_id
+    referenced_security_group_id = var.eks_node_sg_id
     tags = {
     resource = "vpc"
     }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "rds_from_jumphost" {
+resource "aws_vpc_security_group_ingress_rule" "rds_from_wireguard_server" {
     security_group_id = var.rds_security_group_id
     from_port = 3306
     to_port = 3306
     ip_protocol = "tcp"
-    referenced_security_group_id = var.ec2_security_group_id
+    referenced_security_group_id = var.wireguard_server_security_group_id
     tags = {
       resource = "vpc"
       }

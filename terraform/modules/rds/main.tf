@@ -53,7 +53,7 @@ resource "aws_db_instance" "main" {
   parameter_group_name   = aws_db_parameter_group.mysql.name
 
   storage_encrypted = true
-  kms_key_id        = var.rds_data_kms_arn
+  kms_key_id        = var.data_storage_kms_key_arn
 
   multi_az = true
 
@@ -70,7 +70,7 @@ resource "aws_db_instance" "main" {
   monitoring_role_arn             = var.rds_monitoring_role_arn
   enabled_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
   performance_insights_enabled    = true
-  performance_insights_kms_key_id = var.rds_data_kms_arn
+  performance_insights_kms_key_id = var.data_storage_kms_key_arn
   performance_insights_retention_period = 7
 
   deletion_protection = true

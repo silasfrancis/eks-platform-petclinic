@@ -24,17 +24,17 @@ resource "aws_security_group" "nlb_internal" {
   }
 }
 
-resource "aws_security_group" "ec2" {
-  description = "Security group for EC2 instances"
-  name = "${var.env}-ec2-security_group"
+resource "aws_security_group" "wireguard_server" {
+  description = "Security group for wireguard server"
+  name = "${var.env}-wireguard-server-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = {  
     resource = "vpc"
   }
 }
 
-resource "aws_security_group" "eks" {
-  description = "Security group for EKS"
+resource "aws_security_group" "eks_node" {
+  description = "Security group for EKS Nodes"
   name = "${var.env}-eks-security_group"
   vpc_id = aws_vpc.main_vpc.id
   tags = {  

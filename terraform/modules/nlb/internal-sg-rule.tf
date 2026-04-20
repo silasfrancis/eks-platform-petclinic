@@ -4,7 +4,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_http" {
   from_port = 80
   to_port = 80
   ip_protocol = "tcp"
-  referenced_security_group_id = var.ec2_security_group_id
+  referenced_security_group_id = var.wireguard_server_security_group_id
   tags = {
     resource = "vpc"
   }
@@ -16,7 +16,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_https" {
   from_port = 443
   to_port = 443
   ip_protocol = "tcp"
-  referenced_security_group_id = var.ec2_security_group_id
+  referenced_security_group_id = var.wireguard_server_security_group_id
     tags = {
     resource = "vpc"
   }

@@ -5,30 +5,32 @@ variable "aws_region" {
 
 variable "environment" {
   type = string
-  default = "dev"
 }
 
 variable "app" {
   type = string
-  default = "petclinic"
 }
 
 variable "application_tag" {
   type = string
-  default = "petclinic-dev"
 }
-
-variable "app_namespace" {
-  type = string
-  default = "petclinic"
-}
-
-variable "alb_controller_namespace" {
-  type = string
-  default = "kube-system"
-}
-
 variable "appregistry_application_tag" {
   type    = string
   default = ""
+}
+
+variable "owner" {
+  type = string
+}
+
+variable "repo" {
+  type = string
+}
+
+variable "language" {
+  type = string
+}
+
+variable "framework" {
+  type = string
 }

@@ -1,17 +1,17 @@
-resource "aws_kms_key" "cloudwatch_logs" {
-  description             = "KMS Key for CloudWatch Logs (EKS/VPC/RDS)"
+resource "aws_kms_key" "infra_common" {
+  description             = "Common Infrastructure KMS Key (CloudWatch/SNS/VPC)"
   bypass_policy_lockout_safety_check = true
   deletion_window_in_days = 30
   enable_key_rotation     = true
 
   policy = jsonencode({
-    Id      = "cloudwatch-logs-key"
+    Id      = "infra-common-key"
     Version = "2012-10-17"
     Statement = concat(local.kms_admin_statements, [
       {
         Sid    = "AllowCloudWatchLogsService"
         Effect = "Allow"
-        Principal = { Service = "logs.${data.aws_region.current.id}.amazonaws.com" }
+        Principal = { Service = "logs.${data.aws_region.current.name}.amazonaws.com" }
         Action = [
           "kms:Encrypt*",
           "kms:Decrypt*",
@@ -23,10 +23,25 @@ resource "aws_kms_key" "cloudwatch_logs" {
         Condition = {
           StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
         }
+      },
+      {
+        Sid    = "AllowSNSService"
+        Effect = "Allow"
+        Principal = { Service = "sns.amazonaws.com" }
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        }
       }
     ])
   })
+
   tags = {
     resource = "kms"
+    scope    = "common-infra"
   }
 }

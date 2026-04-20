@@ -11,7 +11,7 @@ resource "aws_iam_policy" "ssm_wireguard_server_access" {
           "ssm:StartSession"
         ]
         Resource = [
-          aws_instance.ec2_instance.arn,
+          aws_instance.wireguard_server.arn,
           "arn:aws:ssm:us-east-2::document/AWS-StartSSHSession",
           "arn:aws:ssm:us-east-2::document/AWS-StartPortForwardingSession"
         ]

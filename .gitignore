@@ -8,3 +8,5 @@
 *secrets.tfvars
 *state.conf
 *ansible.log
+*errored.tfstate
+*.tfstate*

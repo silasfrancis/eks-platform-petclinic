@@ -1,5 +1,5 @@
 terraform {
-  # backend "s3" {} # partial configuration - state details are being read from a state.conf file at runtime
+  backend "s3" {} # partial configuration - state details are being read from a state.conf file at runtime
 
   required_providers {
     aws = {

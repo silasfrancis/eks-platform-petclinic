@@ -9,4 +9,4 @@ all:
     application:
       hosts:
         instance:
-          ansible_host: i-019dc8cdff9077110
+          ansible_host: i-0ead4d2c4accbf47e

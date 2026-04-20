@@ -1,7 +1,0 @@
-environment                 = "dev"
-aws_region                  = "us-east-2"
-app                         = "petclinic"
-application_tag             = "petclinic-dev"
-app_namespace               = "petclinic"
-appregistry_application_tag = "arn:aws:resource-groups:us-east-2:509194952955:group/petclinic-dev/052nfhnf1oczu8qdlj04cpj0y1"
-alb_controller_namespace    = "kube-system"

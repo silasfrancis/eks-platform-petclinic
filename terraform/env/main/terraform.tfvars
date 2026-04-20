@@ -1,7 +1,0 @@
-environment                 = "main"
-aws_region                  = "us-east-2"
-app                         = "petclinic"
-application_tag             = "petclinic-main"
-app_namespace               = "petclinic"
-appregistry_application_tag = ""
-alb_controller_namespace    = "kube-system"

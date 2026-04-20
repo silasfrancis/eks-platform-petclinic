@@ -5,4 +5,5 @@
 *plan.json
 *.terraform.lock.hcl
 *terraform.tfstate*
-*terraform.tfvars
+*secrets.tfvars
+*state.conf

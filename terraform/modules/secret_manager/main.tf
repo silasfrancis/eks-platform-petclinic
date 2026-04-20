@@ -13,6 +13,8 @@ data "aws_secretsmanager_secret" "secrets" {
 }
 
 data "aws_secretsmanager_secret_version" "secrets" {
-  for_each  = local.secret_paths
-  secret_id = data.aws_secretsmanager_secret.secrets[each.key].id
+  for_each  = data.aws_secretsmanager_secret.secrets
+  secret_id = each.value.id
 }
+
+

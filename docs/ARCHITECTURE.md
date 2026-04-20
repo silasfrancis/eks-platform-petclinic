@@ -154,7 +154,7 @@ sync conflicts.
 root-app.yaml (applied once manually via task deploy_root_app)
           │
           ▼
-ArgoCD watches k8s/argocd/apps/
+ArgoCD watches k8s/argocd/
           │
           ├── Wave 0  argocd          (self-managed, prune: false)
           ├── Wave 1  policies        (Kyverno — must exist before workloads)

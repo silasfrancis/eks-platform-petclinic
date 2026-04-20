@@ -1,5 +1,5 @@
 resource "aws_eks_cluster" "main_cluster" {
-  name     = "${var.env}-${var.app}-eks-cluster"
+  name     = "${var.env}-${var.app}-cluster"
   version  = var.cluster_version
   role_arn = var.cluster_role_arn
 

@@ -50,7 +50,7 @@ resource "aws_eks_addon" "vpc_cni" {
     resource    = "eks-addon-vpc-cni"
   }
 
-  depends_on = [aws_eks_cluster.main_cluster, aws_iam_role.vpc_cni]
+  depends_on = [aws_eks_cluster.main_cluster]
 
   lifecycle {
     ignore_changes = [
@@ -68,7 +68,7 @@ resource "aws_eks_addon" "coredns" {
 
   depends_on = [
     aws_eks_cluster.main_cluster,
-    aws_eks_node_group.cluster_node_group 
+    aws_eks_node_group.karpenter_bootstrap
   ]
 
   lifecycle {
@@ -99,7 +99,7 @@ resource "aws_eks_addon" "pod_identity" {
 
   depends_on = [
     aws_eks_cluster.main_cluster,
-    aws_eks_node_group.cluster_node_group
+    aws_eks_node_group.karpenter_bootstrap
   ]
 
   lifecycle {
@@ -116,7 +116,7 @@ resource "aws_eks_addon" "ebs_csi" {
   resolve_conflicts_on_update = "PRESERVE"
 
   depends_on = [
-    aws_eks_node_group.main
+    aws_eks_node_group.karpenter_bootstrap
   ]
 
   lifecycle {

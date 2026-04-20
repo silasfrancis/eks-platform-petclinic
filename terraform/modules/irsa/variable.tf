@@ -48,6 +48,6 @@ variable "velero_bucket_arn" {
 }
 
 variable "route53_private_zone_arn" {
-  type = string
+  type = list(string)
 }
 

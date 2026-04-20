@@ -44,7 +44,11 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
 }
 
 resource "aws_ec2_tag" "karpenter_subnets" {
-  for_each    = toset(var.private_subnets)
+  for_each = {
+    for idx, subnet_id in var.private_subnets :
+    idx => subnet_id
+  }
+
   resource_id = each.value
   key         = "karpenter.sh/discovery"
   value       = aws_eks_cluster.main_cluster.name

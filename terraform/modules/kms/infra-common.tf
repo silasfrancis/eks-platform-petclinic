@@ -11,7 +11,7 @@ resource "aws_kms_key" "infra_common" {
       {
         Sid    = "AllowCloudWatchLogsService"
         Effect = "Allow"
-        Principal = { Service = "logs.${data.aws_region.current.name}.amazonaws.com" }
+        Principal = { Service = "logs.${data.aws_region.current.id}.amazonaws.com" }
         Action = [
           "kms:Encrypt*",
           "kms:Decrypt*",

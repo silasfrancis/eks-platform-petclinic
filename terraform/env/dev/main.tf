@@ -59,7 +59,6 @@ module "iam" {
 
   env                      = var.environment
   app                      = var.app
-  secret_name              = module.secret_manager.secret_name
   rds_export_bucket_arn    = module.s3.bucket_arn["rds_export_bucket_arn"]
   data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
 
@@ -81,7 +80,6 @@ module "cloudwatch_logs" {
 module "vpc" {
   source = "../../modules/vpc"
 
-  tags                     = var.application_tag
   app                      = var.app
   env                      = var.environment
   availability_zones       = data.aws_availability_zones.available.names
@@ -158,10 +156,10 @@ module "irsa" {
   platform_dns_secrets_arn        = [module.secret_manager.secret_arns["dns"]]
   platform_security_secrets_arn   = [module.secret_manager.secret_arns["monitoring"], module.secret_manager.secret_arns["dns"]]
   argocd_secrets_arn              = [module.secret_manager.secret_arns["argocd"]]
-  loki_bucket_arn                 = [module.s3.bucket_arn["loki_bucket_arn"]]
-  velero_bucket_arn               = [module.s3.bucket_arn["velero_bucket_arn"]]
-  data_storage_kms_key_arn        = [module.kms.kms_key_arn["data_storage"]]
   route53_private_zone_arn        = [module.dns.zone_arn]
+  loki_bucket_arn                 = module.s3.bucket_arn["loki_bucket_arn"]
+  velero_bucket_arn               = module.s3.bucket_arn["velero_bucket_arn"]
+  data_storage_kms_key_arn        = module.kms.kms_key_arn["data_storage"]
 
 }
 
@@ -183,7 +181,7 @@ module "rds" {
   db_password                        = module.secret_manager.db_credentials["password"]
   rds_security_group_id              = module.vpc.security_group["rds"]
   eks_node_sg_id                     = module.vpc.security_group["eks_node"]
-  wireguard_server_security_group_id = module.vpc.security_group["ec2"]
+  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
   rds_monitoring_role_arn            = module.iam.roles["rds_monitoring_role"]
 

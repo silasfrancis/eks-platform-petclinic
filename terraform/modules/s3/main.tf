@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "tf_state_bucket" {
   bucket = "${data.aws_caller_identity.current.account_id}-${var.env}-tfstate"
   force_destroy = false

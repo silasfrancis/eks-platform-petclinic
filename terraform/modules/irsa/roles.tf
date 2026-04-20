@@ -177,7 +177,7 @@ locals {
           
         ]
         resources = [
-          "${var.route53_private_zone_arn}"
+          var.route53_private_zone_arn
         ]
       }
       extra_statements = [{

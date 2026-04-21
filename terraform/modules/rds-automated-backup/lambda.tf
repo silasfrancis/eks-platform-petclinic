@@ -16,7 +16,7 @@ resource "aws_lambda_function" "rds_export_trigger" {
   source_code_hash = data.archive_file.rds_export.output_base64sha256
   runtime          = "python3.12"
   handler          = "rds_exporter.start_export"
-  role             = var.rds_export_lambda_role_arn
+  role             = var.lambda_backup_role_arn
   timeout          = 60
 
   environment {
@@ -24,7 +24,7 @@ resource "aws_lambda_function" "rds_export_trigger" {
       ENV             = var.env
       S3_BUCKET       = var.rds_export_bucket
       EXPORT_ROLE_ARN = var.rds_export_role_arn
-      KMS_KEY_ARN     = var.rds_export_kms_key_arn
+      KMS_KEY_ARN     = var.data_storage_kms_key_arn
     }
   }
 
@@ -39,7 +39,7 @@ resource "aws_lambda_function" "slack_notifier" {
   source_code_hash = data.archive_file.slack_sns_notify.output_base64sha256
   runtime          = "python3.12"
   handler       = "slack_sns_notify.handler"
-  role = var.slack_notify_lambda_role_arn
+  role = var.lambda_notification_role_arn
   timeout = 10
   environment {
     variables = {

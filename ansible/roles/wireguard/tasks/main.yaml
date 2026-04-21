@@ -2,7 +2,6 @@
 - name: Install WireGuard packages
   dnf:
     name:
-      - wireguard
       - wireguard-tools
     state: present
     update_cache: yes
@@ -25,30 +24,30 @@
     mode: '0700'
 
 # Server private key
-- name: Generate server private key if missing
-  shell: wg genkey > /etc/wireguard/server_private.key
+- name: Generate server private key
+  shell: wg genkey > /etc/wireguard/server-private.key
   args:
-    creates: /etc/wireguard/server_private.key
+    creates: /etc/wireguard/server-private.key
 
 # Server public key
-- name: Generate server public key if missing
-  shell: wg pubkey < /etc/wireguard/server_private.key > /etc/wireguard/server_public.key
+- name: Generate server public key
+  shell: wg pubkey < /etc/wireguard/server-private.key > /etc/wireguard/server-public.key
   args:
-    creates: /etc/wireguard/server_public.key
+    creates: /etc/wireguard/server-public.key
 
 # Client keys
 - name: Generate client keys
   block:
     - name: Generate client private key
-      shell: wg genkey > /etc/wireguard/clients/{{ item }}_private.key
+      shell: wg genkey > /etc/wireguard/clients/{{ item }}-private.key
       args:
-        creates: /etc/wireguard/clients/{{ item }}_private.key
+        creates: /etc/wireguard/clients/{{ item }}-private.key
       loop: "{{ clients }}"
 
     - name: Generate client public key
-      shell: wg pubkey < /etc/wireguard/clients/{{ item }}_private.key > /etc/wireguard/clients/{{ item }}_public.key
+      shell: wg pubkey < /etc/wireguard/clients/{{ item }}-private.key > /etc/wireguard/clients/{{ item }}-public.key
       args:
-        creates: /etc/wireguard/clients/{{ item }}_public.key
+        creates: /etc/wireguard/clients/{{ item }}-public.key
       loop: "{{ clients }}"
 
 # IP forwarding
@@ -62,12 +61,12 @@
 # register keys for template configuration
 - name: Read server private key
   slurp:
-    src: /etc/wireguard/server_private.key
+    src: /etc/wireguard/server-private.key
   register: server_private_key_raw
 
 - name: Read client public keys
   slurp:
-    src: "/etc/wireguard/clients/{{ item }}_public.key"
+    src: "/etc/wireguard/clients/{{ item }}-public.key"
   loop: "{{ clients }}"
   register: client_public_keys_raw
 

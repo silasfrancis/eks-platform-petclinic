@@ -5,8 +5,23 @@ kube-prometheus-stack:
       userKey: admin-user
       passwordKey: admin-password
 
+  alertmanager:
+    alertmanagerSpec:
+      secrets:
+        - platform-monitoring-secrets
+    config:
+      global:
+        resolve_timeout: 5m
+        smtp_smarthost: 'smtp.zoho.com:587'
+        smtp_from: 'alerts@lefrancis.org'
+        smtp_auth_username: 'silas@lefrancis.org'
+        smtp_auth_password_file: /etc/alertmanager/secrets/platform-monitoring-secrets/email-password
+        smtp_require_tls: true
+
 prometheus-cloudwatch-exporter:
   serviceAccount:
+    create: true
+    name: cloudwatch-exporter
     annotations:
       eks.amazonaws.com/role-arn: ""
 
@@ -23,8 +38,40 @@ loki:
     annotations:
       eks.amazonaws.com/role-arn: ""
 
-# ESO:
-# admin-user
-# admin-password
-# slack-webhook-url
-# email-password
+secretStore:
+  enabled: true
+  kind: SecretStore
+  awsRegion: us-east-2
+
+externalSecret:
+  enabled: true
+  name: platform-monitoring-secrets
+  refreshInterval: 1h
+  target:
+    name: platform-monitoring-secrets
+    creationPolicy: Owner
+  data: 
+    - secretKey: admin-user
+      remoteRef:
+        key: "dev/platform-monitoring"
+        property: grafana-admin-user
+    - secretKey: admin-password
+      remoteRef:
+        key: "dev/platform-monitoring"
+        property: grafana-admin-password
+    - secretKey: slack-webhook-url
+      remoteRef:
+        key: "dev/platform-monitoring"
+        property: slack-webhook-url
+    - secretKey: email-password
+      remoteRef:
+        key: "dev/platform-monitoring"
+        property: email-password
+
+
+serviceAccount:
+  create: true
+  name: "platform-monitoring"        
+  annotations: 
+    eks.amazonaws.com/role-arn: ""
+

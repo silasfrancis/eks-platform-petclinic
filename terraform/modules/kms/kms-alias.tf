@@ -3,9 +3,9 @@ resource "aws_kms_alias" "data_storage" {
   target_key_id = aws_kms_key.data_storage.key_id
 }
 
-resource "aws_kms_alias" "cloudwatch_logs" {
-  name          = "alias/${var.env}-cloudwatch-logs"
-  target_key_id = aws_kms_key.cloudwatch_logs.key_id
+resource "aws_kms_alias" "infra_common" {
+  name          = "alias/${var.env}-infra-common"
+  target_key_id = aws_kms_key.infra_common.key_id
 }
 
 resource "aws_kms_alias" "eks_secrets" {

@@ -1,13 +1,33 @@
 [Interface]
+# The internal IP address for the WireGuard server within the VPN tunnel
 Address = 10.8.0.1/24
-ListenPort = 51820
-PrivateKey = {{ server_private_key_raw.content | b64decode }}
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 
+# The UDP port WireGuard listens on for incoming VPN connections (Must match Security Group)
+ListenPort = 51820
+
+# The Server's Private Key, decoded from Ansible's registered variable
+PrivateKey = {{ server_private_key_raw.content | b64decode }}
+
+# Routing and Nat configuration
+# PostUp: Commands run when the interface starts
+# 1. Allow traffic forwarding through the WireGuard interface (%i)
+# 2. Perform NAT (Masquerade) to allow VPN clients to access the internet via the EC2's public IP
+# Run 'ip route | grep default' to check the VM's network interface name. 
+# For this instance (t4g), the name is 'ens5' due to the Nitro system, not 'eth0'.
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ens5 -j MASQUERADE
+
+# PostDown: Cleanup commands run when the interface stops
+# 1. Remove the forwarding rule
+# 2. Remove the NAT/Masquerade rule
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ens5 -j MASQUERADE
+
+# Loop through the list of clients provided by Ansible to create Peer blocks
 {% for client in clients %}
 [Peer]
+# The Public Key of the specific client (phone, laptop, etc.)
 PublicKey = {{ client_public_keys_raw.results[loop.index0].content | b64decode }}
+
+# The static internal VPN IP assigned to this specific client
 AllowedIPs = {{ client_ip_map[client] }}/32
 
 {% endfor %}

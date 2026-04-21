@@ -1,4 +1,4 @@
-resource "aws_vpc_security_group_ingress_rule" "allow_http" {
+resource "aws_vpc_security_group_ingress_rule" "allow_http_external" {
   description       = "Allow HTTP traffic from internet"
   security_group_id = var.nlb_external_sg_id
   from_port = 80
@@ -10,7 +10,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_http" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_https" {
+resource "aws_vpc_security_group_ingress_rule" "allow_https_external" {
   description       = "Allow HTTPS traffic from internet"
   security_group_id = var.nlb_external_sg_id
   from_port = 443
@@ -22,7 +22,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_https" {
   }
 }
 
-resource "aws_vpc_security_group_egress_rule" "nlb_egress" {
+resource "aws_vpc_security_group_egress_rule" "nlb_egress_external" {
   description       = "Allow all outbound traffic to internet"
   security_group_id = var.nlb_external_sg_id
   ip_protocol = "-1"

@@ -1,22 +1,42 @@
+# Ansible tasks for WireGuard server configuration.
+# All tasks run from ansible/ directory.
+# WireGuard server is configured over AWS SSM — no SSH port required.
+
 version: "3"
 
 tasks:
-  ansible_env_setup:
+
+  setup:
+    desc: "Create Python venv and install Ansible dependencies"
     cmds:
       - python3 -m venv ~/ansible-venv
+      - ~/ansible-venv/bin/pip install --upgrade pip
+      - ~/ansible-venv/bin/pip install ansible boto3 botocore
+      - |
+        echo "Activate venv with: source ~/ansible-venv/bin/activate"
 
-  install_boto3:
-    cmds:
-      - pip install --upgrade pip
-      - pip install ansible boto3 botocore
-    desc: Install Boto3 for AWS interactions
-
-  ansible_ping:
+  ping:
+    desc: "Test Ansible connectivity to WireGuard server via SSM"
     cmds:
       - ansible all -i inventory.yaml -m ping
-    desc: Test Ansible connectivity to host
-  
-  bootstrap_ec2_instance:
+
+  configure_wireguard:
+    desc: "Configure WireGuard server and generate client configs"
+    summary: |
+      Runs the WireGuard Ansible playbook against the EC2 instance.
+      Uses AWS SSM for connection — no SSH port needed.
+      
+      Prerequisites:
+        - WireGuard EC2 instance running (task tf:apply)
+        - AWS credentials configured
+        - inventory.yaml populated with instance ID
     cmds:
       - ansible-playbook -i inventory.yaml wireguard.yaml
-    desc: Configure wiregaurd server and set up clients
+    preconditions:
+      - sh: "[ -f inventory.yaml ]"
+        msg: "inventory.yaml not found — populate with EC2 instance ID from terraform output"
+
+  check_wireguard:
+    desc: "Check WireGuard service status on server"
+    cmds:
+      - ansible all -i inventory.yaml -m shell -a "sudo wg show"

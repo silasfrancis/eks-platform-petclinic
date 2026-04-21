@@ -1,43 +1,271 @@
+# platform/compute/values.yaml
+#
 # Compute platform values.
-# Karpenter provisions and manages EC2 nodes directly without predefined node groups.
-# It selects the optimal instance type and capacity type based on pending pod requirements.
+# Karpenter provisions and manages EC2 nodes directly without node groups.
 #
 # Architecture:
-#   - Karpenter controller runs on the bootstrap node group (managed separately in Terraform)
-#   - EC2NodeClass defines AWS-specific node configuration (AMI, subnets, security groups)
-#   - NodePool defines scheduling constraints and scaling limits
-#   - SPOT interruption handling via SQS queue (provisioned in Terraform)
+#   - Karpenter controller: runs on bootstrap node group (Terraform-managed)
+#   - EC2NodeClass: AWS-specific node config — AMI, subnets, SGs, kubelet, storage
+#   - NodePool: scheduling constraints, capacity limits, disruption policy
+#   - FlowSchema: API priority for Karpenter leader election and workload requests
+#   - SPOT interruption: SQS queue + EventBridge (Terraform-provisioned)
+#
+# OVERRIDE REQUIRED:
+#   cluster.name           — must match EKS cluster name exactly
+#   cluster.env            — dev or main
+#   cluster.app            — application name prefix for resource naming
+#   cluster.region         — AWS region
+#   cluster.kmsKeyArn      — KMS key for EBS encryption
+#   cluster.clusterDNS     — CoreDNS ClusterIP (kubectl get svc kube-dns -n kube-system)
+#   karpenter.serviceAccount.annotations role ARN
+#   karpenter.settings.interruptionQueue
+#   nodePools.*limits      — tune per environment capacity requirements
 
+# Cluster-level config shared across EC2NodeClass and NodePool templates
+# OVERRIDE: all fields required per environment
+cluster:
+  # Must match EKS cluster name — used for subnet/SG discovery tags
+  name: ""
+  # Used in resource naming: <env>-<app>-node-class, <env>-<app>-node-role
+  env: ""
+  app: "petclinic"
+  region: us-east-2
+  # IAM node role name — must match Terraform output
+  # Pattern: <env>-<app>-node-role
+  nodeRoleName: ""
+  # KMS key ARN for EBS volume encryption
+  # OVERRIDE: replace with actual KMS key ARN from Terraform
+  kmsKeyArn: ""
+  # CoreDNS ClusterIP — default for EKS with 172.20.0.0/16 service CIDR
+  # Verify: kubectl get svc kube-dns -n kube-system -o jsonpath='{.spec.clusterIP}'
+  clusterDNS:
+    - "172.20.0.10"
+  # Availability zones to spread nodes across
+  availabilityZones:
+    - us-east-2a
+    - us-east-2b
+    - us-east-2c
+
+# EC2NodeClass — shared AWS node configuration for all NodePools
+# A single NodeClass is shared — both NodePools use the same AMI, subnets, SGs
+nodeClass:
+  amiFamily: AL2023
+  amiAlias: al2023@latest
+
+  # EBS root volume configuration
+  blockDevice:
+    deviceName: /dev/xvda
+    volumeSize: 20Gi
+    volumeType: gp3
+    encrypted: true
+    deleteOnTermination: true
+
+  # IMDSv2 required — hop limit 1 prevents SSRF attacks from pods
+  # reaching the instance metadata service
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+
+  # Kubelet configuration applied to all nodes
+  kubelet:
+    # podsPerCore * vCPUs caps total pods — prevents noisy neighbour issues
+    podsPerCore: 2
+    maxPods: 20
+
+    # Resources reserved for system daemons — not schedulable by pods
+    systemReserved:
+      cpu: 100m
+      memory: 100Mi
+      ephemeralStorage: 1Gi
+
+    # Resources reserved for kubelet and container runtime
+    kubeReserved:
+      cpu: 200m
+      memory: 100Mi
+      ephemeralStorage: 3Gi
+
+    # Hard eviction — kubelet kills pods immediately when breached
+    evictionHard:
+      memoryAvailable: "5%"
+      nodefsAvailable: "10%"
+      nodefsInodesFree: "10%"
+
+    # Soft eviction — pods get gracePeriod to terminate cleanly
+    evictionSoft:
+      memoryAvailable: "500Mi"
+      nodefsAvailable: "15%"
+      nodefsInodesFree: "15%"
+
+    evictionSoftGracePeriod:
+      memoryAvailable: "1m"
+      nodefsAvailable: "1m30s"
+      nodefsInodesFree: "2m"
+
+    evictionMaxPodGracePeriod: 60
+
+    # Image GC — clean up unused images when disk usage exceeds threshold
+    imageGCHighThresholdPercent: 85
+    imageGCLowThresholdPercent: 80
+
+    # CPU CFS quota enforces container CPU limits at the kernel level
+    cpuCFSQuota: true
+
+# Karpenter namespace — used in FlowSchema ServiceAccount references
+karpenterNamespace: karpenter
+
+# Named NodePool instances.
+# Adding a new NodePool = add one entry here. No template changes needed.
+# Each entry generates a NodePool resource pointing to the shared EC2NodeClass.
+#
+# Fields:
+#   weight               higher weight = Karpenter prefers this pool
+#   requirements         instance type, arch, capacity type constraints
+#   taints               pod tolerations must match to land on this pool
+#   limits               max CPU, memory, nodes Karpenter will provision
+#   disruption           consolidation and budget policy
+#   expireAfter          node TTL — forces rotation (Never for on-demand, 24h for spot)
+#   terminationGracePeriod how long Karpenter waits for pods to drain
+nodePools:
+
+  # ON_DEMAND pool — critical services that cannot tolerate interruption
+  # config-server, discovery-server, api-gateway, admin-server
+  # OVERRIDE: limits per environment
+  on-demand:
+    enabled: true
+
+    weight: 100
+
+    labels:
+      node-type: on-demand
+      workload-tier: production
+
+    # No taints — on-demand is the default pool
+    taints: []
+
+    requirements:
+      arch:
+        - arm64
+      os:
+        - linux
+      capacityType:
+        - on-demand
+      instanceCategory:
+        - t
+        - m
+        - c
+      instanceFamily:
+        - t4g
+      instanceGeneration: "6"    # Gte — only gen 6+
+      hypervisor:
+        - nitro
+
+    # Node TTL — Never means nodes only replaced when drained by Karpenter
+    expireAfter: Never
+    terminationGracePeriod: 48h
+
+    disruption:
+      consolidationPolicy: WhenEmptyOrUnderutilized
+      consolidateAfter: 10m
+      budgets:
+        # Allow up to 10% of nodes to be disrupted at any time
+        - nodes: "10%"
+        # No disruption during business hours Mon-Fri 9am-5pm
+        # Protects on-demand workloads from consolidation during peak
+        - schedule: "0 9 * * mon-fri"
+          duration: 8h
+          nodes: "0"
+
+    # OVERRIDE: tune per environment
+    limits:
+      cpu: "8"
+      memory: 16Gi
+      nodes: 3
+
+  # SPOT pool — cost-optimised for stateless interruptible workloads
+  # customers-service, visits-service, vets-service, genai-service
+  # OVERRIDE: limits per environment
+  spot:
+    enabled: true
+
+    weight: 1
+
+    labels:
+      node-type: spot
+      workload-tier: production
+
+    # spot taint — pods must tolerate spot=true:NoSchedule to land here
+    taints:
+      - key: spot
+        value: "true"
+        effect: NoSchedule
+
+    requirements:
+      arch:
+        - arm64
+      os:
+        - linux
+      capacityType:
+        - spot
+      instanceCategory:
+        - t
+        - m
+        - c
+        - r
+      instanceFamily:
+        - t4g
+        - m6g
+        - m7g
+        - c6g
+        - c7g
+        - r6g
+        - r7g
+      instanceGeneration: "6"
+      hypervisor:
+        - nitro
+
+    # Rotate spot nodes every 24h — avoids long-running spot instances
+    # which are at higher risk of interruption
+    expireAfter: 24h
+    terminationGracePeriod: 24h
+
+    disruption:
+      consolidationPolicy: WhenEmptyOrUnderutilized
+      consolidateAfter: 5m
+      budgets:
+        - nodes: "20%"
+
+    # OVERRIDE: tune per environment
+    limits:
+      cpu: "6"
+      memory: 12Gi
+      nodes: 3
+
+# Karpenter Helm subchart configuration
 karpenter:
   nameOverride: "karpenter"
-
   replicas: 1
 
   serviceAccount:
     create: true
     annotations:
-      # IRSA for karpenter
+      # OVERRIDE: replace with Terraform output
       eks.amazonaws.com/role-arn: ""
 
   settings:
-    # This must match the EKS cluster name exactly
+    # OVERRIDE: must match EKS cluster name exactly
     clusterName: ""
-
-    # clusterEndpoint is auto-discovered on EKS — leave empty
     clusterEndpoint: ""
-
-    # This  must match the SQS queue name created by Terraform
+    # OVERRIDE: must match SQS queue name from Terraform
     interruptionQueue: ""
 
   # Karpenter must only run on the bootstrap node group
-  # It cannot run on nodes it manages — would cause a circular dependency
-  # bootstrap nodes are labelled node-type=karpenter-bootstrap in Terraform
+  # Running on nodes it manages causes a circular dependency
   nodeSelector:
     kubernetes.io/os: linux
     node-type: karpenter-bootstrap
 
-  # Bootstrap nodes have CriticalAddonsOnly taint to prevent
-  # application workloads from landing on infrastructure nodes
   tolerations:
     - key: CriticalAddonsOnly
       operator: "Equal"
@@ -47,7 +275,7 @@ karpenter:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: platform-monitoring
 
   controller:
     resources:

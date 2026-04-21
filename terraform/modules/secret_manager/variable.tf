@@ -1,3 +1,4 @@
-variable "secret_name" {
-  type = string
+variable "env" {
+  description = "Environment prefix for secret paths — dev or prod"
+  type        = string
 }

@@ -14,25 +14,25 @@ variable "rds_export_role_arn" {
   type = string
 }
 
-variable "rds_export_lambda_role_arn" {
+variable "lambda_backup_role_arn" {
   type = string
 }
 
-variable "rds_export_kms_key_arn" {
+variable "lambda_notification_role_arn" {
   type = string
 }
 
-variable "rds_export_kms_key_id" {
+variable "infra_common_kms_key_arn" {
+  type = string
+}
+
+variable "data_storage_kms_key_arn" {
   type = string
 }
 
 variable "slack_webhook_url" {
   type = string
   sensitive = true
-}
-
-variable "slack_notify_lambda_role_arn" {
-  type = string
 }
 
 variable "app" {

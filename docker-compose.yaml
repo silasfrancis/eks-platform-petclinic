@@ -1,3 +1,19 @@
+# Docker Compose (Local Development Only)
+#
+# This setup is intended for local development and quick testing of the
+# microservices architecture.
+#
+# Application services use distroless images (runtime-only, no shell/tools),
+# so Docker healthchecks that rely on curl/wget/sh are not defined here.
+# Instead, we rely on startup order and built-in retry logic for local runs.
+#
+# In Kubernetes, proper health checks are configured using:
+#   - liveness probes
+#   - readiness probes
+# typically backed by Spring Boot Actuator endpoints (/actuator/health).
+#
+# See Kubernetes manifests for production-ready configuration for these services in : k8s/microservice
+
 services:
 
   mysql:
@@ -21,7 +37,7 @@ services:
 
   config-server:
     build:
-      context: .
+      context: services/
       dockerfile: config-server/Dockerfile
     container_name: config-server
     mem_limit: 256m
@@ -37,7 +53,7 @@ services:
 
   discovery-server:
     build:
-      context: .
+      context: services/
       dockerfile: discovery-server/Dockerfile
     container_name: discovery-server
     restart: on-failure
@@ -53,7 +69,7 @@ services:
 
   customers-service:
     build:
-      context: .
+      context: services/
       dockerfile: customers-service/Dockerfile
     container_name: customers-service
     mem_limit: 512m
@@ -77,7 +93,7 @@ services:
 
   visits-service:
     build:
-      context: .
+      context: services/
       dockerfile: visits-service/Dockerfile
     container_name: visits-service
     restart: on-failure
@@ -101,7 +117,7 @@ services:
 
   vets-service:
     build:
-      context: .
+      context: services/
       dockerfile: vets-service/Dockerfile
     container_name: vets-service
     mem_limit: 512m
@@ -125,7 +141,7 @@ services:
 
   genai-service:
     build:
-      context: .
+      context: services/
       dockerfile: genai-service/Dockerfile
     container_name: genai-service
     mem_limit: 512m
@@ -142,10 +158,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       CONFIG_SERVER_URL: http://config-server:8888
 
-
   api-gateway:
     build:
-      context: .
+      context: services/
       dockerfile: api-gateway/Dockerfile
     container_name: api-gateway
     mem_limit: 512m
@@ -163,7 +178,7 @@ services:
 
   admin-server:
     build:
-      context: .
+      context: services/
       dockerfile: admin-server/Dockerfile
     container_name: admin-server
     mem_limit: 256m
@@ -179,31 +194,6 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
 
-  tracing-server:
-    image: openzipkin/zipkin
-    container_name: tracing-server
-    mem_limit: 256m
-    ports:
-      - "9411:9411"
-
-  grafana-server:
-    build: ./docker/grafana
-    container_name: grafana-server
-    mem_limit: 128m
-    ports:
-      - "3030:3000"
-
-  prometheus-server:
-    build: ./docker/prometheus
-    container_name: prometheus-server
-    mem_limit: 128m
-    ports:
-      - "9091:9090"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:9090"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   mysql-data:
+  

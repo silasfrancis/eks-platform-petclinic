@@ -1,71 +1,72 @@
-version: '3'
+# Kubernetes bootstrap and platform operations
+version: "3"
+
+vars:
+  # TARGET_CLUSTER determines the EKS cluster name for Helm/Kubectl commands.
+  # If passed via CLI (e.g., task bootstrap CLUSTER_NAME=custom-eks)
+  # Defaults to 'prod-petclinic-cluster' if ENV=main
+  # Defaults to 'dev-petclinic-cluster' for all other cases (ENV=dev)
+  TARGET_CLUSTER: '{{.CLUSTER_NAME | default (if eq .ENV "main" then "prod-petclinic-cluster" else "dev-petclinic-cluster")}}'
 
 env:
-  ENV: "dev"
-  GATEWAY_API_VERSION: "v1.5.0"
+  CILIUM_VERSION: "1.19.3"
+  METRICS_SERVER_VERSION: "3.12.2"
   ISTIO_VERSION: "1.29.1"
   ARGOCD_VERSION: "v3.3.2"
   ARGO_ROLLOUTS_VERSION: "v1.8.3"
-  CLUSTER_NAME: "{{.ENV}}-petclinic-eks-cluster"
 
 tasks:
-  bootstrap:
-    desc: Full cluster bootstrap — run once
-    cmds:
-      - task: install_istio
-      - task: install_vpa
-      - task: install_external_secrets
-      - task: install_argo_rollouts
-      - task: install_argocd
-      - task: deploy_root_app
+  validate-env:
+    internal: true
+    preconditions:
+      - sh: '[[ "{{.ENV}}" == "dev" || "{{.ENV}}" == "main" ]]'
+        msg: "ERROR: You must provide ENV=dev or ENV=main"
+      - sh: '[[ -n "{{.TARGET_CLUSTER}}" ]]'
+        msg: "ERROR: Cluster name could not be determined."
 
-  install_istio:
-    desc: Install full Istio stack — must exist before ArgoCD syncs ingress
+  setup_helm_repos:
+    desc: "Add helm repos"
     cmds:
-      - task: add_istio_repo
-      - task: install_istio_base
-      - task: install_istiod
-      - task: wait_for_istio
-
-  add_istio_repo:
-    desc: Add and update Istio Helm repo
-    cmds:
-      - helm repo add istio https://istio-release.storage.googleapis.com/charts
+      - helm repo add cilium https://helm.cilium.io --force-update
+      - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
+      - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable --force-update
+      - helm repo add external-secrets https://charts.external-secrets.io --force-update
       - helm repo update
 
-  install_istio_base:
-    desc: Install Istio base — CRDs and cluster-wide resources
+  install_cilium:
+    desc: "Install Cilium"
+    deps: [validate-env]
     cmds:
       - |
-        helm upgrade --install istio-base istio/base \
-          -n istio-system \
+        helm upgrade --install cilium cilium/cilium \
+          --version {{ .CILIUM_VERSION }} \
+          -n kube-system \
+          --set cluster.name={{ .TARGET_CLUSTER }} \  
+          --values k8s/bootstrap/cilium/values.yaml
+
+  install_metrics_server:
+    desc: "Install metrics-server"
+    cmds:
+      - |
+        helm upgrade --install metrics-server metrics-server/metrics-server \
+          --version {{ .METRICS_SERVER_VERSION }} \
+          -n kube-system \
+          --values k8s/bootstrap/metrics-server/values.yaml
+
+  install_external_secrets:
+    desc: "Install External Secrets"
+    cmds:
+      - |
+        helm upgrade --install external-secrets \
+          external-secrets/external-secrets \
+          -n external-secrets \
           --create-namespace \
-          --version {{.ISTIO_VERSION}} \
-          --set defaultRevision=default \
-          --wait --timeout 5m --atomic
-
-  install_istiod:
-    desc: Install Istiod — control plane
-    cmds:
-      - |
-        helm upgrade --install istiod istio/istiod \
-          -n istio-system \
-          --version {{.ISTIO_VERSION}} \
-          --wait --timeout 5m --atomic \
-          --set pilot.resources.requests.cpu=100m \
-          --set pilot.resources.requests.memory=256Mi \
-          --set global.proxy.resources.requests.cpu=50m \
-          --set global.proxy.resources.requests.memory=128Mi
-
-  wait_for_istio:
-    desc: Wait for Istio control plane to be ready
-    cmd: kubectl wait --for=condition=available deployment --all -n istio-system --timeout=180s
+          --wait
 
   install_vpa:
-    desc: Install VPA recommender — must exist before Goldilocks syncs
+    desc: "Install VPA (Recommendation mode)"
     cmds:
-      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable
-      - helm repo update
       - |
         helm upgrade --install vpa fairwinds-stable/vpa \
           -n vpa-system \
@@ -74,77 +75,56 @@ tasks:
           --set admissionController.enabled=false \
           --wait
 
-  install_external_secrets:
-    desc: Install ESO — must exist before ArgoCD syncs secrets
+  install_istio_base:
+    desc: "Install Istio base"
     cmds:
-      - helm repo add external-secrets https://charts.external-secrets.io
-      - helm repo update
       - |
-        helm upgrade --install external-secrets \
-          external-secrets/external-secrets \
-          -n external-secrets \
+        helm upgrade --install istio-base istio/base \
+          -n istio-system \
           --create-namespace \
-          --wait
+          --version {{ .ISTIO_VERSION }}
 
-  install_argo_rollouts:
-    desc: Install Argo Rollouts — needed by petclinic services
-    cmds:
-      - kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
-      - |
-        kubectl apply -n argo-rollouts \
-          -f https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/install.yaml
-      - kubectl wait --for=condition=available deployment --all -n argo-rollouts --timeout=180s
-
-  install_argo_rollouts_plugin:
-    desc: Install Argo Rollouts kubectl plugin
+  install_istiod:
+    desc: "Install Istiod"
     cmds:
       - |
-        curl -LO https://github.com/argoproj/argo-rollouts/releases/download/{{.ARGO_ROLLOUTS_VERSION}}/kubectl-argo-rollouts-linux-amd64
-      - chmod +x kubectl-argo-rollouts-linux-amd64
-      - sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-      - kubectl argo rollouts version
+        helm upgrade --install istiod istio/istiod \
+          -n istio-system \
+          --version {{ .ISTIO_VERSION }}
 
   install_argocd:
-    desc: Install ArgoCD via raw manifest — Helm takes over after bootstrap
+    desc: "Install ArgoCD"
     cmds:
       - kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       - |
         kubectl apply -n argocd \
-          --server-side \
-          --force-conflicts \
-          -f https://raw.githubusercontent.com/argoproj/argo-cd/{{.ARGOCD_VERSION}}/manifests/install.yaml
-      - kubectl wait --for=condition=available deployment --all -n argocd --timeout=300s
+          -f https://raw.githubusercontent.com/argoproj/argo-cd/{{ .ARGOCD_VERSION }}/manifests/install.yaml
+
+  install_rollouts:
+    desc: "Install Argo Rollouts"
+    cmds:
+      - kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
+      - |
+        kubectl apply -n argo-rollouts \
+          -f https://github.com/argoproj/argo-rollouts/releases/download/{{ .ARGO_ROLLOUTS_VERSION }}/install.yaml
 
   deploy_root_app:
-    desc: Deploy root app — ArgoCD takes over everything from here
+    desc: "Deploy root app"
+    deps: [validate-env]
     cmds:
-      - kubectl apply -f k8s/argocd/apps/root-app.yaml
-      - echo "Root app deployed — ArgoCD syncing all applications"
+      - kubectl apply -f k8s/argocd/root-app.yaml
 
-  argocd_password:
-    desc: Get initial ArgoCD admin password
-    cmd: kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d && echo
-
-  argocd_port_forward:
-    desc: Port forward ArgoCD UI to localhost:8080
-    cmd: kubectl port-forward svc/argocd-server -n argocd 8080:443
-
-  argocd_sync_all:
-    desc: Force sync all ArgoCD apps
-    cmd: argocd app sync --all
-
-  argocd_status:
-    desc: Check status of all ArgoCD apps
-    cmd: argocd app list
-
-  deps:
-    desc: Update all Helm chart dependencies
+  bootstrap:
+    desc: "Full cluster bootstrap"
+    deps: [validate-env]
     cmds:
-      - helm dependency update k8s/argocd/install/
-      - helm dependency update k8s/platform/monitoring/
-      - helm dependency update k8s/platform/compute/
-      - helm dependency update k8s/platform/autoscaling/
-      - helm dependency update k8s/platform/security/
-      - helm dependency update k8s/platform/backup/
-      - helm dependency update k8s/platform/ingress/
-      - helm dependency update k8s/policies/
+      - task: setup_helm_repos
+      - task: install_cilium
+      - task: install_metrics_server
+      - task: install_external_secrets
+      - task: install_vpa
+      - task: install_istio_base
+      - task: install_istiod
+      - task: install_rollouts
+      - task: install_argocd
+      - task: deploy_root_app

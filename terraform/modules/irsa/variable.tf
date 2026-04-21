@@ -1,7 +1,3 @@
-variable "env" {
-  type = string
-}
-
 variable "oidc_arn" {
   type = string
 }
@@ -14,12 +10,25 @@ variable "cluster_name" {
   type = string
 }
 
-variable "app_secret_name" {
-  type = string
+variable "app_secrets_arn" {
+  type = list(string)
 }
 
-variable "cluster_config_secret_name" {
-  type = string
+variable "platform_monitoring_secrets_arn" {
+  type = list(string)
+}
+
+
+variable "platform_dns_secrets_arn" {
+  type = list(string)
+}
+
+variable "platform_security_secrets_arn" {
+  type = list(string)
+}
+
+variable "argocd_secrets_arn" {
+  type = list(string)
 }
 
 variable "loki_bucket_arn" {
@@ -35,17 +44,6 @@ variable "velero_bucket_arn" {
 }
 
 variable "route53_private_zone_arn" {
-  type = string
+  type = list(string)
 }
 
-variable "platform_ingress_secret_name" {
-  type = string
-}
-
-variable "platform_security_secret_name" {
-  type = string
-}
-
-variable "argocd_secret_name" {
-  type = string
-}

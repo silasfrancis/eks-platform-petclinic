@@ -67,8 +67,8 @@ kube-prometheus-stack:
     admin:
       # Set existingSecret to ESO-created secret name for grafana admin credentials
       existingSecret: "platform-monitoring-secrets"
-      userKey: ""
-      passwordKey: ""
+      userKey: "" # grafana admin user name
+      passwordKey: "" # grafana admin password
 
     persistence:
       enabled: true
@@ -205,6 +205,7 @@ prometheus-cloudwatch-exporter:
 
   serviceAccount:
     create: true
+    name: cloudwatch-exporter
     annotations:
       # IRSA for scraping cloudwatch metrics
       eks.amazonaws.com/role-arn: ""
@@ -464,6 +465,50 @@ monitoring:
   # The application namespaces to be alerted on
   managedNamespaces: # list of namespaces that are being monitored
     - petclinic
+
+# SecretStore — ESO store reference for secrets used in this chart
+secretStore:
+  enabled: true
+  kind: SecretStore
+  awsRegion: us-east-2
+
+# ExternalSecret — pulls security-related secrets from AWS Secrets Manager
+externalSecret:
+  enabled: true
+  name: platform-monitoring-secrets
+  refreshInterval: 1h
+  target:
+    name: platform-monitoring-secrets
+    creationPolicy: Owner
+  data: {}
+    #  Format for override at env level
+    # - secretKey: admin-user
+    #   remoteRef:
+    #     key: "dev/platform-monitoring"
+    #     property: grafana-admin-user
+    # - secretKey: admin-password
+    #   remoteRef:
+    #     key: "dev/platform-monitoring"
+    #     property: grafana-admin-password
+    # - secretKey: slack-webhook-url
+    #   remoteRef:
+    #     key: "dev/platform-monitoring"
+    #     property: slack-webhook-url
+    # - secretKey: email-password
+    #   remoteRef:
+    #     key: "dev/platform-monitoring"
+    #     property: email-password
+
+
+# Service Account
+# IRSA annotations go here for services that need AWS API access.
+# Example:
+#   annotations:
+#     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
+serviceAccount:
+  create: true
+  name: ""          # defaults to Chart.Name via _helpers.tpl
+  annotations: {}
 
 ingress:
   enabled: true

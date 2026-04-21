@@ -1,5 +1,5 @@
 cluster:
-  name: "dev-petclinic"
+  name: "dev-petclinic-cluster"
   env: "dev"
   app: "petclinic"
   nodeRoleName: "dev-petclinic-node-role"

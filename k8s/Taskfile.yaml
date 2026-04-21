@@ -33,7 +33,7 @@ tasks:
           --version {{ .CILIUM_VERSION }} \
           -n kube-system \
           --set cluster.name={{ .CLUSTER_NAME }} \
-          --values k8s/bootstrap/cilium/values.yaml
+          --values bootstrap/cilium/values.yaml
 
   install_metrics_server:
     desc: "Install metrics-server"
@@ -42,7 +42,7 @@ tasks:
         helm upgrade --install metrics-server metrics-server/metrics-server \
           --version {{ .METRICS_SERVER_VERSION }} \
           -n kube-system \
-          --values k8s/bootstrap/metrics-server/values.yaml
+          --values bootstrap/metrics-server/values.yaml
 
   install_external_secrets:
     desc: "Install External Secrets"
@@ -109,8 +109,8 @@ tasks:
         helm upgrade --install argocd-root k8s/argocd \
           --namespace argocd \
           --create-namespace \
-          --values k8s/argocd/values.yaml \
-          --values k8s/argocd/values/env/{{.ENV}}/values.yaml
+          --values argocd/values.yaml \
+          --values argocd/values/env/{{.ENV}}/values.yaml
 
   bootstrap:
     desc: "Full cluster bootstrap"

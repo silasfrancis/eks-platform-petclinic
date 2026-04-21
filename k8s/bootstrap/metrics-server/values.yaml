@@ -21,7 +21,7 @@ tolerations:
   - key: CriticalAddonsOnly
     operator: Equal
     value: "true"
-    effect: NoSchedule
+    effect: NO_SCHEDULE
 
 resources:
   requests:

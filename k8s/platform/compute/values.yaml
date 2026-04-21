@@ -270,12 +270,12 @@ karpenter:
     - key: CriticalAddonsOnly
       operator: "Equal"
       value: "true"
-      effect: "NoSchedule"
+      effect: "NO_SCHEDULE"
 
-  serviceMonitor:
-    enabled: true
-    additionalLabels:
-      release: platform-monitoring
+  # serviceMonitor:
+  #   enabled: true
+  #   additionalLabels:
+  #     release: platform-monitoring
 
   controller:
     resources:

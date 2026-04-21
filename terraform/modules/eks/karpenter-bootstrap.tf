@@ -7,7 +7,7 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
 
   launch_template {
     id      = aws_launch_template.eks_nodes.id
-    version = aws_launch_template.eks_nodes.default_version
+    version = "$Default"
   }
 
   scaling_config {

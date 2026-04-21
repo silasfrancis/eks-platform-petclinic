@@ -1,0 +1,29 @@
+cluster:
+  name: "prod-petclinic-cluster"
+  env: "prod"
+  app: "petclinic"
+  nodeRoleName: "prod-petclinic-node-role"
+  kmsKeyArn: "arn:aws:kms:us-east-2:509194952955:key/87f2dcf9-4687-49f0-83ae-0e929cd13fde"
+
+karpenter:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-karpenter-irsa"
+  settings:
+    clusterName: "prod-petclinic"
+    interruptionQueue: "prod-petclinic-cluster-karpenter-interruption"
+
+nodePools:
+  on-demand:
+    limits:
+      cpu: "4"
+      memory: 8Gi
+      nodes: 2
+    disruption:
+      consolidateAfter: 5m
+
+  spot:
+    limits:
+      cpu: "4"
+      memory: 8Gi
+      nodes: 2

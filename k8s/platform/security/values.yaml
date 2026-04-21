@@ -198,7 +198,9 @@ falco:
       value: "true"
       effect: NoSchedule
     - key: CriticalAddonsOnly
-      operator: Exists
+      operator: Equal
+      value: "true"
+      effect: NO_SCHEDULE
 
   collectors:
     enabled: true

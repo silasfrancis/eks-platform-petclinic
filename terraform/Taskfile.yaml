@@ -14,12 +14,17 @@ version: "3"
 tasks:
   validate-env:
     internal: true
-    status:
-      - '[[ "{{.ENV}}" == "dev" || "{{.ENV}}" == "main" ]]'
     cmds:
-      - |
-        echo "Error: You must provide ENV=dev or ENV=main"
-      - exit 1
+    - |
+      if [ -z "{{.ENV}}" ]; then
+        echo "Error: ENV is required (dev or main)"
+        exit 1
+      fi
+
+      if [ "{{.ENV}}" != "dev" ] && [ "{{.ENV}}" != "main" ]; then
+        echo "Error: ENV must be 'dev' or 'main'"
+        exit 1
+      fi
 
   init:
     desc: "Initialise backend for {{.ENV}}"

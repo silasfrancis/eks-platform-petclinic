@@ -17,3 +17,12 @@ CVE-2026-33416
 
 # libpng: Information disclosure and DoS in Neon palette expansion
 CVE-2026-33636
+
+# Server-Side Template Injection (SSTI) security bypass
+CVE-2026-40477
+
+# SSTI via expression execution bypass
+CVE-2026-40478
+
+# Document length constraint bypass
+GHSA-2m67-wjpj-xhg9

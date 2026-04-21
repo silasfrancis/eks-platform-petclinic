@@ -19,9 +19,12 @@ tasks:
   validate-env:
     internal: true
     preconditions:
-      - sh: '[[ "{{.ENV}}" == "dev" || "{{.ENV}}" == "main" ]]'
-        msg: "ERROR: You must provide ENV=dev or ENV=main"
-      - sh: '[[ -n "{{.TARGET_CLUSTER}}" ]]'
+      - sh: |
+          [ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]
+        msg: "ERROR: ENV must be dev or main"
+
+      - sh: |
+          [ -n "{{.TARGET_CLUSTER}}" ]
         msg: "ERROR: Cluster name could not be determined."
 
   setup_helm_repos:

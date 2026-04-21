@@ -71,7 +71,7 @@ bold "ArgoCD"
 render "argocd" argocd k8s/argocd \
   --namespace argocd \
   --values k8s/argocd/values.yaml \
-  --values k8s/argocd/values/clusters/${ENV}.yaml
+  --values k8s/argocd/values/env/${ENV}/values.yaml
 echo ""
 
 # Platform: Ingress
@@ -80,7 +80,7 @@ bold "Platform: Ingress"
 render "platform-ingress" ingress k8s/platform/ingress \
   --namespace istio-ingress \
   --values k8s/platform/ingress/values.yaml
-  --values k8s/platform/ingress/values/env/${ENV}.yaml
+  --values k8s/platform/ingress/values/env/${ENV}/values.yaml
 echo ""
 
 # Platform: Compute (Karpenter + NodePools + FlowSchema)
@@ -89,7 +89,7 @@ bold "Platform: Compute"
 render "platform-compute" compute k8s/platform/compute \
   --namespace karpenter \
   --values k8s/platform/compute/values.yaml \
-  --values k8s/platform/compute/values/env/${ENV}.yaml
+  --values k8s/platform/compute/values/env/${ENV}/values.yaml
 echo ""
 
 # Platform: Monitoring
@@ -98,7 +98,7 @@ bold "Platform: Monitoring"
 render "platform-monitoring" monitoring k8s/platform/monitoring \
   --namespace monitoring \
   --values k8s/platform/monitoring/values.yaml \
-  --values k8s/platform/monitoring/values/env/${ENV}.yaml
+  --values k8s/platform/monitoring/values/env/${ENV}/values.yaml
 echo ""
 
 # Policies (Kyverno + NetworkPolicies)
@@ -107,7 +107,7 @@ bold "Policies"
 render "policies" policies k8s/policies \
   --namespace kyverno \
   --values k8s/policies/values.yaml \
-  --values k8s/policies/values/env/${ENV}.yaml
+  --values k8s/policies/values/env/${ENV}/values.yaml
 echo ""
 
 # Microservices 

@@ -1,105 +1,105 @@
-# name: Unit tests
+name: Unit tests
 
-# on:
-#   pull_request:
-#     branches: [ dev, main ]
-#     paths:
-#       - 'services/admin-server/**'
-#       - 'services/api-gateway/**'
-#       - 'services/config-server/**'
-#       - 'services/discovery-server/**'
-#       - 'services/customers-service/**'
-#       - 'services/vets-service/**'
-#       - 'services/visits-service/**'
-#       - 'services/genai-service/**'
-#       - 'services/pom.xml'
+on:
+  pull_request:
+    branches: [ dev, main ]
+    paths:
+      - 'services/admin-server/**'
+      - 'services/api-gateway/**'
+      - 'services/config-server/**'
+      - 'services/discovery-server/**'
+      - 'services/customers-service/**'
+      - 'services/vets-service/**'
+      - 'services/visits-service/**'
+      - 'services/genai-service/**'
+      - 'services/pom.xml'
       
-# jobs:
-#   filter-updated-directories:
-#     uses: ./.github/workflows/path-filter.yaml
+jobs:
+  filter-updated-directories:
+    uses: ./.github/workflows/path-filter.yaml
 
-#   run-tests:
-#     runs-on: ubuntu-24.04
-#     environment: >-
-#       ${{ (github.base_ref || github.ref_name) == 'main'
-#       && 'production'
-#       || 'development' }}
-#     needs: filter-updated-directories
-#     if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != ''}}
-#     permissions:
-#       contents: read
-#       checks: write
-#       pull-requests: write
-#       id-token: write
-#     strategy:
-#       matrix:
-#         dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
-#       fail-fast: false
-#     concurrency:
-#       group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
-#       cancel-in-progress: true
-#     env:
-#         EXCLUDED_SERVICES: '["admin-server", "genai-service"]'
-#         AWS_REGION: us-east-2
-#         CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
-#         AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
-#     steps:
-#         - name: Checkout code
-#           uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+  run-tests:
+    runs-on: ubuntu-24.04
+    environment: >-
+      ${{ (github.base_ref || github.ref_name) == 'main'
+      && 'production'
+      || 'development' }}
+    needs: filter-updated-directories
+    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' && needs.filter-updated-directories.outputs.dir_changed != ''}}
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      id-token: write
+    strategy:
+      matrix:
+        dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
+      fail-fast: false
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+        EXCLUDED_SERVICES: '["admin-server", "genai-service"]'
+        AWS_REGION: us-east-2
+        CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
+        AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
 
-#         - name: Configure AWS credentials
-#           uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
-#           with:
-#             role-to-assume: ${{ env.AWS_S3_ROLE_ARN }}
-#             aws-region: ${{ env.AWS_REGION }}
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
+          with:
+            role-to-assume: ${{ env.AWS_S3_ROLE_ARN }}
+            aws-region: ${{ env.AWS_REGION }}
 
-#         - name: Set short SHA and Build ID
-#           run: |
-#             echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
-#             echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
+        - name: Set short SHA and Build ID
+          run: |
+            echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+            echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_ENV
 
-#         - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
-#           with:
-#             distribution: 'temurin' 
-#             java-version: '17'
-#             cache: maven
-#             cache-dependency-path: "**/pom.xml"
+        - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+          with:
+            distribution: 'temurin' 
+            java-version: '17'
+            cache: maven
+            cache-dependency-path: "**/pom.xml"
 
-#         - name: Run Tests
-#           if: "!contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
-#           run: mvn -B test --file ${{ matrix.dir }}/pom.xml
+        - name: Run Tests
+          if: "!contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
+          run: mvn -B test --file ${{ matrix.dir }}/pom.xml
 
-#         - name: Publish Test Report
-#           uses: mikepenz/action-junit-report@49b2ca06f62aa7ef83ae6769a2179271e160d8e4
-#           if: "always() && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
-#           with:
-#             report_paths: '${{ matrix.dir }}/target/surefire-reports/TEST-*.xml'
+        - name: Publish Test Report
+          uses: mikepenz/action-junit-report@49b2ca06f62aa7ef83ae6769a2179271e160d8e4
+          if: "always() && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
+          with:
+            report_paths: '${{ matrix.dir }}/target/surefire-reports/TEST-*.xml'
 
-#         - name: Push test results to S3
-#           if: "always() && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
-#           run: |
-#             aws s3 sync ${{ matrix.dir }}/target/surefire-reports/ \
-#                 s3://${{ env.CICD_BUCKET }}/test-reports/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}/ \
-#                 --exclude "*" \
-#                 --include "TEST-*.xml" \
-#                 --content-type "application/xml"
+        - name: Push test results to S3
+          if: "always() && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
+          run: |
+            aws s3 sync ${{ matrix.dir }}/target/surefire-reports/ \
+                s3://${{ env.CICD_BUCKET }}/test-reports/${{ env.RUN_ID }}/${{ env.SHORT_SHA }}/${{ matrix.dir }}/ \
+                --exclude "*" \
+                --include "TEST-*.xml" \
+                --content-type "application/xml"
 
-#         - name: Send Slack notification on test results
-#           uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
-#           if: "(success() || failure()) && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
-#           with:
-#             payload: |
-#                         {
-#                           "text": "${{ job.status == 'success' && '✅' || '❌' }} *${{ github.workflow }}* — `${{ matrix.dir }}` on `${{ github.ref_name }}`",
-#                           "attachments": [{
-#                             "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
-#                             "fields": [
-#                               { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
-#                               { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
-#                               { "title": "Actor", "value": "${{ github.actor }}", "short": true },
-#                               { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
-#                             ]
-#                           }]
-#                         }
-#             webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-#             webhook-type: incoming-webhook
+        - name: Send Slack notification on test results
+          uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+          if: "(success() || failure()) && !contains(fromJson(env.EXCLUDED_SERVICES), matrix.dir)"
+          with:
+            payload: |
+                        {
+                          "text": "${{ job.status == 'success' && '✅' || '❌' }} *${{ github.workflow }}* — `${{ matrix.dir }}` on `${{ github.ref_name }}`",
+                          "attachments": [{
+                            "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                            "fields": [
+                              { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
+                              { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
+                              { "title": "Actor", "value": "${{ github.actor }}", "short": true },
+                              { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                            ]
+                          }]
+                        }
+            webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+            webhook-type: incoming-webhook

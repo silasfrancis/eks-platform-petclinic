@@ -69,7 +69,7 @@ ServiceAccount name
 {{- if .Values.serviceAccount.name -}}
 {{- .Values.serviceAccount.name }}
 {{- else -}}
-{{- .Values.appName }}
+{{- printf "%s-sa" .Values.appName }}
 {{- end -}}
 {{- end }}
 

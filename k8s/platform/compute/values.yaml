@@ -260,6 +260,9 @@ karpenter:
     # OVERRIDE: must match SQS queue name from Terraform
     interruptionQueue: ""
 
+  postInstallHook:
+    enabled: false
+
   # Karpenter must only run on the bootstrap node group
   # Running on nodes it manages causes a circular dependency
   nodeSelector:

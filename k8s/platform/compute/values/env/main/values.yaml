@@ -10,7 +10,7 @@ karpenter:
     annotations:
       eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-karpenter-irsa"
   settings:
-    clusterName: "prod-petclinic"
+    clusterName: "prod-petclinic-cluster"
     interruptionQueue: "prod-petclinic-cluster-karpenter-interruption"
 
 nodePools:

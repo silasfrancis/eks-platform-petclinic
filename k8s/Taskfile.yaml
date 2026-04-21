@@ -59,7 +59,7 @@ tasks:
     cmds:
       - |
         helm upgrade --install vpa fairwinds-stable/vpa \
-          -n vpa-system \
+          -n vpa \
           --create-namespace \
           --set updater.enabled=false \
           --set admissionController.enabled=false \

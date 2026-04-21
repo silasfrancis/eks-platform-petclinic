@@ -1,18 +1,19 @@
 name: Unit tests
 
 on:
-  pull_request:
-    branches: [ dev, main ]
-    paths:
-      - 'admin-server/**'
-      - 'api-gateway/**'
-      - 'config-server/**'
-      - 'discovery-server/**'
-      - 'customers-service/**'
-      - 'vets-service/**'
-      - 'visits-service/**'
-      - 'genai-service/**'
-      - 'pom.xml'
+  # pull_request:
+  #   branches: [ dev, main ]
+  #   paths:
+  #     - 'services/admin-server/**'
+  #     - 'services/api-gateway/**'
+  #     - 'services/config-server/**'
+  #     - 'services/discovery-server/**'
+  #     - 'services/customers-service/**'
+  #     - 'services/vets-service/**'
+  #     - 'services/visits-service/**'
+  #     - 'services/genai-service/**'
+  #     - 'services/pom.xml'
+  workflow_dispatch:
       
 jobs:
   filter-updated-directories:

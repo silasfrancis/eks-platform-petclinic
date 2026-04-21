@@ -1,18 +1,19 @@
 name: Build, Scan, Push to ECR and Sign
 
 on:
-  push:
-    branches: [ dev, main ]
-    paths:
-      - 'services/admin-server/**'
-      - 'services/api-gateway/**'
-      - 'services/config-server/**'
-      - 'services/discovery-server/**'
-      - 'services/customers-service/**'
-      - 'services/vets-service/**'
-      - 'services/visits-service/**'
-      - 'services/genai-service/**'
-      - 'services/pom.xml'
+  # push:
+  #   branches: [ dev, main ]
+  #   paths:
+  #     - 'services/admin-server/**'
+  #     - 'services/api-gateway/**'
+  #     - 'services/config-server/**'
+  #     - 'services/discovery-server/**'
+  #     - 'services/customers-service/**'
+  #     - 'services/vets-service/**'
+  #     - 'services/visits-service/**'
+  #     - 'services/genai-service/**'
+  #     - 'services/pom.xml'
+  workflow_dispatch:
 
 jobs:
   filter-updated-directories:

@@ -64,7 +64,7 @@ jobs:
         id: get_image_repo
         run: |
           REPO_NAME=$(task -t .github/workflows/utils/Taskfile.yaml get-repo SERVICE=${{ env.SERVICE }})
-          REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${REPO_NAME}"
+          REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
 
           echo "REPO_NAME=$REPO_NAME"
           echo "REGISTRY_URI=$REGISTRY_URI"
@@ -134,23 +134,24 @@ jobs:
 
       - name: Verify Image Signature
         run: |
-          cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-          --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-          --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+              cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+              --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
       - name: Attest scan results with Cosign
-        run: cosign attest \
-          --predicate '${{ env.SERVICE }}_trivy-results.json' \
-          --type vuln \
-          "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
+        run: |
+              cosign attest \
+                --predicate '${{ env.SERVICE }}_trivy-results.json' \
+                --type vuln \
+                "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
 
       - name: Verify scan attestation
         run: |
-          cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-            --type vuln \
-            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
-                
+              cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+                --type vuln \
+                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+                    
       - name: Save image metadata
         run: |
           mkdir -p /tmp/build_metadata

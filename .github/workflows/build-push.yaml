@@ -147,22 +147,23 @@ jobs:
 
       - name: Verify Image Signature
         run: |
-          cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-          --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-          --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+              cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
       - name: Attest scan results with Cosign
-        run: cosign attest \
-          --predicate '${{ matrix.dir }}_trivy-results.json' \
-          --type vuln \
-          "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
+        run: |
+              cosign attest \
+              --predicate '${{ matrix.dir }}_trivy-results.json' \
+              --type vuln \
+              "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
 
       - name: Verify scan attestation
         run: |
-          cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-            --type vuln \
-            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+              cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+                --type vuln \
+                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
                 
       - name: Save image metadata
         run: |

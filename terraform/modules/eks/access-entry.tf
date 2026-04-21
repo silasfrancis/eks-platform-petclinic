@@ -7,7 +7,6 @@ resource "aws_eks_access_entry" "eks_admin" {
   principal_arn = data.aws_iam_role.eks_admin.arn
   type          = "STANDARD"
 
-  depends_on = [aws_eks_cluster.main_cluster]
 }
 
 resource "aws_eks_access_policy_association" "eks_admin" {

@@ -10,10 +10,6 @@ variable "wireguard_server_security_group_id" {
   type = string
 }
 
-variable "rds_security_group_id" {
-  type = string
-}
-
 variable "wireguard_server_instance_profile" {
   type = string
 }

@@ -100,7 +100,6 @@ module "ec2" {
   public_subnet_id                   = module.vpc.public_subnets[0]
   wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
   wireguard_server_instance_profile  = module.iam.wireguard_server_instance_profile
-  rds_security_group_id              = module.vpc.security_group["rds"]
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"] # EBS volume encryption
   platform_engineers_group_name      = "platform"
 

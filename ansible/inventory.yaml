@@ -6,7 +6,7 @@ all:
     ansible_aws_ssm_s3_addressing_style: virtual
 
   children:
-    application:
+    wireguard:
       hosts:
         instance:
-          ansible_host: i-07c053f90305e5bc1
+          ansible_host: i-0cc05a0b55ac3892a

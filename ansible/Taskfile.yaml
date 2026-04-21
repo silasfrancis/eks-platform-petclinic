@@ -16,7 +16,7 @@ tasks:
       - ansible all -i inventory.yaml -m ping
     desc: Test Ansible connectivity to host
   
-  bootstrap_ec2_instance:
+  configure_wiregaurd_server:
     cmds:
       - ansible-playbook -i inventory.yaml wireguard.yaml
     desc: Configure wiregaurd server and set up clients

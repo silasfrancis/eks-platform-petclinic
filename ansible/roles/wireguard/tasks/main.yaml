@@ -2,7 +2,6 @@
 - name: Install WireGuard packages
   dnf:
     name:
-      - wireguard
       - wireguard-tools
     state: present
     update_cache: yes

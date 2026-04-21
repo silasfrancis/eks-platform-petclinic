@@ -29,9 +29,9 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
   }
 
   timeouts {
-    create = "20m"
-    update = "20m"
-    delete = "20m"
+    create = "30m"
+    update = "60m"
+    delete = "30m"
   }
 
   tags = {

@@ -50,8 +50,10 @@ resource "aws_eks_addon" "vpc_cni" {
     resource    = "eks-addon-vpc-cni"
   }
 
-  depends_on = [aws_eks_cluster.main_cluster]
-
+  depends_on = [
+    aws_eks_cluster.main_cluster,
+    aws_eks_node_group.karpenter_bootstrap
+  ]
   lifecycle {
     ignore_changes = [
       addon_version    
@@ -83,8 +85,10 @@ resource "aws_eks_addon" "kube_proxy" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
 
-  depends_on = [aws_eks_cluster.main_cluster]
-
+  depends_on = [
+    aws_eks_cluster.main_cluster,
+    aws_eks_node_group.karpenter_bootstrap
+  ]
   lifecycle {
     ignore_changes = [addon_version]
   }
@@ -116,9 +120,9 @@ resource "aws_eks_addon" "ebs_csi" {
   resolve_conflicts_on_update = "PRESERVE"
 
   depends_on = [
+    aws_eks_cluster.main_cluster,
     aws_eks_node_group.karpenter_bootstrap
   ]
-
   lifecycle {
     ignore_changes = [addon_version]
   }

@@ -270,7 +270,7 @@ karpenter:
     - key: CriticalAddonsOnly
       operator: "Equal"
       value: "true"
-      effect: "NO_SCHEDULE"
+      effect: "NoSchedule"
 
   # serviceMonitor:
   #   enabled: true

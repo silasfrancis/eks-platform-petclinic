@@ -13,7 +13,7 @@ locals {
 
       ebs_csi = {
         namespace = "kube-system"
-        sas       = ["aws-ebs-csi-driver"]
+        sas       = ["ebs-csi-controller-sa"]
         aws_managed_policies = ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
         policy    = {
           actions   = []

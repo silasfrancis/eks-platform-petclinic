@@ -3,12 +3,12 @@ locals {
     app_secrets = {
       namespace = "petclinic"
       sas       = [
-        "config-server", 
-        "customers-service", 
-        "visits-service", 
-        "vets-service", 
-        "genai-service", 
-        "db-migration"
+        "config-server-sa", 
+        "customers-service-sa", 
+        "visits-service-sa", 
+        "vets-service-sa", 
+        "genai-service-sa", 
+        "db-migration-sa"
       ]
       policy    = {
         actions   = [
@@ -62,7 +62,7 @@ locals {
 
   argocd_secrets = {
     namespace = "argocd"
-    sas       = ["argocd"]
+    sas       = ["argocd-sa"]
 
     policy = {
       actions = [
@@ -75,7 +75,7 @@ locals {
 
   platform_monitoring_secrets = {
     namespace = "monitoring"
-    sas       = ["platform-monitoring"]
+    sas       = ["platform-monitoring-sa"]
 
     policy = {
       actions = [

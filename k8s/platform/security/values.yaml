@@ -200,7 +200,7 @@ falco:
     - key: CriticalAddonsOnly
       operator: Equal
       value: "true"
-      effect: NO_SCHEDULE
+      effect: NoSchedule
 
   collectors:
     enabled: true

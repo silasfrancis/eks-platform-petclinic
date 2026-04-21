@@ -1,4 +1,4 @@
-name: Build, Scan, Push and Sign DB Migration Images
+name: Build and Push DB Migration Images
 
 on:
   push:

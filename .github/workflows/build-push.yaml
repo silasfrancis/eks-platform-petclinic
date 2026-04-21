@@ -1,4 +1,4 @@
-name: Build, Scan, Push to ECR and Sign
+name: Build and Push Service Images
 
 on:
   push:

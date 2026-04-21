@@ -11,3 +11,4 @@
 *errored.tfstate
 *.tfstate*
 *silasfrancis-client.conf
+rendered/*

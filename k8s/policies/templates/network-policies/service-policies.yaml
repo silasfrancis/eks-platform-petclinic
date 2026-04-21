@@ -11,7 +11,7 @@ metadata:
   name: {{ $spec.label }}-policy
   namespace: {{ $nsName }}
   labels:
-    {{- include "policies.netpol.labels" . | nindent 4 }}
+    {{- include "policies.netpol.labels" $root | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
@@ -34,15 +34,16 @@ spec:
     {{- end }}
 
     {{- range $spec.ingressFrom }}
-        {{- $fromService := index $services . }}
-        - from:
-            - namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: {{ $fromService.namespace | default $nsName }}
-              podSelector:
-                matchLabels:
-                  app: {{ $fromService.label }}
-                  app.kubernetes.io/name: {{ $fromService.label }}
+      {{- $fromService := index $services . }}
+      {{- if $fromService }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $fromService.namespace | default $nsName }}
+          podSelector:
+            matchLabels:
+              app: {{ $fromService.label }}
+      {{- end }}
     {{- end }}
 
     {{- if $spec.allowPrometheus }}
@@ -54,7 +55,7 @@ spec:
             matchLabels:
               app.kubernetes.io/name: {{ $net.prometheus.label }}
       ports:
-        - port: {{ $spec.port }}
+        - port: {{ $net.prometheus.port }}
           protocol: TCP
     {{- end }}
 
@@ -62,7 +63,7 @@ spec:
     {{- if $spec.allowRds }}
     - to:
         - ipBlock:
-            cidr: {{ $net.rds.cidr }}
+            cidr: {{ $net.rds.cidr | default "0.0.0.0/0" }}
       ports:
         - port: {{ $net.rds.port }}
           protocol: TCP
@@ -73,7 +74,6 @@ spec:
         - podSelector:
             matchLabels:
               app: {{ $services.discoveryServer.label }}
-              app.kubernetes.io/name: {{ $services.discoveryServer.label }}
       ports:
         - port: {{ $services.discoveryServer.port }}
           protocol: TCP
@@ -84,14 +84,14 @@ spec:
         - podSelector:
             matchLabels:
               app: {{ $services.configServer.label }}
-              app.kubernetes.io/name: {{ $services.configServer.label }}
       ports:
         - port: {{ $services.configServer.port }}
           protocol: TCP
     {{- end }}
 
     {{- range $spec.egressTo }}
-    {{- $toService := index $services . }}
+      {{- $toService := index $services . }}
+      {{- if $toService }}
     - to:
         - namespaceSelector:
             matchLabels:
@@ -99,11 +99,10 @@ spec:
           podSelector:
             matchLabels:
               app: {{ $toService.label }}
-              app.kubernetes.io/name: {{ $toService.label }}
       ports:
         - port: {{ $toService.port }}
           protocol: TCP
+      {{- end }}
     {{- end }}
-
 {{- end }}
 {{- end }}

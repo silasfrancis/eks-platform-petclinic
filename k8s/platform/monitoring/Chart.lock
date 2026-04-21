@@ -1,0 +1,15 @@
+dependencies:
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 82.16.0
+- name: prometheus-cloudwatch-exporter
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 0.25.3
+- name: loki
+  repository: https://grafana.github.io/helm-charts
+  version: 6.52.0
+- name: alloy
+  repository: https://grafana.github.io/helm-charts
+  version: 1.6.0
+digest: sha256:501b3083deac1f42b919c62e852ec3c37042d7e3d542dfe612666a2b2afb8c18
+generated: "2026-04-21T14:26:16.175995838+01:00"

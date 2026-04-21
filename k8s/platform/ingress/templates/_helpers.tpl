@@ -214,14 +214,17 @@ ExternalSecret name
 Secret name — created by ExternalSecret secretStoreRef.target.name
 */}}
 {{- define "external-dns.secretName" -}}
-{{- .Values.secret.name | default "external-dns-secrets" }}
+{{- .Values.externalSecret.target.name | default "external-dns-secrets" }}
 {{- end }}
 
 
-{{/*irsa service account*/}}
 {{/*
 Service account name for external dns secret store
 */}}
 {{- define "external-dns.serviceAccountName" -}}
-{{- .Values.  .name | default "external-dns-sa" }}
-{{- end }}
+{{- if .Values.esoServiceAccount -}}
+  {{- .Values.esoServiceAccount.name | default "external-dns-sa" -}}
+{{- else -}}
+  {{- "external-dns-sa" -}}
+{{- end -}}
+{{- end -}}

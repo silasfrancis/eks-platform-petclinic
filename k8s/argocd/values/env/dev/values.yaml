@@ -10,7 +10,6 @@ argocd:
 
 serviceAccount:
   create: true
-  name: ""
   annotations: 
 
 externalSecret:

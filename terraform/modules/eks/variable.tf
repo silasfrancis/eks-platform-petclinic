@@ -2,6 +2,10 @@ variable "env" {
   type = string
 }
 
+variable "app" {
+  type = string
+}
+
 variable "cluster_version" {
     type = string
     default = "1.35"
@@ -24,33 +28,11 @@ variable "eks_node_sg_id" {
     type = string
 }
 
-variable "ami_type" {
-    type = string
-}
-
-variable "disk_size" {
-    type = string
-  
-}
-
-variable "instance_type" {
-    type = string
-  
-}
-
-variable "kms_eks_secrets_arn" {
+variable "eks_secrets_kms_key_arn" {
   type = string
 }
 
-variable "kms_eks_nodes_ebs_arn" {
-  type = string
-}
-
-variable "app" {
-  type = string
-}
-
-variable "jumphost_ec2_role_arn" {
+variable "data_storage_kms_key_arn" {
   type = string
 }
 
@@ -59,10 +41,6 @@ variable "wireguard_server_security_group_id" {
 }
 
 variable "nlb_external_security_group_id" {
-  type = string
-}
-
-variable "app" {
   type = string
 }
 

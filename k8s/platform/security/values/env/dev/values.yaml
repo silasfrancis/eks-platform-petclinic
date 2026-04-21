@@ -10,9 +10,9 @@ externalSecret:
   data: 
     - secretKey: slack_webhook_url
       remoteRef:
-        key: "" 
-        property: slack_webhook_url
+        key: "dev/platform-monitoring" 
+        property: slack-webhook-url
     - secretKey: api-token
       remoteRef:
-        key: "" 
+        key: "dev/platform-dns" 
         property: cloudflare-api-token

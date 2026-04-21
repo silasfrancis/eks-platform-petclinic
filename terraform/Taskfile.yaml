@@ -1,0 +1,73 @@
+# Terraform operations per environment.
+#
+# Backend config is partial — bucket, key and region live in state.conf
+# per environment. This avoids hardcoding backend config in main.tf.
+#
+# Usage:
+#   task tf:init ENV=dev
+#   task tf:plan ENV=dev
+#   task tf:apply ENV=dev
+#   task tf:destroy ENV=dev 
+
+version: "3"
+
+tasks:
+  validate-env:
+    internal: true
+    status:
+      - '[[ "{{.ENV}}" == "dev" || "{{.ENV}}" == "main" ]]'
+    cmds:
+      - |
+        echo "Error: You must provide ENV=dev or ENV=main"
+      - exit 1
+
+  init:
+    desc: "Initialise backend for {{.ENV}}"
+    dir: env/{{.ENV}}
+    deps: [validate-env]
+    cmds:
+      - terraform init -backend-config="state.conf" -reconfigure
+
+  validate:
+    desc: "Validate configuration"
+    dir: env/{{.ENV}}
+    deps: [validate-env]
+    cmds:
+      - terraform validate
+
+  fmt:
+    desc: "Fix formatting"
+    cmds:
+      - terraform fmt -recursive
+
+  plan:
+    desc: "Create execution plan"
+    dir: env/{{.ENV}}
+    deps: [validate-env]
+    cmds:
+      - terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+  apply:
+    desc: "Apply execution plan"
+    dir: env/{{.ENV}}
+    deps: [validate-env]
+    cmds:
+      - terraform apply tfplan
+    preconditions:
+      - sh: "[ -f env/{{.ENV}}/tfplan ]"
+        msg: "Run 'task tf:plan' first"
+
+  destroy:
+    desc: "Teardown infrastructure"
+    dir: env/{{.ENV}}
+    deps: [validate-env]
+    prompt: "Are you sure you want to destroy {{.ENV}}?"
+    cmds:
+      - terraform destroy -var-file="terraform.tfvars"
+
+  output:
+    desc: "Show outputs"
+    dir: env/{{.ENV}}
+    deps: [validate-env]
+    cmds:
+      - terraform output

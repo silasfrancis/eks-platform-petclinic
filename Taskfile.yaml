@@ -1,0 +1,109 @@
+# Root entrypoint for all platform operations.
+# Includes sub-Taskfiles for terraform, k8s bootstrap, ansible and local dev.
+#
+# Usage:
+#   task --list                     show all available tasks
+#   task tf:plan ENV=dev            terraform plan for dev
+#   task k8s:bootstrap ENV=dev      full cluster bootstrap
+#   task validate ENV=dev           validate all helm charts
+#   task local:up                   start local docker-compose stack
+#
+# Note: For full configurations, variable definitions, and manual overrides,
+#       refer to the individual Taskfiles and source code in these folders:
+#       - ./terraform/ (Infrastructure as Code)
+#       - ./k8s/       (Kubernetes Manifests & Helm Charts)
+#       - ./ansible/   (Server Configuration)
+
+version: "3"
+
+includes:
+  tf:
+    taskfile: ./terraform/Taskfile.yaml
+    dir: ./terraform
+    vars:
+      ENV: "{{.ENV}}"
+
+  k8s:
+    taskfile: ./k8s/Taskfile.yaml
+    dir: ./k8s
+    vars:
+      ENV: "{{.ENV}}"
+      CLUSTER_NAME: "{{.CLUSTER_NAME}}"
+
+  ansible:
+    taskfile: ./ansible/Taskfile.yaml
+    dir: ./ansible
+
+tasks:
+  validate-env:
+    internal: true
+    status:
+      - '[[ "{{.ENV}}" == "dev" || "{{.ENV}}" == "main" ]]'
+    cmds:
+      - |
+        echo "Error: You must provide ENV=dev or ENV=main"
+      - exit 1
+
+  # Full platform lifecycle
+  # Provision infrastructure then bootstrap cluster
+  # Run once per environment after initial setup
+  platform:up:
+    desc: "Provision infrastructure and bootstrap platform"
+    deps: [validate-env]
+    summary: |
+      1. Terraform - infra
+      2. Ansible - WireGuard
+      3. K8s - cluster bootstrap
+    cmds:
+      - task: tf:apply
+        vars:
+          ENV: "{{.ENV}}"
+      - task: ansible:configure_wireguard
+      - task: k8s:bootstrap
+        vars: 
+          ENV: "{{.ENV}}"
+          CLUSTER_NAME: "{{.CLUSTER_NAME}}"
+
+  # validate all helm charts before deploying
+  validate:
+    desc: "Validate all Helm charts"
+    deps: [validate-env]
+    cmds:
+      - ./scripts/validate-charts.sh {{ .ENV }}
+
+  validate:export:
+    desc: "Export rendered manifests"
+    deps: [validate-env]
+    cmds:
+      - ./scripts/validate-charts.sh {{ .ENV }} --export
+
+  # Local docker compose stack for running local tests
+  local:up:
+    desc: "Start local microservices stack"
+    cmds:
+      - docker compose up -d
+      - |
+        echo "API Gateway: http://localhost:8080"
+        echo "Discovery Server: http://localhost:8761"
+        echo "Admin Server: http://localhost:9090"
+        echo "Config Server: http://localhost:8888"
+
+  local:down:
+    desc: "Stop local microservices stack"
+    cmds:
+      - docker compose down
+
+  local:logs:
+    desc: "Tail logs for service"
+    cmds:
+      - docker compose logs -f {{ .SERVICE }}
+
+  local:build:
+    desc: "Build images"
+    cmds:
+      - docker compose build
+
+  local:restart:
+    desc: "Restart service"
+    cmds:
+      - docker compose restart {{ .SERVICE }}

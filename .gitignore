@@ -5,4 +5,9 @@
 *plan.json
 *.terraform.lock.hcl
 *terraform.tfstate*
-*terraform.tfvars
+*secrets.tfvars
+*state.conf
+*ansible.log
+*errored.tfstate
+*.tfstate*
+*silasfrancis-client.conf

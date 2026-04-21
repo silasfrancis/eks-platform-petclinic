@@ -1,19 +1,9 @@
-locals {
-  service_accounts = [
-    "config-server-sa",
-    "customers-service-sa",
-    "visits-service-sa",
-    "vets-service-sa",
-    "genai-service-sa",
-    "db-migration-sa",
-    "cluster-config-sa"
-  ]
-}
-
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# App Registry
+# Provides application metadata and tags used across modules
 module "app-registry" {
   source = "../../modules/app-registry"
 
@@ -23,248 +13,204 @@ module "app-registry" {
 
   env       = var.environment
   app       = var.app
-  owner     = "silasfrancis"
-  repo      = "https://github.com/silasfrancis/spring-boot-microservices"
-  language  = "java"
-  framework = "spring-boot"
+  owner     = var.owner
+  repo      = var.repo
+  language  = var.language
+  framework = var.framework
 }
 
+# KMS
+# Keys for encryption (EKS, RDS, S3, EBS, CloudWatch)
 module "kms" {
   source = "../../modules/kms"
 
   env = var.environment
 
-  depends_on = [module.app-registry]
+
 }
 
+# Secrets Manager 
+# Reads pre-created secrets for RDS credentials and Slack webhook
+# Secrets must be populated in AWS before terraform apply
 module "secret_manager" {
-  source      = "../../modules/secret_manager"
-  secret_name = "${var.environment}/springboot-microservices"
+  source = "../../modules/secret_manager"
 
-  depends_on = [module.app-registry]
+  env = var.environment
+
+
 }
 
+# S3 
+# Tfstate, Loki log storage, Velero backup storage, RDS export bucket
+# KMS key required for bucket encryption
 module "s3" {
   source = "../../modules/s3"
 
-  env             = var.environment
-  bucket_name     = "${var.application_tag}-silas-${var.environment}"
-  bucket_key      = "${var.environment}/terraform.tfstate"
-  bucket_rule_id  = "${var.application_tag}${var.environment}"
-  bucket_exp_days = 60
-  bucket_tag_name = var.application_tag
+  env                      = var.environment
+  app                      = var.app
+  data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
 
-  depends_on = [module.app-registry]
 }
 
+# IAM
+# IAM roles for EC2, EKS, RDS, Lambda, and VPC flow logs
 module "iam" {
   source = "../../modules/iam"
 
-  env                    = var.environment
-  app                    = var.app
-  secret_name            = module.secret_manager.secret_name
-  rds_export_bucket_arn  = module.s3.bucket_arn["rds_export_bucket_arn"]
-  rds_export_kms_key_arn = module.kms.kms_key_arn["rds_data"]
+  env                      = var.environment
+  app                      = var.app
+  rds_export_bucket_arn    = module.s3.bucket_arn["rds_export_bucket_arn"]
+  data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
 
-  depends_on = [
-    module.app-registry,
-    module.secret_manager,
-    module.s3,
-    module.kms,
-  ]
 }
 
+# CloudWatch Logs
+# Log groups for EKS and VPC flow logs
 module "cloudwatch_logs" {
   source = "../../modules/cloudwatch_logs"
 
-  env                = var.environment
-  app                = var.app
-  kms_infra_logs_arn = module.kms.kms_key_arn["infra_logs"]
+  env                      = var.environment
+  app                      = var.app
+  infra_common_kms_key_arn = module.kms.kms_key_arn["infra_common"]
 
-  depends_on = [
-    module.app-registry,
-    module.kms,
-  ]
 }
 
+# VPC 
+# Networking layer (subnets, security groups, NAT, flow logs)
 module "vpc" {
   source = "../../modules/vpc"
 
-  tags                     = var.application_tag
   app                      = var.app
   env                      = var.environment
   availability_zones       = data.aws_availability_zones.available.names
   vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
   vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
 
-  depends_on = [
-    module.app-registry,
-    module.iam,
-    module.cloudwatch_logs,
-  ]
 }
 
+# EC2 (WireGuard Server) 
+# Public EC2 instance for WireGuard VPN
+# Configured via Ansible over SSM after Terraform — no SSH port needed
+# KMS dependency added — EBS root volume is encrypted
 module "ec2" {
   source = "../../modules/ec2"
 
-  env                   = var.environment
-  app                   = var.app
-  ami                   = "ami-0b0b78dcacbab728f"
-  instance_type         = "t4g.micro"
-  vpc_id                = module.vpc.vpc_id
-  private_subnet_id     = module.vpc.subnets["private_subnet_1"]
-  ec2_security_group_id = module.vpc.security_group["ec2"]
-  iam_instance_profile  = module.iam.iam_instance_profile
+  env                                = var.environment
+  app                                = var.app
+  public_subnet_id                   = module.vpc.public_subnets[0]
+  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
+  wireguard_server_instance_profile  = module.iam.wireguard_server_instance_profile
+  data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"] # EBS volume encryption
+  platform_engineers_group_name      = "platform"
 
-  depends_on = [
-    module.app-registry,
-    module.vpc,
-    module.iam,
-  ]
 }
 
+# EKS
+# EKS control plane + bootstrap node group (runs Karpenter only)
+# VPC, IAM roles and KMS keys must exist first
 module "eks" {
   source = "../../modules/eks"
 
-  env                    = var.environment
-  app                    = var.app
-  k8_version             = "1.35"
-  cluster_role_arn       = module.iam.roles["cluster_role"]
-  node_role_arn          = module.iam.roles["worker_node_role"]
-  subnet_ids_for_cluster = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
-  subnet_ids_node_group  = module.vpc.private_subnets
-  node_scaling_config = {
-    desired_size = 2
-    max_size     = 3
-    min_size     = 1
-  }
-  eks_security_group_id     = module.vpc.security_group["eks"]
-  ec2_security_group_id = module.vpc.security_group["ec2"]
-  nlb_security_group_id = module.vpc.security_group["nlb"]
-  ami_type              = "AL2023_ARM_64_STANDARD"
-  disk_size             = "20"
-  instance_types        = ["t4g.medium"]
-  kms_eks_secrets_arn   = module.kms.kms_key_arn["eks_secrets"]
-  kms_eks_nodes_ebs_arn = module.kms.kms_key_arn["eks_nodes_ebs"]
-  jumphost_ec2_role_arn = module.iam.roles["jumphost_ec2_role"]
+  env                                = var.environment
+  app                                = var.app
+  cluster_version                    = "1.35"
+  cluster_role_arn                   = module.iam.roles["cluster_role"]
+  node_role_arn                      = module.iam.roles["node_role"]
+  private_subnets                    = module.vpc.private_subnets
+  eks_node_sg_id                     = module.vpc.security_group["eks_node"]
+  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
+  nlb_external_security_group_id     = module.vpc.security_group["nlb_external"]
+  eks_secrets_kms_key_arn            = module.kms.kms_key_arn["eks_secrets"]
+  data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
 
-  depends_on = [
-    module.app-registry,
-    module.vpc,
-    module.iam,
-    module.kms,
-  ]
 }
 
+# DNS (Route53 Private Hosted Zone) 
+# Private hosted zone for internal dashboard DNS
+# Grafana, ArgoCD, Prometheus, Loki — VPN access only
+# VPC must exist (zone is associated with VPC)
+# EKS must exist (cluster_name used for zone tagging)
+module "dns" {
+  source = "../../modules/dns"
+
+  vpc_id       = module.vpc.vpc_id
+  cluster_name = module.eks.cluster_name
+
+}
+
+# IRSA (IAM Roles for Service Accounts)
+# Per-component IAM roles bound to EKS service accounts via OIDC
+# One role per platform component: Karpenter, Loki, Velero, ESO, ExternalDNS etc
+# EKS OIDC provider must exist — created by EKS module
+# Removed module.iam-oidc reference — OIDC provider is part of module.eks
+module "irsa" {
+  source = "../../modules/irsa"
+
+  oidc_arn                        = module.eks.oidc_arn
+  oidc_url                        = module.eks.oidc_url_stripped
+  cluster_name                    = module.eks.cluster_name
+  app_secrets_arn                 = [module.secret_manager.secret_arns["petclinic"]]
+  platform_monitoring_secrets_arn = [module.secret_manager.secret_arns["monitoring"]]
+  platform_dns_secrets_arn        = [module.secret_manager.secret_arns["dns"]]
+  platform_security_secrets_arn   = [module.secret_manager.secret_arns["monitoring"], module.secret_manager.secret_arns["dns"]]
+  argocd_secrets_arn              = [module.secret_manager.secret_arns["argocd"]]
+  route53_private_zone_arn        = [module.dns.zone_arn]
+  loki_bucket_arn                 = module.s3.bucket_arn["loki_bucket_arn"]
+  velero_bucket_arn               = module.s3.bucket_arn["velero_bucket_arn"]
+  data_storage_kms_key_arn        = module.kms.kms_key_arn["data_storage"]
+  
+}
+
+# RDS
+# MySQL database for petclinic microservices
+# Credentials read from Secrets Manager — never hardcoded
+# EKS node SG added to RDS ingress rules via module
 module "rds" {
   source = "../../modules/rds"
 
-  env                     = var.environment
-  app                     = var.app
-  private_subnet_ids      = [module.vpc.subnets["private_subnet_1"], module.vpc.subnets["private_subnet_2"]]
-  mysql_version           = "8.0"
-  db_instance_class       = "db.t3.medium"
-  allocated_storage       = 20
-  db_name                 = module.secret_manager.db_secrets["data_base"]
-  db_username             = module.secret_manager.db_secrets["db_username"]
-  db_password             = module.secret_manager.db_secrets["db_password"]
-  rds_security_group_id   = module.vpc.security_group["rds"]
-  cluster_sg_id           = module.eks.cluster_sg_id
-  ec2_security_group_id   = module.vpc.security_group["ec2"]
-  rds_data_kms_arn        = module.kms.kms_key_arn["rds_data"]
-  rds_monitoring_role_arn = module.iam.roles["rds_monitoring_role"]
+  env                                = var.environment
+  app                                = var.app
+  private_subnets                    = module.vpc.private_subnets
+  mysql_version                      = "8.0"
+  db_instance_class                  = "db.t3.medium"
+  allocated_storage                  = 20
+  db_name                            = module.secret_manager.db_credentials["database"]
+  db_username                        = module.secret_manager.db_credentials["username"]
+  db_password                        = module.secret_manager.db_credentials["password"]
+  rds_security_group_id              = module.vpc.security_group["rds"]
+  eks_node_sg_id                     = module.vpc.security_group["eks_node"]
+  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
+  data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
+  rds_monitoring_role_arn            = module.iam.roles["rds_monitoring_role"]
 
-  depends_on = [
-    module.app-registry,
-    module.vpc,
-    module.secret_manager,
-    module.kms,
-    module.iam,
-  ]
 }
 
-module "rds-s3-exporter" {
-  source = "../../modules/rds-s3-exporter"
+# RDS Automated Backup
+# Lambda-based scheduled export of RDS snapshots to S3
+# with Slack notifications for backup failures
+module "rds-automated-backup" {
+  source = "../../modules/rds-automated-backup"
 
   env                          = var.environment
   app                          = var.app
   db_instance_identifier       = module.rds.db_identifier
   rds_export_bucket            = module.s3.bucket_name["rds_export_bucket_name"]
   rds_export_role_arn          = module.iam.roles["rds_export_role"]
-  rds_export_lambda_role_arn   = module.iam.roles["rds_export_lambda_role"]
-  slack_notify_lambda_role_arn = module.iam.roles["slack_notifier_lambda_role"]
-  rds_export_kms_key_arn       = module.kms.kms_key_arn["infra_logs"]
-  rds_export_kms_key_id        = module.kms.kms_key_id["rds_data"]
-  slack_webhook_url            = module.secret_manager.slack_secrets["slack_aws_alert_webhook_url"]
+  lambda_backup_role_arn       = module.iam.roles["lambda_backup_role"]
+  lambda_notification_role_arn = module.iam.roles["lambda_notification_role"]
+  infra_common_kms_key_arn     = module.kms.kms_key_arn["infra_common"]
+  data_storage_kms_key_arn     = module.kms.kms_key_arn["data_storage"]
+  slack_webhook_url            = module.secret_manager.slack_webhook_url
 
-  depends_on = [
-    module.app-registry,
-    module.rds,
-    module.s3,
-    module.iam,
-    module.kms,
-  ]
 }
 
+# NLB Security Group Rules
+# Manages ingress/egress rules on the NLB security groups
 module "nlb" {
   source = "../../modules/nlb"
-  
-  nlb_security_group_id = module.vpc.security_group["nlb"]
 
-  depends_on = [
-    module.app-registry,
-    module.vpc,
-    module.iam,
-    module.kms,
-  ]
-}
+  nlb_external_sg_id                 = module.vpc.security_group["nlb_external"]
+  nlb_internal_sg_id                 = module.vpc.security_group["nlb_internal"]
+  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
 
-module "iam-oidc" {
-  source   = "../../modules/iam-oidc"
-
-  eks_oidc_provider_url = module.eks.oidc_provider_url
-
-  depends_on = [
-    module.app-registry,
-    module.eks,
-    module.secret_manager,
-  ]
-}
-
-
-module "irsa" {
-  source   = "../../modules/irsa"
-  for_each = toset(local.service_accounts)
-
-  env                   = var.environment
-  app                   = var.app
-  oidc_url              = module.iam-oidc.oidc_url_stripped
-  oidc_arn              = module.iam-oidc.oidc_arn
-  namespace             = var.app_namespace
-  service_account_name  = each.value
-  secret_name           = module.secret_manager.secret_name
-
-  depends_on = [
-    module.app-registry,
-    module.eks,
-    module.secret_manager,
-    module.iam-oidc,
-  ]
-}
-
-module "irsa-alb-controller" {
-  source = "../../modules/irsa-alb-controller"
-
-  env = var.environment
-  app = var.app
-  oidc_url = module.iam-oidc.oidc_url_stripped
-  oidc_arn = module.iam-oidc.oidc_arn
-  namespace = var.alb_controller_namespace
-  service_account_name = "aws-load-balancer-controller"
-
-  depends_on = [
-    module.app-registry,
-    module.eks,
-    module.iam-oidc,
-  ]
 }

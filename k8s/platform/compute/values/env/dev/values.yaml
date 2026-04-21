@@ -1,9 +1,29 @@
-karpenter:
+cluster:
+  name: "dev-petclinic"
+  env: "dev"
+  app: "petclinic"
+  nodeRoleName: "dev-petclinic-node-role"
+  kmsKeyArn: ""
 
+karpenter:
   serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: ""
-
   settings:
-    clusterName: ""
+    clusterName: "dev-petclinic"
     interruptionQueue: ""
+
+nodePools:
+  on-demand:
+    limits:
+      cpu: "4"
+      memory: 8Gi
+      nodes: 2
+    disruption:
+      consolidateAfter: 5m
+
+  spot:
+    limits:
+      cpu: "4"
+      memory: 8Gi
+      nodes: 2

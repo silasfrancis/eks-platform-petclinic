@@ -1,6 +1,6 @@
 resource "aws_iam_role" "irsa" {
   for_each = local.irsa_roles
-  name     = "${var.env}-${var.cluster_name}-${each.key}-irsa"
+  name     = "${var.cluster_name}-${each.key}-irsa"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -21,13 +21,12 @@ resource "aws_iam_role" "irsa" {
   })
   tags = {
     system = "irsa"
-    env    = var.env
   }
 }
 
 resource "aws_iam_policy" "irsa" {
   for_each = local.irsa_roles
-  name     = "${var.env}-${var.cluster_name}-${each.key}-policy"
+  name     = "${var.cluster_name}-${each.key}-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,7 +42,6 @@ resource "aws_iam_policy" "irsa" {
   
   tags = {
     system = "irsa"
-    env    = var.env
   }
 }
 

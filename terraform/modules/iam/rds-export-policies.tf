@@ -28,7 +28,7 @@ resource "aws_iam_policy" "rds_export_policy" {
           "kms:GenerateDataKey*",
           "kms:DescribeKey"
         ]
-        Resource = var.rds_export_kms_key_arn
+        Resource = var.data_storage_kms_key_arn
       }
     ]
   })

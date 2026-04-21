@@ -1,5 +1,5 @@
 resource "aws_eks_cluster" "main_cluster" {
-  name     = "${var.env}-${var.app}-eks-cluster"
+  name     = "${var.env}-${var.app}-cluster"
   version  = var.cluster_version
   role_arn = var.cluster_role_arn
 
@@ -17,7 +17,7 @@ resource "aws_eks_cluster" "main_cluster" {
   encryption_config {
     resources = ["secrets"]
     provider {
-      key_arn = var.kms_eks_secrets_arn 
+      key_arn = var.eks_secrets_kms_key_arn 
     }
   }
 

@@ -1,0 +1,76 @@
+{{- $root := . }}
+{{- $cluster := .Values.cluster }}
+{{- range $poolName, $pool := .Values.nodePools }}
+{{- if $pool.enabled }}
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: {{ $poolName }}
+  labels:
+    {{- include "compute.labels" $root | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    metadata:
+      labels:
+        {{- toYaml $pool.labels | nindent 8 }}
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: {{ $cluster.env }}-{{ $cluster.app }}-node-class
+        
+      startupTaints:
+        - key: node.cilium.io/agent-not-ready
+          value: "true"
+          effect: NoExecute
+
+      {{- if $pool.taints }}
+      taints:
+        {{- toYaml $pool.taints | nindent 8 }}
+      {{- end }}
+
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: {{ toJson $pool.requirements.arch }}
+        - key: kubernetes.io/os
+          operator: In
+          values: {{ toJson $pool.requirements.os }}
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: {{ toJson $pool.requirements.capacityType }}
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: {{ toJson $pool.requirements.instanceCategory }}
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: {{ toJson $pool.requirements.instanceFamily }}
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gte
+          values: [{{ $pool.requirements.instanceGeneration | quote }}]
+        - key: karpenter.k8s.aws/instance-hypervisor
+          operator: In
+          values: {{ toJson $pool.requirements.hypervisor }}
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: {{ toJson $cluster.availabilityZones }}
+
+      expireAfter: {{ $pool.expireAfter }}
+      terminationGracePeriod: {{ $pool.terminationGracePeriod }}
+
+  disruption:
+    consolidationPolicy: {{ $pool.disruption.consolidationPolicy }}
+    consolidateAfter: {{ $pool.disruption.consolidateAfter }}
+    budgets:
+      {{- toYaml $pool.disruption.budgets | nindent 6 }}
+
+  limits:
+    cpu: {{ $pool.limits.cpu | quote }}
+    memory: {{ $pool.limits.memory }}
+
+  weight: {{ $pool.weight }}
+{{- end }}
+{{- end }}

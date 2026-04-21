@@ -4,15 +4,15 @@ on:
   push:
     branches: [ dev, main ]
     paths:
-      - 'admin-server/**'
-      - 'api-gateway/**'
-      - 'config-server/**'
-      - 'discovery-server/**'
-      - 'customers-service/**'
-      - 'vets-service/**'
-      - 'visits-service/**'
-      - 'genai-service/**'
-      - 'pom.xml'
+      - 'services/admin-server/**'
+      - 'services/api-gateway/**'
+      - 'services/config-server/**'
+      - 'services/discovery-server/**'
+      - 'services/customers-service/**'
+      - 'services/vets-service/**'
+      - 'services/visits-service/**'
+      - 'services/genai-service/**'
+      - 'services/pom.xml'
 
 jobs:
   filter-updated-directories:
@@ -21,7 +21,7 @@ jobs:
   build-scan-push:
     runs-on: ubuntu-24.04
     environment: >-
-      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
+      ${{ (github.base_ref || github.ref_name) == 'main'
       && 'production'
       || 'development' }}
     needs: filter-updated-directories
@@ -92,7 +92,7 @@ jobs:
       - name: Build Single Arch image for Scan
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
-          context: .
+          context: services/
           file: ${{ matrix.dir }}/Dockerfile
           push: false
           load: true
@@ -125,7 +125,7 @@ jobs:
         id: push_image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
-          context: .
+          context: services/
           file: ${{ matrix.dir }}/Dockerfile
           push: true                              
           tags: ${{ steps.get_image_repo.outputs.IMAGE }}

@@ -1,0 +1,65 @@
+# Metrics Server values for EKS.
+# Required by HPA and kubectl top.
+# Must be installed before HPA-managed workloads are deployed.
+#
+# Note: insecureSkipTLSVerify must be true because kubelet certificates
+# on EKS are self-signed. cert-manager does not help here — this is a
+# metrics-server to kubelet communication issue, not an ingress TLS issue.
+
+replicas: 1
+
+# system-cluster-critical ensures metrics-server is not evicted
+# under node pressure — HPA stops working if metrics-server is down
+priorityClassName: system-cluster-critical
+
+# Run on ON_DEMAND bootstrap nodes — metrics collection must be reliable
+nodeSelector:
+  kubernetes.io/os: linux
+  node-type: karpenter-bootstrap
+
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+
+# insecureSkipTLSVerify is required on EKS — kubelet uses self-signed certs
+# This is safe — communication is still encrypted, just not verified
+apiService:
+  create: true
+  insecureSkipTLSVerify: true
+
+# EKS requires kubelet-preferred-address-types to use InternalIP
+# hostname resolution does not work reliably across availability zones
+defaultArgs:
+  - --cert-dir=/tmp
+  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+  - --kubelet-use-node-status-port
+  - --metric-resolution=15s
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: platform-monitoring
+  interval: 1m
+  scrapeTimeout: 10s

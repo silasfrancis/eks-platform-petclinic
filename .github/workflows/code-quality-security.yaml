@@ -2,10 +2,8 @@ name: Code Quality & Security
 
 on:
   pull_request:
-    branches: [ main ]
-  push:
-    branches: [ dev ]
-
+    branches: [ dev, main ]
+    
 jobs:
   filter-updated-directories:
     uses: ./.github/workflows/path-filter.yaml

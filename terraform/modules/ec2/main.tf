@@ -26,7 +26,7 @@ resource "aws_instance" "wireguard_server" {
   }
 
   lifecycle {
-    prevent_destroy = true
-    ignore_changes = [user_data] 
+    # prevent_destroy = true
+    ignore_changes = [user_data, associate_public_ip_address] 
   }
 }

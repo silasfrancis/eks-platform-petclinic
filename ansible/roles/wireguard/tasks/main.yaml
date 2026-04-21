@@ -92,6 +92,6 @@
   register: wg_status
   ignore_errors: true
 
-# - name: Debug WireGuard status
-#   debug:
-#     var: wg_status.stdout
+- name: Debug WireGuard status
+  debug:
+    var: wg_status.stdout

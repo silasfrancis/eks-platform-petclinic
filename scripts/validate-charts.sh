@@ -58,7 +58,7 @@ echo ""
 # Dependencies
 
 bold "Updating chart dependencies"
-helm dependency update k8s/apps/microservice   --quiet && green "  ✓ microservice"
+helm dependency update k8s/microservice   --quiet && green "  ✓ microservice"
 helm dependency update k8s/platform/ingress    --quiet && green "  ✓ platform/ingress"
 helm dependency update k8s/platform/compute    --quiet && green "  ✓ platform/compute"
 helm dependency update k8s/platform/monitoring --quiet && green "  ✓ platform/monitoring"
@@ -80,6 +80,7 @@ bold "Platform: Ingress"
 render "platform-ingress" ingress k8s/platform/ingress \
   --namespace istio-ingress \
   --values k8s/platform/ingress/values.yaml
+  --values k8s/platform/ingress/values/env/${ENV}.yaml
 echo ""
 
 # Platform: Compute (Karpenter + NodePools + FlowSchema)
@@ -96,7 +97,8 @@ echo ""
 bold "Platform: Monitoring"
 render "platform-monitoring" monitoring k8s/platform/monitoring \
   --namespace monitoring \
-  --values k8s/platform/monitoring/values.yaml
+  --values k8s/platform/monitoring/values.yaml \
+  --values k8s/platform/monitoring/values/env/${ENV}.yaml
 echo ""
 
 # Policies (Kyverno + NetworkPolicies)
@@ -104,7 +106,8 @@ echo ""
 bold "Policies"
 render "policies" policies k8s/policies \
   --namespace kyverno \
-  --values k8s/policies/values.yaml
+  --values k8s/policies/values.yaml \
+  --values k8s/policies/values/env/${ENV}.yaml
 echo ""
 
 # Microservices 
@@ -122,10 +125,10 @@ SERVICES=(
 
 bold "Microservices"
 for SERVICE in "${SERVICES[@]}"; do
-  render "${SERVICE}" "${SERVICE}" k8s/apps/microservice \
+  render "${SERVICE}" "${SERVICE}" k8s/microservice \
     --namespace petclinic \
-    --values k8s/apps/microservice/values.yaml \
-    --values k8s/apps/microservice/values/env/${ENV}/${SERVICE}.yaml
+    --values k8s/microservice/values.yaml \
+    --values k8s/microservice/values/env/${ENV}/${SERVICE}.yaml
 done
 echo ""
 

@@ -10,3 +10,10 @@ CVE-2025-59250
 
 # Smuggling risk in Netty - migration runner is internal/short-lived
 CVE-2026-33870
+CVE-2026-33871
+
+# libpng: Arbitrary code execution due to use-after-free
+CVE-2026-33416
+
+# libpng: Information disclosure and DoS in Neon palette expansion
+CVE-2026-33636

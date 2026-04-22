@@ -1,23 +1,18 @@
 appName: admin-server
 containerPort: 9090
 springProfile: docker
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/admin-server
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/admin-server
+  tag: "a85214b1"
+  digest: "sha256:5f13a5b95f1a2b0758a29ea19e5e370b6c544e1ee8b2f09794fe7c081dbff5ce"
   pullPolicy: IfNotPresent
-
 controller:
   type: deployment
-
 replicaCount: 1
-
 service:
   port: 9090
   targetPort: 9090
-
 probes:
   startup:
     path: /
@@ -25,4 +20,3 @@ probes:
     path: /
   liveness:
     path: /
-

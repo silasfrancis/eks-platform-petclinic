@@ -70,9 +70,7 @@ nodeClass:
 
   # Kubelet configuration applied to all nodes
   kubelet:
-    # podsPerCore * vCPUs caps total pods — prevents noisy neighbour issues
-    podsPerCore: 2
-    maxPods: 20
+    maxPods: 58
 
     # Resources reserved for system daemons — not schedulable by pods
     systemReserved:

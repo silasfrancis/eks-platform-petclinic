@@ -19,6 +19,11 @@ spec:
     apiServerEndpoint: ${aws_eks_cluster.main_cluster.endpoint}
     certificateAuthority: ${aws_eks_cluster.main_cluster.certificate_authority[0].data}
     cidr: ${aws_eks_cluster.main_cluster.kubernetes_network_config[0].service_ipv4_cidr}
+  kubelet:
+    config:
+      maxPods: 58
+    flags:
+      - "--max-pods=58"
 
 --==BOUNDARY==--
 EOT

@@ -94,7 +94,18 @@ locals {
             "ssm:GetParameter"
           ]
           Resource = "*"
-        }]
+        },
+        {
+        Effect = "Allow"
+        Action = [
+          "kms:CreateGrant",
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:GenerateDataKeyWithoutPlaintext",
+          "kms:ReEncrypt*"
+        ]
+        Resource = var.data_storage_kms_key_arn
+      }]
       }
     }
 }

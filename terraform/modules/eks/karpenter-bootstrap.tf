@@ -52,8 +52,8 @@ resource "aws_ec2_tag" "karpenter_subnets" {
   resource_id = each.value
   key         = "karpenter.sh/discovery"
   value       = aws_eks_cluster.main_cluster.name
-  
-    lifecycle {
+
+  lifecycle {
     ignore_changes = [value]
   }
 }

@@ -16,14 +16,14 @@ karpenter:
 nodePools:
   on-demand:
     limits:
-      cpu: "4"
-      memory: 8Gi
-      nodes: 2
+      cpu: "100"
+      memory: 100Gi
+      nodes: 3
     disruption:
       consolidateAfter: 5m
 
   spot:
     limits:
-      cpu: "4"
-      memory: 8Gi
+      cpu: "100"
+      memory: 100Gi
       nodes: 2

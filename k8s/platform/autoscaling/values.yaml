@@ -133,7 +133,19 @@ goldilocks:
         cpu: 100m
         memory: 256Mi
 
-    # Dashboard is accessed via port-forward — no ingress needed
-    # kubectl port-forward svc/goldilocks-dashboard -n autoscaling 8080:80
+    # Dashboard is accessed via istio internal gateway - refer to the chart template for virtual service configs
     ingress:
       enabled: false
+
+# Virtual service config for autoscaling dashboards
+ingress:
+  enabled: true
+  gateway: istio-ingress/internal-istio-ingressgateway
+
+  monitoring:
+    stacks:
+      - name: goldilocks
+        host: goldilocks.lefrancis.org
+        serviceName: goldilocks-dashboard
+        port: 80
+ 

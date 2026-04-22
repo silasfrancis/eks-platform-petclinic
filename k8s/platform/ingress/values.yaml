@@ -242,6 +242,7 @@ gateways:
             - "argocd.lefrancis.org"
             - "prometheus.lefrancis.org"
             - "loki.lefrancis.org"
+            - "goldilocks.lefrancis.org"
           tls:
             httpsRedirect: true
         https:
@@ -251,6 +252,7 @@ gateways:
             - "argocd.lefrancis.org"
             - "prometheus.lefrancis.org"
             - "loki.lefrancis.org"
+            - "goldilocks.lefrancis.org"
           tls:
             mode: SIMPLE
 
@@ -278,7 +280,7 @@ external-dns-cloudflare:
       valueFrom:
         secretKeyRef:
           name: cloudflare-api-token
-          key: cloudflare_api_token
+          key: cloudflare-api-token
 
   domainFilters:
     - lefrancis.org
@@ -400,15 +402,15 @@ externalSecret:
     name: ""
     creationPolicy: Owner
   data: []
-  # - secretKey: cloudflare_api_token
+  # - secretKey: cloudflare-api-token
   #   remoteRef:
   #     key: ""
-  #     property: cloudflare_api_token
+  #     property: cloudflare-api-token
 
 # ServiceAccount for ESO — IRSA allows reading from AWS Secrets Manager
 # OVERRIDE: add role ARN annotation after Terraform creates the IAM role
 esoServiceAccount:
   create: true
-  name: "external-dns-sa"
+  name: "external-dns-cloudflare"
   annotations: {}
   # eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<cluster-name>-eso-ingress

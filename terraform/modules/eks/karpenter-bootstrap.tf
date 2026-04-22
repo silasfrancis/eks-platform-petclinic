@@ -11,9 +11,13 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
   }
 
   scaling_config {
-    desired_size = 1
-    max_size     = 1
+    desired_size = 2
+    max_size     = 2
     min_size     = 1
+  }
+
+  update_config {
+    max_unavailable = 1 
   }
 
   capacity_type = "ON_DEMAND"
@@ -38,9 +42,9 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
     resource = "eks"
   }
 
-  lifecycle {
-    ignore_changes = [scaling_config[0].desired_size]
-  }
+  # lifecycle {
+  #   ignore_changes = [scaling_config[0].desired_size]
+  # }
 }
 
 resource "aws_ec2_tag" "karpenter_subnets" {

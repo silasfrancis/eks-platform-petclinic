@@ -41,12 +41,12 @@ externalSecret:
   creationPolicy: Owner
   data: []
     # Slack webhook for Falcosidekick security alerts
-    # - secretKey: slack_webhook_url
+    # - secretKey: slack-webhook-url
     #   remoteRef:
     #     key: "" # Update path to match your Secrets Manager structure
     #     property: slack-webhook-url
     # Cloudflare API token for cert-manager DNS-01 challenge
-    # - secretKey: api-token
+    # - secretKey: cloudflare-api-token"
     #   remoteRef:
     #     key: "" # Update path to match your Secrets Manager structure
     #     property: cloudflare-api-token
@@ -278,7 +278,7 @@ falco:
           valueFrom:
             secretKeyRef:
               name: platform-security-secrets
-              key: slack_webhook_url
+              key: slack-webhook-url
       slack:
         # Reference the env var set above
         webhookurl: $(FALCOSIDEKICK_SLACK_WEBHOOKURL)

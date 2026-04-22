@@ -1,6 +1,8 @@
 locals {
   karpenter_irsa_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-cluster-karpenter-irsa"
   node_role_arn      = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-node-role"
+  velero_irsa_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-cluster-velero-irsa"
+  loki_irsa_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-cluster-loki-irsa"
 }
 resource "aws_kms_key" "data_storage" {
   description                        = "KMS Key for Storage Encryption"
@@ -80,6 +82,22 @@ resource "aws_kms_key" "data_storage" {
         Condition = {
           Bool = { "kms:GrantIsForAWSResource" = "true" }
         }
+    },
+    {
+      Sid    = "AllowVeleroAndLokiToUseKey"
+      Effect = "Allow"
+      Principal = {
+        AWS = [
+          local.velero_irsa_arn,
+          local.loki_irsa_arn 
+        ]
+      }
+      Action = [
+        "kms:GenerateDataKey",
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ]
+      Resource = "*"
     }
     ])
   })

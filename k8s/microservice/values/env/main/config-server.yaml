@@ -31,7 +31,7 @@ configServer:
 
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
 
 secretStore:
   enabled: true
@@ -41,19 +41,19 @@ externalSecret:
   data:
     - secretKey: MYSQL_HOST
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_host
     - secretKey: MYSQL_PASSWORD
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_password
     - secretKey: MYSQL_USER
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_user
     - secretKey: MYSQL_DATABASE
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_database
 
 env:

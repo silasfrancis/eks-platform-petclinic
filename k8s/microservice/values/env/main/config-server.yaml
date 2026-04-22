@@ -1,23 +1,18 @@
 appName: config-server
 containerPort: 8888
 springProfile: native
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/config-server
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/config-server
+  tag: "a85214b1"
+  digest: "sha256:23c8a226485b168d222fc1fe3a46c3bb3906a7fc46bda617267887c77d68b57d"
   pullPolicy: IfNotPresent
-
 controller:
   type: deployment
-
 replicaCount: 1
-
 service:
   port: 8888
   targetPort: 8888
-
 probes:
   startup:
     path: /
@@ -25,17 +20,13 @@ probes:
     path: /
   liveness:
     path: /
-
 configServer:
   enabled: false
-
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
-
 secretStore:
   enabled: true
-
 externalSecret:
   enabled: true
   data:
@@ -55,10 +46,8 @@ externalSecret:
       remoteRef:
         key: prod/petclinic
         property: mysql_database
-
 env:
   plain:
     CONFIG_DIR: /config
-
 vpa:
   enabled: true

@@ -93,6 +93,11 @@ tasks:
           --version {{ .ARGOCD_VERSION }} \
           --set server.extraArgs={--insecure}
 
+  get_argo_pwd:
+    desc: Retrieve the initial admin password for ArgoCD
+    cmds:
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+  
   install_rollouts:
     desc: "Install Argo Rollouts"
     cmds:
@@ -103,10 +108,10 @@ tasks:
           --version {{ .ARGO_ROLLOUTS_VERSION }}
 
   deploy_argo_applications:
-    desc: "Deploy ArgoCD Root Application (App-of-Apps)"
+    desc: "Deploy ArgoCD Applications (App-of-Apps)"
     cmds:
       - |
-        helm upgrade --install argocd-root k8s/argocd \
+        helm upgrade --install argocd k8s/argocd \
           --namespace argocd \
           --create-namespace \
           --values argocd/values.yaml \

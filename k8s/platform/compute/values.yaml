@@ -70,7 +70,7 @@ nodeClass:
 
   # Kubelet configuration applied to all nodes
   kubelet:
-    maxPods: 58
+    maxPods: 110
 
     # Resources reserved for system daemons — not schedulable by pods
     systemReserved:

@@ -24,7 +24,6 @@ spec:
   role: {{ $cluster.nodeRoleName | quote }}
 
   kubelet:
-    podsPerCore: {{ $nc.kubelet.podsPerCore }}
     maxPods: {{ $nc.kubelet.maxPods }}
 
     systemReserved:

@@ -4,10 +4,12 @@ databaseMigration:
   enabled: true
 
 image:
-  repository: 509194952955.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service
-  tag: "c84d2ef1"
-  digest: ""
-
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
+  repository: petclinic/migrations
+  tag: "c62caca0"
+  digest: "sha256:dfc4bd54fc1d0ba9949e2d066abc02ce85263acce20b89292adeab4f69e07183"
+  pullPolicy: IfNotPresent
+  
 controller:
   type: job
 
@@ -21,7 +23,7 @@ configServer:
 
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
 
 secretStore:
   enabled: true
@@ -31,19 +33,19 @@ externalSecret:
   data:
     - secretKey: MYSQL_HOST
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_host
     - secretKey: MYSQL_DATABASE
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_database
     - secretKey: FLYWAY_USER
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_user
     - secretKey: FLYWAY_PASSWORD
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: mysql_password
 
   env:

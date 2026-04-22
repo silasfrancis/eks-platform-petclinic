@@ -1,0 +1,9 @@
+dependencies:
+- name: keda
+  repository: https://kedacore.github.io/charts
+  version: 2.19.0
+- name: goldilocks
+  repository: https://charts.fairwinds.com/stable
+  version: 8.0.2
+digest: sha256:0296cbc3cfa3502a126d45215bb8a5cec3d60b68526e33b9f1029051abdb8b9a
+generated: "2026-04-21T16:16:55.964651414+01:00"

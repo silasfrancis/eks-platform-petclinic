@@ -3,7 +3,7 @@ Common labels used by customer resources
 */}}
 {{- define "platform-security.labels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-app.kubernetes.io/name: {{ include "platform-security.name" . }}
+app.kubernetes.io/name: platform-security
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
@@ -15,7 +15,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels used by customer resources
 */}}
 {{- define "platform-security.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "platform-security.name" . }}
+app.kubernetes.io/name: platform-security
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

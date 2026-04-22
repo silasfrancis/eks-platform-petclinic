@@ -244,7 +244,7 @@ clusterPolicy:
 
     istioIngress:
       # The Istio ingress gateway — only api-gateway needs ingressFrom this
-      label: istio-ingressgateway
+      label: public-istio-ingressgateway
       namespace: istio-ingress
 
     rds:

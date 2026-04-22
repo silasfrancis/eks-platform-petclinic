@@ -266,6 +266,8 @@ loki:
   # without this it would be "<release-name>-loki" which varies by environment
   fullnameOverride: "loki"
   deploymentMode: SingleBinary
+  test:
+    enabled: false
 
   loki:
     # auth_enabled: false — single tenant mode, no per-tenant auth headers needed
@@ -480,7 +482,7 @@ externalSecret:
   target:
     name: platform-monitoring-secrets
     creationPolicy: Owner
-  data: {}
+  data: []
     #  Format for override at env level
     # - secretKey: admin-user
     #   remoteRef:

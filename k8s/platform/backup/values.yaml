@@ -70,7 +70,9 @@ velero:
         value: "true"
         effect: NoSchedule
       - key: CriticalAddonsOnly
-        operator: Exists
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
 
     resources:
       requests:

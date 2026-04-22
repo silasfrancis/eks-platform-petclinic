@@ -70,9 +70,7 @@ nodeClass:
 
   # Kubelet configuration applied to all nodes
   kubelet:
-    # podsPerCore * vCPUs caps total pods — prevents noisy neighbour issues
-    podsPerCore: 2
-    maxPods: 20
+    maxPods: 110
 
     # Resources reserved for system daemons — not schedulable by pods
     systemReserved:
@@ -153,11 +151,16 @@ nodePools:
         - on-demand
       instanceCategory:
         - t
-        - m
         - c
-      instanceFamily:
-        - t4g
-      instanceGeneration: "6"    # Gte — only gen 6+
+        - m
+      # instanceFamily:
+      #   - t4g
+      # instanceGeneration: "2"
+      instanceSize: 
+        - small
+        - medium
+        - large
+        - xlarge
       hypervisor:
         - nitro
 
@@ -179,8 +182,8 @@ nodePools:
 
     # OVERRIDE: tune per environment
     limits:
-      cpu: "8"
-      memory: 16Gi
+      cpu: "20"
+      memory: 30Gi
       nodes: 3
 
   # SPOT pool — cost-optimised for stateless interruptible workloads
@@ -213,15 +216,21 @@ nodePools:
         - m
         - c
         - r
-      instanceFamily:
-        - t4g
-        - m6g
-        - m7g
-        - c6g
-        - c7g
-        - r6g
-        - r7g
-      instanceGeneration: "6"
+      # instanceFamily:
+      #   - t4g
+      #   - m6g
+      #   - m7g
+      #   - c6g
+      #   - c7g
+      #   - r6g
+      #   - r7g
+      # instanceGeneration: "2"
+      instanceSize: 
+        - small
+        - medium
+        - large
+        - xlarge
+        - 2xlarge
       hypervisor:
         - nitro
 
@@ -238,8 +247,8 @@ nodePools:
 
     # OVERRIDE: tune per environment
     limits:
-      cpu: "6"
-      memory: 12Gi
+      cpu: "20"
+      memory: 30Gi
       nodes: 3
 
 # Karpenter Helm subchart configuration
@@ -260,6 +269,9 @@ karpenter:
     # OVERRIDE: must match SQS queue name from Terraform
     interruptionQueue: ""
 
+  postInstallHook:
+    enabled: false
+
   # Karpenter must only run on the bootstrap node group
   # Running on nodes it manages causes a circular dependency
   nodeSelector:
@@ -272,10 +284,10 @@ karpenter:
       value: "true"
       effect: "NoSchedule"
 
-  serviceMonitor:
-    enabled: true
-    additionalLabels:
-      release: platform-monitoring
+  # serviceMonitor:
+  #   enabled: true
+  #   additionalLabels:
+  #     release: platform-monitoring
 
   controller:
     resources:

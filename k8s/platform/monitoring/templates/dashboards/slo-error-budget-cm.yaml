@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-slo-error-budget
-  namespace: {{ .Values.monitoring.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     grafana_dashboard: "1"
 data:
   slo-error-budget.json: |-
-    {{ .Files.Get "dashboards/slo-error-budget.json" | indent 4 }}
+{{ .Files.Get "dashboards/slo-error-budget.json" | nindent 4 }}

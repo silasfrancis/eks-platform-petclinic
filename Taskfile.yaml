@@ -16,77 +16,68 @@
 
 version: "3"
 
+env:
+  ENV: '{{.ENV | default ""}}'
+
 includes:
   tf:
     taskfile: ./terraform/Taskfile.yaml
     dir: ./terraform
-    vars:
-      ENV: "{{.ENV}}"
 
   k8s:
     taskfile: ./k8s/Taskfile.yaml
-    dir: ./k8s
-    vars:
-      ENV: "{{.ENV}}"
-      CLUSTER_NAME: "{{.CLUSTER_NAME}}"
+    dir: .
 
   ansible:
     taskfile: ./ansible/Taskfile.yaml
     dir: ./ansible
 
 tasks:
-  validate-env:
-    internal: true
-    status:
-      - '[[ "{{.ENV}}" == "dev" || "{{.ENV}}" == "main" ]]'
-    cmds:
-      - |
-        echo "Error: You must provide ENV=dev or ENV=main"
-      - exit 1
 
-  # Full platform lifecycle
-  # Provision infrastructure then bootstrap cluster
-  # Run once per environment after initial setup
   platform:up:
-    desc: "Provision infrastructure and bootstrap platform"
-    deps: [validate-env]
+    desc: "Provision infrastructure and bootstrap platform — ENV=dev|main"
     summary: |
-      1. Terraform - infra
-      2. Ansible - WireGuard
-      3. K8s - cluster bootstrap
+      1. Terraform — VPC, EKS, RDS, IAM
+      2. Ansible   — WireGuard server via SSM
+      3. k8s       — Cluster bootstrap
+    preconditions:
+      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]'
+        msg: "ENV must be dev or main — e.g. task platform:up ENV=dev"
     cmds:
       - task: tf:apply
-        vars:
-          ENV: "{{.ENV}}"
+        vars: { ENV: "{{.ENV}}" }
       - task: ansible:configure_wireguard
       - task: k8s:bootstrap
-        vars: 
-          ENV: "{{.ENV}}"
-          CLUSTER_NAME: "{{.CLUSTER_NAME}}"
+        vars: { ENV: "{{.ENV}}" }
 
-  # validate all helm charts before deploying
   validate:
-    desc: "Validate all Helm charts"
-    deps: [validate-env]
+    desc: "Validate all Helm charts — ENV=dev|main"
+    preconditions:
+      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]'
+        msg: "ENV must be dev or main — e.g. task validate ENV=dev"
     cmds:
-      - ./scripts/validate-charts.sh {{ .ENV }}
+      - ./scripts/validate-charts.sh {{.ENV}}
 
   validate:export:
-    desc: "Export rendered manifests"
-    deps: [validate-env]
+    desc: "Validate and export rendered manifests to rendered/"
+    preconditions:
+      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]'
+        msg: "ENV must be dev or main — e.g. task validate:export ENV=dev"
     cmds:
-      - ./scripts/validate-charts.sh {{ .ENV }} --export
+      - ./scripts/validate-charts.sh {{.ENV}} --export
 
-  # Local docker compose stack for running local tests
   local:up:
     desc: "Start local microservices stack"
+    preconditions:
+      - sh: "[ -f .env ]"
+        msg: ".env file not found — copy .env.example and fill in values"
     cmds:
       - docker compose up -d
       - |
-        echo "API Gateway: http://localhost:8080"
+        echo "API Gateway:      http://localhost:8080"
         echo "Discovery Server: http://localhost:8761"
-        echo "Admin Server: http://localhost:9090"
-        echo "Config Server: http://localhost:8888"
+        echo "Admin Server:     http://localhost:9090"
+        echo "Config Server:    http://localhost:8888"
 
   local:down:
     desc: "Stop local microservices stack"
@@ -94,16 +85,22 @@ tasks:
       - docker compose down
 
   local:logs:
-    desc: "Tail logs for service"
+    desc: "Tail logs — SERVICE=customers-service"
+    preconditions:
+      - sh: "[ -n '{{.SERVICE}}' ]"
+        msg: "SERVICE is required — e.g. task local:logs SERVICE=customers-service"
     cmds:
-      - docker compose logs -f {{ .SERVICE }}
+      - docker compose logs -f {{.SERVICE}}
 
   local:build:
-    desc: "Build images"
+    desc: "Rebuild all service images"
     cmds:
       - docker compose build
 
   local:restart:
-    desc: "Restart service"
+    desc: "Restart a service — SERVICE=api-gateway"
+    preconditions:
+      - sh: "[ -n '{{.SERVICE}}' ]"
+        msg: "SERVICE is required — e.g. task local:restart SERVICE=api-gateway"
     cmds:
-      - docker compose restart {{ .SERVICE }}
+      - docker compose restart {{.SERVICE}}

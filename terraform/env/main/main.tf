@@ -25,8 +25,7 @@ module "kms" {
   source = "../../modules/kms"
 
   env = var.environment
-
-
+  app = var.app
 }
 
 # Secrets Manager 
@@ -36,8 +35,6 @@ module "secret_manager" {
   source = "../../modules/secret_manager"
 
   env = var.environment
-
-
 }
 
 # S3 
@@ -49,7 +46,6 @@ module "s3" {
   env                      = var.environment
   app                      = var.app
   data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
-
 }
 
 # IAM
@@ -61,7 +57,6 @@ module "iam" {
   app                      = var.app
   rds_export_bucket_arn    = module.s3.bucket_arn["rds_export_bucket_arn"]
   data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
-
 }
 
 # CloudWatch Logs
@@ -72,7 +67,6 @@ module "cloudwatch_logs" {
   env                      = var.environment
   app                      = var.app
   infra_common_kms_key_arn = module.kms.kms_key_arn["infra_common"]
-
 }
 
 # VPC 
@@ -85,7 +79,6 @@ module "vpc" {
   availability_zones       = data.aws_availability_zones.available.names
   vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
   vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
-
 }
 
 # EC2 (WireGuard Server) 
@@ -102,7 +95,6 @@ module "ec2" {
   wireguard_server_instance_profile  = module.iam.wireguard_server_instance_profile
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"] # EBS volume encryption
   platform_engineers_group_name      = "platform"
-
 }
 
 # EKS
@@ -122,7 +114,6 @@ module "eks" {
   nlb_external_security_group_id     = module.vpc.security_group["nlb_external"]
   eks_secrets_kms_key_arn            = module.kms.kms_key_arn["eks_secrets"]
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
-
 }
 
 # DNS (Route53 Private Hosted Zone) 
@@ -135,7 +126,6 @@ module "dns" {
 
   vpc_id       = module.vpc.vpc_id
   cluster_name = module.eks.cluster_name
-
 }
 
 # IRSA (IAM Roles for Service Accounts)
@@ -158,7 +148,6 @@ module "irsa" {
   loki_bucket_arn                 = module.s3.bucket_arn["loki_bucket_arn"]
   velero_bucket_arn               = module.s3.bucket_arn["velero_bucket_arn"]
   data_storage_kms_key_arn        = module.kms.kms_key_arn["data_storage"]
-  
 }
 
 # RDS
@@ -182,7 +171,6 @@ module "rds" {
   wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
   rds_monitoring_role_arn            = module.iam.roles["rds_monitoring_role"]
-
 }
 
 # RDS Automated Backup
@@ -201,7 +189,6 @@ module "rds-automated-backup" {
   infra_common_kms_key_arn     = module.kms.kms_key_arn["infra_common"]
   data_storage_kms_key_arn     = module.kms.kms_key_arn["data_storage"]
   slack_webhook_url            = module.secret_manager.slack_webhook_url
-
 }
 
 # NLB Security Group Rules
@@ -212,5 +199,4 @@ module "nlb" {
   nlb_external_sg_id                 = module.vpc.security_group["nlb_external"]
   nlb_internal_sg_id                 = module.vpc.security_group["nlb_internal"]
   wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
-
 }

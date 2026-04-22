@@ -40,6 +40,13 @@ resource "aws_security_group" "eks_node" {
   tags = {  
     resource = "vpc"
   }
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
 }
 
 resource "aws_security_group" "rds" {

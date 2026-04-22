@@ -15,9 +15,6 @@ spec:
     kind: Deployment
     name: {{ include "gateway.resourceName" $ctx }}
   updatePolicy:
-    # Off — recommendation mode only
-    # Goldilocks reads these recommendations and displays them in the dashboard
-    # Never change to Auto — would evict and restart gateway pods
     updateMode: "Off"
   resourcePolicy:
     containerPolicies:

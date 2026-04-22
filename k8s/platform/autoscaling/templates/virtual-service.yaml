@@ -1,0 +1,27 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ .Release.Name }}-monitoring
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    {{- range .Values.ingress.monitoring.stacks }}
+    - {{ .host | quote }}
+    {{- end }}
+  gateways:
+    - {{ .Values.ingress.gateway | quote }}
+  http:
+    {{- range .Values.ingress.monitoring.stacks }}
+    - name: {{ .name | quote }}
+      match:
+        - headers:
+            host:
+              exact: {{ .host | quote }}
+      route:
+        - destination:
+            host: {{ printf "%s.%s.svc.cluster.local" .serviceName $.Release.Namespace | quote }}
+            port:
+              number: {{ .port }}
+    {{- end }}
+{{- end }}

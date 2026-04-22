@@ -1,18 +1,10 @@
-name: Build, Scan, Push to ECR and Sign
+name: Build and Push Service Images
 
 on:
   push:
     branches: [ dev, main ]
     paths:
-      - 'services/admin-server/**'
-      - 'services/api-gateway/**'
-      - 'services/config-server/**'
-      - 'services/discovery-server/**'
-      - 'services/customers-service/**'
-      - 'services/vets-service/**'
-      - 'services/visits-service/**'
-      - 'services/genai-service/**'
-      - 'services/pom.xml'
+      - 'services/**'
 
 jobs:
   filter-updated-directories:
@@ -84,6 +76,12 @@ jobs:
         run: |
           REPO_NAME=$(task -t .github/workflows/utils/Taskfile.yaml get-repo SERVICE=${{ matrix.dir }})
           REGISTRY_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+
+          echo "REPO_NAME=$REPO_NAME"
+          echo "REGISTRY_URI=$REGISTRY_URI"
+          echo "IMAGE_REPO=${REGISTRY_URI}/${REPO_NAME}"
+          echo "IMAGE=${REGISTRY_URI}/${REPO_NAME}:${{ env.SHORT_SHA }}"
+          
           echo "REPO_NAME=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "REGISTRY_URI=$REGISTRY_URI" >> $GITHUB_OUTPUT
           echo "IMAGE_REPO=${REGISTRY_URI}/${REPO_NAME}" >> $GITHUB_OUTPUT
@@ -92,8 +90,8 @@ jobs:
       - name: Build Single Arch image for Scan
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
-          context: services/
-          file: ${{ matrix.dir }}/Dockerfile
+          context: services
+          file: services/${{ matrix.dir }}/Dockerfile
           push: false
           load: true
           tags: ${{ steps.get_image_repo.outputs.IMAGE }}
@@ -125,8 +123,8 @@ jobs:
         id: push_image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
-          context: services/
-          file: ${{ matrix.dir }}/Dockerfile
+          context: services
+          file: services/${{ matrix.dir }}/Dockerfile
           push: true                              
           tags: ${{ steps.get_image_repo.outputs.IMAGE }}
           platforms: linux/amd64,linux/arm64      
@@ -149,22 +147,23 @@ jobs:
 
       - name: Verify Image Signature
         run: |
-          cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-          --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-          --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+              cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
       - name: Attest scan results with Cosign
-        run: cosign attest \
-          --predicate '${{ matrix.dir }}_trivy-results.json' \
-          --type vuln \
-          "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
+        run: |
+              cosign attest \
+              --predicate '${{ matrix.dir }}_trivy-results.json' \
+              --type vuln \
+              "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"
 
       - name: Verify scan attestation
         run: |
-          cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-            --type vuln \
-            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+              cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+                --type vuln \
+                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
                 
       - name: Save image metadata
         run: |

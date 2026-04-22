@@ -181,7 +181,8 @@ jobs:
       || 'development' }}
     needs: update-helm-values
     if: ${{ needs.update-helm-values.result == 'success' }}
-
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3

@@ -13,6 +13,10 @@ jobs:
     name: Enforce Branch Policy
     runs-on: ubuntu-24.04
     env:
+      MAIN_BRANCH: "main"
+      DEV_BRANCH: "dev"
+      FEATURE_PREFIX: "feature/*"
+      HELM_UPDATE_PREFIX: "update-helm/*"
       HEAD: ${{ github.event.pull_request.head.ref }}
       BASE: ${{ github.event.pull_request.base.ref }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -26,14 +30,17 @@ jobs:
         run: |
           echo "PR #${PR_NUMBER} — ${HEAD} → ${BASE}"
 
-          # Evaluate policy
           ALLOWED=false
 
-          if [[ "${BASE}" == "dev" && "${HEAD}" == feature/* ]]; then
+          if [[ "${HEAD}" == ${HELM_UPDATE_PREFIX} ]]; then
             ALLOWED=true
           fi
 
-          if [[ "${BASE}" == "main" && "${HEAD}" == "dev" ]]; then
+          if [[ "${BASE}" == "${DEV_BRANCH}" && "${HEAD}" == ${FEATURE_PREFIX} ]]; then
+            ALLOWED=true
+          fi
+
+          if [[ "${BASE}" == "${MAIN_BRANCH}" && "${HEAD}" == "${DEV_BRANCH}" ]]; then
             ALLOWED=true
           fi
 
@@ -42,66 +49,37 @@ jobs:
             exit 0
           fi
 
-          # Rejection message 
-          if [[ "${BASE}" == "main" && "${HEAD}" != "dev" ]]; then
-            REASON=$(cat <<EOF
-          **Direct merges to \`main\` are not allowed from \`${HEAD}\`.**
-
-          Only \`dev\` can be merged into \`main\`.
-
-          **What to do:**
-          1. Open a PR from \`${HEAD}\` → \`dev\` instead
-          2. Once validated on the dev cluster, open a PR from \`dev\` → \`main\`
-          EOF
-          )
-
-          elif [[ "${BASE}" == "dev" && "${HEAD}" != feature/* ]]; then
-            REASON=$(cat <<EOF
-          **PRs to \`dev\` must come from a \`feature/*\` branch.**
-
-          Your branch \`${HEAD}\` does not follow the \`feature/<name>\` naming convention.
-
-          **What to do:**
-          1. Rename your branch: \`git branch -m ${HEAD} feature/${HEAD}\`
-          2. Push the renamed branch: \`git push origin feature/${HEAD} --force\`
-          3. Open a new PR from \`feature/${HEAD}\` → \`dev\`
-          EOF
-          )
-
+          # Rejection
+          
+          if [[ "${BASE}" == "${MAIN_BRANCH}" ]]; then
+            REASON="Direct merges to \`${MAIN_BRANCH}\` are only allowed from \`${DEV_BRANCH}\` or via automated helm updates."
+          elif [[ "${BASE}" == "${DEV_BRANCH}" ]]; then
+            REASON="PRs to \`${DEV_BRANCH}\` must come from a \`${FEATURE_PREFIX}\` branch."
           else
-            REASON=$(cat <<EOF
-          **This PR does not follow the branch policy for this repository.**
-
-          Your PR \`${HEAD}\` → \`${BASE}\` is not a permitted path.
-          EOF
-          )
+            REASON="The path \`${HEAD}\` → \`${BASE}\` is not permitted by repository policy."
           fi
 
           # Post comment 
-          gh pr comment "${PR_NUMBER}" \
-            --repo "${REPO}" \
-            --body "$(cat <<EOF
+          gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "$(cat <<EOF
           👋 Hi @${AUTHOR},
 
-          This PR has been closed because it does not follow the branch policy for this repository.
+          This PR has been closed because it does not follow the branch policy.
 
-          ${REASON}
+          **Reason:** ${REASON}
 
           ---
-          **Branch Policy:**
-          | From | To | Allowed |
-          |---|---|---|
-          | \`feature/*\` | \`dev\` | ✅ |
-          | \`dev\` | \`main\` | ✅ |
-          | anything else | any | ❌ |
+          **Allowed Branch Paths:**
+          | From | To |
+          |---|---|
+          | \`${FEATURE_PREFIX}\` | \`${DEV_BRANCH}\` |
+          | \`${DEV_BRANCH}\` | \`${MAIN_BRANCH}\` |
+          | \`${HELM_UPDATE_PREFIX}\` | \`${DEV_BRANCH}\` or \`${MAIN_BRANCH}\` |
 
-          If you believe this was closed in error, please contact a @silasfrancis.
+          If you believe this was closed in error, please contact @silasfrancis.
           EOF
           )"
 
           # Close PR and fail workflow 
-          gh pr close "${PR_NUMBER}" \
-            --repo "${REPO}"
-
+          gh pr close "${PR_NUMBER}" --repo "${REPO}"
           echo "::error::PR #${PR_NUMBER} closed — branch policy violation: ${HEAD} → ${BASE}"
           exit 1

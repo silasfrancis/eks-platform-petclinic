@@ -116,155 +116,49 @@ jobs:
             echo "Contents after update:"
             cat "$VALUES_FILE"
 
-            echo "Git diff:"
-            git diff "$VALUES_FILE"
-            echo "VALUES_FILE=$VALUES_FILE" >> $GITHUB_OUTPUT
+            CHART_FILE="k8s/microservice/Chart.yaml"
+            CURRENT_VERSION=$(yq '.version' "$CHART_FILE")
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            
+            yq -i ".version = \"$NEW_VERSION\"" "$CHART_FILE"
+            yq -i ".appVersion = \"${{ env.SHORT_SHA }}\"" "$CHART_FILE"
 
-        - name: Commit and push Helm updates
+        - name: Create Pull Request
           if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'
-          env: 
-            GIT_USER: ${{ github.actor }}
-            GIT_USER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
-          run: |
-                VALUES_FILE="${{ steps.update_image_value.outputs.VALUES_FILE }}"
-                git config user.name "$GIT_USER"
-                git config user.email "$GIT_USER_EMAIL"
-
-                echo "Staging changes..."
-                git add "$VALUES_FILE"
-
-                if git diff --cached --quiet; then
-                    echo "No changes to commit"
-                else
-                    git commit -m "Update container image in helm ${{ github.ref_name }} directory"
-                    PUSHED=false
-                    for i in 1 2 3 4 5; do
-                      if git pull --rebase origin ${{ github.ref_name }} && \
-                        git push https://x-access-token:${{github.token}}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }}; then
-                        PUSHED=true
-                        break
-                      fi
-                      echo "Push failed, retrying ($i/5)..."
-                      sleep $((i * 3))
-                    done
-                    if [ "$PUSHED" = false ]; then
-                      echo "All 5 push attempts failed"
-                      exit 1
-                    fi
-                fi
+          uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+          with:
+            token: ${{ github.token }}
+            commit-message: "chore(helm): update ${{ matrix.dir }} image to ${{ env.SHORT_SHA }}"
+            branch: "update-helm/${{ matrix.dir }}-${{ env.SHORT_SHA }}"
+            base: ${{ github.ref_name }}
+            title: "[Helm] Update ${{ matrix.dir }} to ${{ env.SHORT_SHA }}"
+            body: |
+              Automated Helm update triggered by successful build.
+              - **Service:** ${{ matrix.dir }}
+              - **Environment:** ${{ env.BRANCH_NAME }}
+              - **Image Tag:** ${{ env.SHORT_SHA }}
+            labels: |
+              automated-pr
+              helm-update
 
         - name: Send Slack notification
           uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
-          if: success() || failure()
+          if: always() # Better to use always() and handle logic inside the payload
           with:
             payload: |
               {
-                "text": "${{ job.status == 'success' && '✅ Helm values updated' || '❌ Helm update failed' }} — `${{ matrix.dir }}` on `${{ github.ref_name }}`",
+                "text": "${{ job.status == 'success' && '🚀 Helm Update PR Created' || '❌ Helm Update Failed' }}",
                 "attachments": [{
                   "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
                   "fields": [
                     { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
-                    { "title": "SHA", "value": "${{ env.SHORT_SHA }}", "short": true },
-                    { "title": "Actor", "value": "${{ github.actor }}", "short": true },
-                    { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
+                    { "title": "Environment", "value": "${{ github.ref_name }}", "short": true },
+                    { "title": "Pull Request", "value": "${{ steps.create-pull-request.outputs.pull-request-url || 'N/A' }}", "short": false },
+                    { "title": "Action Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
                   ]
                 }]
               }
             webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
             webhook-type: incoming-webhook
-            
-  update-chart-version:
-    runs-on: ubuntu-24.04
-    environment: >-
-      ${{ (github.ref_name == 'main' || github.base_ref == 'main')
-      && 'production'
-      || 'development' }}
-    needs: update-helm-values
-    if: ${{ needs.update-helm-values.result == 'success' }}
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
-
-      - name: Setup jq and yq
-        uses: ./.github/actions/install_jq_yq
-
-      - name: Set short SHA and Build Run ID
-        run: |
-          SHA=${{ github.event.workflow_run.head_sha }}
-          echo "SHORT_SHA=${SHA::8}" >> $GITHUB_ENV
-          echo "BUILD_RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
-
-      - name: Update chart version
-        run: |
-          CHART_FILE="k8s/microservice/Chart.yaml"
-
-          echo "Reading current version..."
-          CURRENT_VERSION=$(yq '.version' "$CHART_FILE")
-
-          echo "Current version: $CURRENT_VERSION"
-
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-
-          PATCH=$((PATCH + 1))
-
-          if [ "$PATCH" -gt 9 ]; then
-            PATCH=0
-            MINOR=$((MINOR + 1))
-          fi
-
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-
-          # Git SHA (short)
-          GIT_SHA=${{ github.event.workflow_run.head_sha }}
-          SHORT_SHA=${GIT_SHA:0:8}
-
-          echo "New chart version: $NEW_VERSION"
-          echo "App version (git sha): $SHORT_SHA"
-
-          echo "Updating Chart.yaml..."
-
-          yq -i ".version = \"$NEW_VERSION\"" "$CHART_FILE"
-          yq -i ".appVersion = \"$SHORT_SHA\"" "$CHART_FILE"
-
-          echo "Updated Chart.yaml:"
-          cat "$CHART_FILE"
-
-          echo "Git diff:"
-          git diff "$CHART_FILE"
-
-      - name: Commit and push Chart vesion
-        env: 
-          GIT_USER: ${{ github.actor }}
-          GIT_USER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
-        run: |
-          git config user.name "$GIT_USER"
-          git config user.email "$GIT_USER_EMAIL"
-
-          CHART_FILE="k8s/microservice/Chart.yaml"
-
-          echo "Staging changes..."
-          git add "$CHART_FILE"
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update chart version ($SHORT_SHA) on ${{ github.ref_name }}"
-
-            PUSHED=false
-            for i in 1 2 3 4 5; do
-              if git pull --rebase origin ${{ github.ref_name }} && \
-                git push https://x-access-token:${{github.token}}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }}; then
-                PUSHED=true
-                break
-              fi
-              echo "Push failed, retrying ($i/5)..."
-              sleep $((i * 3))
-            done
-
-            if [ "$PUSHED" = false ]; then
-              echo "All 5 push attempts failed"
-              exit 1
-            fi
-          fi

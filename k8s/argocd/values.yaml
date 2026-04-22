@@ -123,7 +123,7 @@ argocd:
     resources:
       requests:
         cpu: 100m
-        memory: 128Mi
+        memory: 256Mi
       limits:
         cpu: 500m
         memory: 512Mi
@@ -198,6 +198,11 @@ argocd:
       limits:
         cpu: 500m
         memory: 512Mi
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
     metrics:
       enabled: true
       # serviceMonitor:

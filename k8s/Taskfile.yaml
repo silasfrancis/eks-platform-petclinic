@@ -108,7 +108,7 @@ tasks:
           --version {{ .ARGO_ROLLOUTS_VERSION }}
 
   deploy_argo_applications:
-    desc: "Deploy ArgoCD Applications (App-of-Apps)"
+    desc: "Deploy ArgoCD Applications"
     cmds:
       - |
         helm upgrade --install argocd k8s/argocd \

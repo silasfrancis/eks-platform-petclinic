@@ -184,8 +184,8 @@ nodePools:
 
     # OVERRIDE: tune per environment
     limits:
-      cpu: "100"
-      memory: 100Gi
+      cpu: "20"
+      memory: 30Gi
       nodes: 3
 
   # SPOT pool — cost-optimised for stateless interruptible workloads
@@ -249,8 +249,8 @@ nodePools:
 
     # OVERRIDE: tune per environment
     limits:
-      cpu: "100"
-      memory: 100Gi
+      cpu: "20"
+      memory: 30Gi
       nodes: 3
 
 # Karpenter Helm subchart configuration

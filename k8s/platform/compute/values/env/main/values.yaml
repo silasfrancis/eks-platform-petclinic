@@ -18,7 +18,7 @@ nodePools:
     limits:
       cpu: "100"
       memory: 100Gi
-      nodes: 3
+      nodes: 10
     disruption:
       consolidateAfter: 5m
 
@@ -26,4 +26,4 @@ nodePools:
     limits:
       cpu: "100"
       memory: 100Gi
-      nodes: 2
+      nodes: 5

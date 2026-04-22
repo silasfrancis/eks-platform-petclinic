@@ -1,29 +1,22 @@
 appName: api-gateway
 containerPort: 8080
 springProfile: docker
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/api-gateway
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/api-gateway
+  tag: "a85214b1"
+  digest: "sha256:42cef9d61dd0f4bab02ad8da1eb7f850b7cbc837ee5c15ad37348f914bf4f39e"
   pullPolicy: IfNotPresent
-
 controller:
   type: rollout
-
 replicaCount: 1
-
 service:
   port: 8080
   targetPort: 8080
-
 hpa:
   enabled: true
-
 vpa:
   enabled: true
-
 virtualService:
   enabled: true
   hosts: petclinic.lefrancis.org
@@ -31,26 +24,26 @@ virtualService:
   routes:
     - name: customers-service
       match:
-          - uri:
-              prefix: /api/customer/
+        - uri:
+            prefix: /api/customer/
       rewrite:
-          uri: /
+        uri: /
       route:
-          - destination: 
-              host: customers-service-svc.petclinic.svc.cluster.local
-              port:
-                number: 8081
+        - destination:
+            host: customers-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8081
     - name: visits-route
       match:
-          - uri:
-              prefix: /api/visit/
+        - uri:
+            prefix: /api/visit/
       rewrite:
-          uri: /
+        uri: /
       route:
-          - destination:
-              host: visits-service-svc.petclinic.svc.cluster.local
-              port:
-                number: 8082
+        - destination:
+            host: visits-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8082
     - name: vets-route
       match:
         - uri:
@@ -73,6 +66,5 @@ virtualService:
             host: genai-service-svc.petclinic.svc.cluster.local
             port:
               number: 8084
-
 analysisTemplate:
   enabled: true

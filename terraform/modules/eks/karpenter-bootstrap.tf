@@ -42,9 +42,9 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
     resource = "eks"
   }
 
-  lifecycle {
-    ignore_changes = [scaling_config[0].desired_size]
-  }
+  # lifecycle {
+  #   ignore_changes = [scaling_config[0].desired_size]
+  # }
 }
 
 resource "aws_ec2_tag" "karpenter_subnets" {

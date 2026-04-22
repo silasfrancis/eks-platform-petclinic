@@ -92,18 +92,20 @@ jobs:
             NEW_IMAGE_TAG=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_tag' "$TARGET_FILE")
             NEW_IMAGE_DIGEST=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_digest' "$TARGET_FILE")
 
-            if [ -z "$NEW_IMAGE" ]; then
-            echo "No image found for service $SERVICE. Skipping..."
-            exit 0
+            if [ -z "$IMAGE_REPO" ] || [ "$IMAGE_REPO" == "null" ] || [ -z "$NEW_IMAGE_TAG" ] || [ "$NEW_IMAGE_TAG" == "null" ]; then
+              echo "Error: Critical image metadata (repo or tag) is missing for $SERVICE."
+              echo "Registry: $REGISTRY_URI | Repo: $IMAGE_REPO | Tag: $NEW_IMAGE_TAG"
+              exit 0
             fi
 
-            echo "New image: $NEW_IMAGE"
+            echo "Image Repo: $IMAGE_REPO"
+            echo "New Image Tag: $NEW_IMAGE_TAG"
             echo "New Image Digest: $NEW_IMAGE_DIGEST"
 
             CURRENT_REGISTRY=$(yq '.image.registry' "$VALUES_FILE")
             CURRENT_IMAGE_REPO=$(yq '.image.repository' "$VALUES_FILE")
             CURRENT_TAG=$(yq '.image.tag' "$VALUES_FILE")
-            CURRENT_TAG=$(yq '.image.digest' "$VALUES_FILE")
+            CURRENT_DIGEST=$(yq '.image.digest' "$VALUES_FILE")
 
             echo "Current $SERVICE Image: $CURRENT_REGISTRY:$CURRENT_TAG"
             echo "Updating $SERVICE Image -> $NEW_IMAGE"
@@ -114,7 +116,7 @@ jobs:
             yq -i ".image.digest = \"$NEW_IMAGE_DIGEST\"" "$VALUES_FILE"
 
             echo "Contents after update:"
-            cat "$VALUES_FILE"
+            yq '.image' "$VALUES_FILE"
 
             CHART_FILE="k8s/microservice/Chart.yaml"
             CURRENT_VERSION=$(yq '.version' "$CHART_FILE")

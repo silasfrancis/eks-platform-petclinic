@@ -29,7 +29,7 @@ configServer:
 
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-app_secrets-irsa"
 
 secretStore:
   enabled: true
@@ -39,7 +39,7 @@ externalSecret:
   data:
     - secretKey: OPENAI_API_KEY
       remoteRef:
-        key: dev/petclinic
+        key: prod/petclinic
         property: openai_api_key
 
 virtualService:

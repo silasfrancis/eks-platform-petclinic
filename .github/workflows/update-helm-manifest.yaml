@@ -79,7 +79,7 @@ jobs:
           run: |
             VALUE_ENVIRONMENT=${{ env.BRANCH_NAME }}
             SERVICE=${{ matrix.dir }}
-            TARGET_DIR="helm/microservice/values/env/$VALUE_ENVIRONMENT"
+            TARGET_DIR="k8s/microservice/values/env/$VALUE_ENVIRONMENT"
             VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
             TARGET_FILE="build-manifest.json"
 

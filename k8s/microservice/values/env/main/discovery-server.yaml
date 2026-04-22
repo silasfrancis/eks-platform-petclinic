@@ -1,23 +1,18 @@
 appName: discovery-server
 containerPort: 8761
 springProfile: docker
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/discovery-server
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/discovery-server
+  tag: "a85214b1"
+  digest: "sha256:cd32efdeb2fa1045e0dd6938f5d5fa73c4a2f2218a7b22b29dac98ba646c6a6b"
   pullPolicy: IfNotPresent
-
 controller:
   type: deployment
-
 replicaCount: 1
-
 service:
   port: 8761
   targetPort: 8761
-
 probes:
   startup:
     path: /
@@ -25,4 +20,3 @@ probes:
     path: /
   liveness:
     path: /
-

@@ -3,7 +3,7 @@ name: Update Helm Manifests
 on:
   workflow_run:
     branches: [ dev, main]
-    workflows: ["Build, Scan, Push to ECR and Sign"]
+    workflows: ["Build and Push Service Images"]
     types: [ completed ]
 
 jobs:

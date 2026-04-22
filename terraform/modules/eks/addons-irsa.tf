@@ -3,7 +3,7 @@ data "aws_caller_identity" "current" {}
 locals {
   oidc_url = replace(aws_iam_openid_connect_provider.eks.url, "https://", "")
   irsa_roles = {
-      vpc_cni = {
+      vpcCni = {
         namespace = "kube-system"
         sas       = ["aws-node"]
         aws_managed_policies = ["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]
@@ -13,7 +13,7 @@ locals {
         }
       }
 
-      ebs_csi = {
+      ebsCsi = {
         namespace = "kube-system"
         sas       = ["ebs-csi-controller-sa"]
         aws_managed_policies = ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]

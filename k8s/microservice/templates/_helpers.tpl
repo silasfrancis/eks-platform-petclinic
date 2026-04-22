@@ -69,7 +69,7 @@ ServiceAccount name
 {{- if .Values.serviceAccount.name -}}
 {{- .Values.serviceAccount.name }}
 {{- else -}}
-{{- .Values.appName }}
+{{- printf "%s-sa" .Values.appName }}
 {{- end -}}
 {{- end }}
 
@@ -145,7 +145,7 @@ Common Spring Boot environment variables
 Injected into every container
 */}}
 {{- define "microservice.commonEnv" -}}
-{{- if neq .Values.controller "job" }}
+{{- if ne .Values.controller.type "job" }}
 - name: SPRING_PROFILES_ACTIVE
   value: {{ .Values.springProfile | default "docker" | quote }}
 
@@ -242,11 +242,12 @@ podAntiAffinity:
 Deployment strategy for Canary (Argo Rollouts) or RollingUpdate (Standard Deployment)
 */}}
 {{- define "microservice.strategy" -}}
+{{- $root := . -}}
 {{- if eq .Values.controller.type "rollout" }}
 canary:
   analysis:
     templates:
-      - templateName: {{ include "microservice.analysisTemplateName" . }}
+      - templateName: {{ include "microservice.analysisTemplateName" $root }}
     args:
       - name: service-name
         value: {{ include "microservice.serviceName" . }}
@@ -269,12 +270,12 @@ canary:
         duration: {{ .pause }}
     - analysis:
         templates:
-          - templateName: {{ include "microservice.analysisTemplateName" . }}
+          - templateName: {{ include "microservice.analysisTemplateName" $root }}
         args:
           - name: service-name
-            value: {{ include "microservice.serviceName" . }}
+            value: {{ include "microservice.serviceName" $root }}
           - name: namespace
-            value: {{ .Release.Namespace }}
+            value: {{ $root.Release.Namespace }}
     {{- end }}
     - setWeight: 100
 

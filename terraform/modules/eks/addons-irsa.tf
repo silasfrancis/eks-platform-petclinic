@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 locals {
   oidc_url = replace(aws_iam_openid_connect_provider.eks.url, "https://", "")
   irsa_roles = {
@@ -13,7 +15,7 @@ locals {
 
       ebs_csi = {
         namespace = "kube-system"
-        sas       = ["aws-ebs-csi-driver"]
+        sas       = ["ebs-csi-controller-sa"]
         aws_managed_policies = ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
         policy    = {
           actions   = []
@@ -73,7 +75,37 @@ locals {
             "eks:DescribeCluster"
           ]
           Resource = aws_eks_cluster.main_cluster.arn
-        }]
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "iam:GetInstanceProfile",
+            "iam:CreateInstanceProfile",
+            "iam:AddRoleToInstanceProfile",
+            "iam:RemoveRoleFromInstanceProfile",
+            "iam:DeleteInstanceProfile",
+            "iam:TagInstanceProfile"       
+          ]
+          Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "ssm:GetParameter"
+          ]
+          Resource = "*"
+        },
+        {
+        Effect = "Allow"
+        Action = [
+          "kms:CreateGrant",
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:GenerateDataKeyWithoutPlaintext",
+          "kms:ReEncrypt*"
+        ]
+        Resource = var.data_storage_kms_key_arn
+      }]
       }
     }
 }

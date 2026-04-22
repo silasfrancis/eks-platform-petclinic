@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-rds-database
-  namespace: {{ .Values.monitoring.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     grafana_dashboard: "1"
 data:
   rds-database.json: |-
-    {{ .Files.Get "dashboards/rds-database.json" | indent 4 }}
+{{ .Files.Get "dashboards/rds-database.json" | nindent 4 }}

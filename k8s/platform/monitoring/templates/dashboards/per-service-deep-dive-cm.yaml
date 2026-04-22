@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-per-service-deep-dive
-  namespace: {{ .Values.monitoring.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     grafana_dashboard: "1"
 data:
   per-service-deep-dive.json: |-
-    {{ .Files.Get "dashboards/per-service-deep-dive.json" | indent 4 }}
+{{ .Files.Get "dashboards/per-service-deep-dive.json" | nindent 4 }}

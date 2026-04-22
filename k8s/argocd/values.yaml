@@ -492,6 +492,8 @@ argocdBootstrap:
       syncWave: "1"
       syncOptions:
         - ServerSideApply=true
+        - Replace=true
+        - SkipHooks=true
       ignoreDifferences:
         - group: karpenter.sh
           kind: NodePool

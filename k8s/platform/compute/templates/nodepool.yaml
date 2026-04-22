@@ -45,12 +45,15 @@ spec:
         - key: karpenter.k8s.aws/instance-category
           operator: In
           values: {{ toJson $pool.requirements.instanceCategory }}
-        - key: karpenter.k8s.aws/instance-family
+        # - key: karpenter.k8s.aws/instance-family
+        #   operator: In
+        #   values: {{ toJson $pool.requirements.instanceFamily }}
+        # - key: karpenter.k8s.aws/instance-generation
+        #   operator: Gt
+        #   values: [{{ $pool.requirements.instanceGeneration | quote }}]
+        - key: "karpenter.k8s.aws/instance-size"
           operator: In
-          values: {{ toJson $pool.requirements.instanceFamily }}
-        - key: karpenter.k8s.aws/instance-generation
-          operator: Gte
-          values: [{{ $pool.requirements.instanceGeneration | quote }}]
+          values: {{ toJson $pool.requirements.instanceSize }}
         - key: karpenter.k8s.aws/instance-hypervisor
           operator: In
           values: {{ toJson $pool.requirements.hypervisor }}
@@ -70,6 +73,7 @@ spec:
   limits:
     cpu: {{ $pool.limits.cpu | quote }}
     memory: {{ $pool.limits.memory }}
+    nodes: {{ $pool.limits.nodes }}
 
   weight: {{ $pool.weight }}
 {{- end }}

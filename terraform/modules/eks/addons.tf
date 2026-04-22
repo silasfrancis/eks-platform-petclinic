@@ -121,7 +121,8 @@ resource "aws_eks_addon" "ebs_csi" {
 
   depends_on = [
     aws_eks_cluster.main_cluster,
-    aws_eks_node_group.karpenter_bootstrap
+    aws_eks_node_group.karpenter_bootstrap,
+    aws_iam_role.irsa["ebs_csi"]
   ]
   lifecycle {
     ignore_changes = [addon_version]

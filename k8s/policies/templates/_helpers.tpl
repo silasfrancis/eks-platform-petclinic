@@ -62,21 +62,21 @@ verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-1
 
 {{/* Kyverno Policy Common Labels */}}
 {{- define "policies.kyverno.labels" -}}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/managed-by: helm
 app.kubernetes.io/part-of: platform-policies
 policy.kyverno.io/version: v1
 {{- end -}}
 
 {{/* NetworkPolicy Common Labels */}}
 {{- define "policies.netpol.labels" -}}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/managed-by: helm
 app.kubernetes.io/part-of: petclinic-network
 protected: "true"
 {{- end -}}
 
 {{/*Istio policy labels*/}}
 {{- define "policies.istio.labels" -}}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/managed-by: helm
 app.kubernetes.io/part-of: petclinic-network
 protected: "true"
 {{- end -}}

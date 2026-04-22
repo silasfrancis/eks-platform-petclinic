@@ -2,11 +2,10 @@
 version: "3"
 
 vars:
-  # TARGET_CLUSTER determines the EKS cluster name for Helm/Kubectl commands.
-  # If passed via CLI (e.g., task bootstrap CLUSTER_NAME=custom-eks)
-  # Defaults to 'prod-petclinic-cluster' if ENV=main
-  # Defaults to 'dev-petclinic-cluster' for all other cases (ENV=dev)
-  TARGET_CLUSTER: '{{.CLUSTER_NAME | default (if eq .ENV "main" then "prod-petclinic-cluster" else "dev-petclinic-cluster")}}'
+  # Values passed at runtime (e.g., task bootstrap ENV=main)
+  # Defaulting here just to prevent empty string errors
+  ENV: '{{.ENV | default "dev"}}'
+  CLUSTER_NAME: '{{.CLUSTER_NAME | default "dev-petclinic-cluster"}}'
 
 env:
   CILIUM_VERSION: "1.19.3"
@@ -16,17 +15,6 @@ env:
   ARGO_ROLLOUTS_VERSION: "v1.8.3"
 
 tasks:
-  validate-env:
-    internal: true
-    preconditions:
-      - sh: |
-          [ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]
-        msg: "ERROR: ENV must be dev or main"
-
-      - sh: |
-          [ -n "{{.TARGET_CLUSTER}}" ]
-        msg: "ERROR: Cluster name could not be determined."
-
   setup_helm_repos:
     desc: "Add helm repos"
     cmds:
@@ -39,14 +27,13 @@ tasks:
 
   install_cilium:
     desc: "Install Cilium"
-    deps: [validate-env]
     cmds:
       - |
         helm upgrade --install cilium cilium/cilium \
           --version {{ .CILIUM_VERSION }} \
           -n kube-system \
-          --set cluster.name={{ .TARGET_CLUSTER }} \  
-          --values k8s/bootstrap/cilium/values.yaml
+          --set cluster.name={{ .CLUSTER_NAME }} \
+          --values bootstrap/cilium/values.yaml
 
   install_metrics_server:
     desc: "Install metrics-server"
@@ -55,7 +42,7 @@ tasks:
         helm upgrade --install metrics-server metrics-server/metrics-server \
           --version {{ .METRICS_SERVER_VERSION }} \
           -n kube-system \
-          --values k8s/bootstrap/metrics-server/values.yaml
+          --values bootstrap/metrics-server/values.yaml
 
   install_external_secrets:
     desc: "Install External Secrets"
@@ -72,7 +59,7 @@ tasks:
     cmds:
       - |
         helm upgrade --install vpa fairwinds-stable/vpa \
-          -n vpa-system \
+          -n vpa \
           --create-namespace \
           --set updater.enabled=false \
           --set admissionController.enabled=false \
@@ -98,28 +85,35 @@ tasks:
   install_argocd:
     desc: "Install ArgoCD"
     cmds:
-      - kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      - helm repo add argo https://argoproj.github.io/argo-helm
       - |
-        kubectl apply -n argocd \
-          -f https://raw.githubusercontent.com/argoproj/argo-cd/{{ .ARGOCD_VERSION }}/manifests/install.yaml
+        helm upgrade --install argocd argo/argo-cd \
+          --namespace argocd \
+          --create-namespace \
+          --version {{ .ARGOCD_VERSION }} \
+          --set server.extraArgs={--insecure}
 
   install_rollouts:
     desc: "Install Argo Rollouts"
     cmds:
-      - kubectl create namespace argo-rollouts --dry-run=client -o yaml | kubectl apply -f -
       - |
-        kubectl apply -n argo-rollouts \
-          -f https://github.com/argoproj/argo-rollouts/releases/download/{{ .ARGO_ROLLOUTS_VERSION }}/install.yaml
+        helm upgrade --install argo-rollouts argo/argo-rollouts \
+          --namespace argo-rollouts \
+          --create-namespace \
+          --version {{ .ARGO_ROLLOUTS_VERSION }}
 
-  deploy_root_app:
-    desc: "Deploy root app"
-    deps: [validate-env]
+  deploy_argo_applications:
+    desc: "Deploy ArgoCD Root Application (App-of-Apps)"
     cmds:
-      - kubectl apply -f k8s/argocd/root-app.yaml
+      - |
+        helm upgrade --install argocd-root k8s/argocd \
+          --namespace argocd \
+          --create-namespace \
+          --values argocd/values.yaml \
+          --values argocd/values/env/{{.ENV}}/values.yaml
 
   bootstrap:
     desc: "Full cluster bootstrap"
-    deps: [validate-env]
     cmds:
       - task: setup_helm_repos
       - task: install_cilium
@@ -130,4 +124,4 @@ tasks:
       - task: install_istiod
       - task: install_rollouts
       - task: install_argocd
-      - task: deploy_root_app
+      - task: deploy_argo_applications

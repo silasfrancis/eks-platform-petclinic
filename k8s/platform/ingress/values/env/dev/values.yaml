@@ -62,7 +62,9 @@ externalSecret:
   enabled: true
   name: ""
   refreshInterval: 1h
-  creationPolicy: Owner
+  target: 
+    name: "cloudflare_api_token"
+    creationPolicy: Owner
   data:
     - secretKey: cloudflare_api_token
       remoteRef:
@@ -70,6 +72,6 @@ externalSecret:
         property: cloudflare_api_token
 
 esoServiceAccount:
-  name: ""      
+  name: "external-dns-sa"
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>

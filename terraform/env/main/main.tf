@@ -25,6 +25,7 @@ module "kms" {
   source = "../../modules/kms"
 
   env = var.environment
+  app = var.app
 
 
 }

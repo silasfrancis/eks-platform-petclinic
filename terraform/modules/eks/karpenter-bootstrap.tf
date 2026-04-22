@@ -7,7 +7,7 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
 
   launch_template {
     id      = aws_launch_template.eks_nodes.id
-    version = aws_launch_template.eks_nodes.default_version
+    version = "$Default"
   }
 
   scaling_config {
@@ -52,10 +52,18 @@ resource "aws_ec2_tag" "karpenter_subnets" {
   resource_id = each.value
   key         = "karpenter.sh/discovery"
   value       = aws_eks_cluster.main_cluster.name
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 resource "aws_ec2_tag" "karpenter_sg" {
   resource_id = var.eks_node_sg_id
   key   = "karpenter.sh/discovery"
   value = aws_eks_cluster.main_cluster.name
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }

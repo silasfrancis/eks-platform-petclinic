@@ -39,7 +39,7 @@ externalSecret:
   enabled: true
   refreshInterval: 1h
   creationPolicy: Owner
-  data: {}
+  data: []
     # Slack webhook for Falcosidekick security alerts
     # - secretKey: slack_webhook_url
     #   remoteRef:
@@ -198,7 +198,9 @@ falco:
       value: "true"
       effect: NoSchedule
     - key: CriticalAddonsOnly
-      operator: Exists
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
 
   collectors:
     enabled: true

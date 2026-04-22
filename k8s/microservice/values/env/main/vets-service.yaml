@@ -1,39 +1,29 @@
 appName: vets-service
 containerPort: 8083
 springProfile: docker,mysql
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/vets-service
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/vets-service
+  tag: "a85214b1"
+  digest: "sha256:ab345a161cbebcb691ac355f303f803c22ad8d8ea2317160cb518b1d2faa3550"
   pullPolicy: IfNotPresent
-
 controller:
   type: rollout
-
 replicaCount: 1
-
 spot:
   enabled: true
-
 service:
   port: 8083
   targetPort: 8083
-
 hpa:
   enabled: true
-
 configServer:
   enabled: true
-
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
-
 secretStore:
   enabled: true
-
 externalSecret:
   enabled: true
   data:
@@ -53,12 +43,9 @@ externalSecret:
       remoteRef:
         key: prod/petclinic
         property: mysql_database
-
 virtualService:
   enabled: true
-
 vpa:
   enabled: true
-
 analysisTemplate:
   enabled: true

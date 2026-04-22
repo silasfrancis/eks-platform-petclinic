@@ -17,6 +17,13 @@ resource "aws_vpc_security_group_ingress_rule" "control_plane_to_nodes" {
   referenced_security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
 }
 
+resource "aws_vpc_security_group_ingress_rule" "nodes_internal" {
+  description       = "Allow nodes to communicate with each other"
+  security_group_id = var.eks_node_sg_id
+  ip_protocol       = "-1" 
+  referenced_security_group_id = var.eks_node_sg_id
+}
+
 resource "aws_vpc_security_group_ingress_rule" "external_nlb_to_node" {
   description       = "Allow External NLB to reach node port for HTTP"
   security_group_id = var.eks_node_sg_id
@@ -35,4 +42,16 @@ resource "aws_vpc_security_group_ingress_rule" "nlb_to_nodes_healthcheck" {
   to_port           = 32319
   ip_protocol       = "tcp"
   referenced_security_group_id = var.nlb_external_security_group_id
+}
+
+resource "aws_vpc_security_group_egress_rule" "nodes_to_internet" {
+  description       = "Allow nodes to reach AWS APIs and Internet for bootstrapping"
+  security_group_id = var.eks_node_sg_id
+  
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+  
+  tags = {
+    Name = "node-egress-all"
+  }
 }

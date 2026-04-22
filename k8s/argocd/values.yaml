@@ -132,11 +132,11 @@ argocd:
       type: ClusterIP
     metrics:
       enabled: true
-      serviceMonitor:
-        enabled: true
-        additionalLabels:
-          # OVERRIDE: must match your Prometheus release label
-          release: platform-monitoring
+      # serviceMonitor:
+      #   enabled: true
+      #   additionalLabels:
+      #     # OVERRIDE: must match your Prometheus release label
+      #     release: platform-monitoring
       rules:
         enabled: true
         additionalLabels:
@@ -181,10 +181,10 @@ argocd:
         memory: 512Mi
     metrics:
       enabled: true
-      serviceMonitor:
-        enabled: true
-        additionalLabels:
-          release: platform-monitoring
+      # serviceMonitor:
+      #   enabled: true
+      #   additionalLabels:
+      #     release: platform-monitoring
 
   # Repo server — clones Git repos and renders Helm/Kustomize manifests
   repoServer:
@@ -200,10 +200,10 @@ argocd:
         memory: 512Mi
     metrics:
       enabled: true
-      serviceMonitor:
-        enabled: true
-        additionalLabels:
-          release: platform-monitoring
+      # serviceMonitor:
+      #   enabled: true
+      #   additionalLabels:
+      #     release: platform-monitoring
 
   # ApplicationSet controller — generates Applications from templates
   # Used if you adopt ApplicationSets in future (not currently used)
@@ -220,10 +220,10 @@ argocd:
         memory: 256Mi
     metrics:
       enabled: true
-      serviceMonitor:
-        enabled: true
-        additionalLabels:
-          release: platform-monitoring
+      # serviceMonitor:
+      #   enabled: true
+      #   additionalLabels:
+      #     release: platform-monitoring
 
   # Dex disabled — no SSO configured
   # Enable and configure OIDC if adding SSO (GitHub, Google etc)
@@ -263,10 +263,10 @@ argocd:
         memory: 128Mi
     metrics:
       enabled: true
-      serviceMonitor:
-        enabled: true
-        additionalLabels:
-          release: platform-monitoring
+      # serviceMonitor:
+      #   enabled: true
+      #   additionalLabels:
+      #     release: platform-monitoring
 
     # ESO creates this secret
     # Secret contains: slack-token
@@ -378,8 +378,8 @@ secretStore:
 externalSecrets:
   enabled: true
   refreshInterval: 1h
-
   secrets:
+  
     repo:
       target:
         name: argocd-repo-secret
@@ -431,7 +431,7 @@ argocdBootstrap:
 
   # Global defaults inherited by all Applications
   defaults:
-    repoURL: git@github.com:silasfrancis/spring_boot_micro_services.git
+    repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
     targetRevision: main
     destination:
       server: https://kubernetes.default.svc

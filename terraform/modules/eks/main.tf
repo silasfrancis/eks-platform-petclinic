@@ -37,8 +37,8 @@ resource "aws_eks_cluster" "main_cluster" {
     resource = "eks"
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
 }

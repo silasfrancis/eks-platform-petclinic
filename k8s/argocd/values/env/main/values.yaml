@@ -1,4 +1,4 @@
-argocd:
+argo-cd:
   global:
     domain: argocd.lefrancis.org
   configs:

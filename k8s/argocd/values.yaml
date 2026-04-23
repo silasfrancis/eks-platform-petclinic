@@ -12,7 +12,7 @@
 
 # ArgoCD Helm subchart configuration
 # Ref: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
-argocd:
+argo-cd:
   global:
     # OVERRIDE: update to match your actual ArgoCD hostname
     domain: argocd.lefrancis.org
@@ -198,13 +198,14 @@ argocd:
       limits:
         cpu: 500m
         memory: 512Mi
+
+    readinessProbe:
+      {}
+
     livenessProbe:
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
-    metrics:
-      enabled: true
+      {}
+      # metrics:
+      #   enabled: true
       # serviceMonitor:
       #   enabled: true
       #   additionalLabels:
@@ -461,6 +462,7 @@ argocdBootstrap:
       namespace: argocd
       project: platform
       syncWave: "0"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       automated:
         prune: false
         selfHeal: false
@@ -480,6 +482,7 @@ argocdBootstrap:
       namespace: policies
       project: platform
       syncWave: "1"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       syncOptions:
         - ServerSideApply=true
       ignoreDifferences:
@@ -495,6 +498,7 @@ argocdBootstrap:
       namespace: karpenter
       project: platform
       syncWave: "1"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       syncOptions:
         - ServerSideApply=true
         - Replace=true
@@ -512,6 +516,7 @@ argocdBootstrap:
       namespace: istio-ingress
       project: platform
       syncWave: "1"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       ignoreDifferences:
         - group: ""
           kind: Service
@@ -528,6 +533,7 @@ argocdBootstrap:
       namespace: monitoring
       project: platform
       syncWave: "1"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       syncOptions:
         - ServerSideApply=true
       ignoreDifferences:
@@ -541,6 +547,7 @@ argocdBootstrap:
       namespace: security
       project: platform
       syncWave: "2"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       syncOptions:
         - ServerSideApply=true
 
@@ -549,12 +556,14 @@ argocdBootstrap:
       namespace: autoscaling
       project: platform
       syncWave: "2"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
 
     backup:
       path: k8s/platform/backup
       namespace: velero
       project: platform
       syncWave: "2"
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
 
     # Wave 3 — Application workloads
     microservices:
@@ -562,6 +571,7 @@ argocdBootstrap:
       path: k8s/microservice
       namespace: petclinic
       project: apps
+      repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       syncWave: "3"
 
       services:

@@ -111,7 +111,7 @@ tasks:
     desc: "Deploy ArgoCD Applications"
     cmds:
       - |
-        helm upgrade --install argocd k8s/argocd \
+        helm upgrade --install argocd argocd \
           --namespace argocd \
           --create-namespace \
           --values argocd/values.yaml \

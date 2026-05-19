@@ -1,7 +1,7 @@
 locals {
   buckets = {
-    rds_export = {
-      id           = aws_s3_bucket.rds_export.id
+    rds_backup = {
+      id           = aws_s3_bucket.rds_backup.id
       exp_days     = 30
       versioning   = true
     }

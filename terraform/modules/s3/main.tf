@@ -13,8 +13,8 @@ resource "aws_s3_bucket" "tf_state_bucket" {
   }
 }
 
-resource "aws_s3_bucket" "rds_export" {
-  bucket_prefix = "${var.env}-rds-export"
+resource "aws_s3_bucket" "rds-backup" {
+  bucket_prefix = "${var.env}-${var.app}-rds-backup"
   force_destroy = true
   tags = {
     resource = "s3"
@@ -29,7 +29,7 @@ resource "aws_s3_bucket" "loki" {
 }
 
 resource "aws_s3_bucket" "velero" {
-  bucket_prefix = "${var.env}-velero-backups"
+  bucket_prefix = "${var.env}-${var.app}-velero-backups"
 
   tags = {
     resource = "s3"

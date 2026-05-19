@@ -36,17 +36,32 @@ resource "aws_db_parameter_group" "mysql" {
   }
 }
 
+locals {
+  is_prod = var.env == "prod"
+
+  # Backup retention — 7 days prod, 1 day dev
+  backup_retention = local.is_prod ? 7 : 1
+
+  # Performance Insights retention for 7 days is free tier
+  pi_retention = 7
+
+  # Enhanced monitoring interval
+  # 60s prod for full OS metrics, 0 disables it in dev to avoid IAM role requirement
+  monitoring_interval = local.is_prod ? 60 : 0
+}
+
 resource "aws_db_instance" "main" {
-  identifier        = "${var.env}-${var.app}-mysql"
-  engine            = "mysql"
-  engine_version    = var.mysql_version        
-  instance_class    = var.db_instance_class   
-  allocated_storage = var.allocated_storage    
+  identifier     = "${var.env}-${var.app}-mysql"
+  engine         = "mysql"
+  engine_version = var.mysql_version
+
+  instance_class    = var.db_instance_class
+  allocated_storage = var.allocated_storage
   storage_type      = "gp3"
 
   db_name  = var.db_name
   username = var.db_username
-  password = var.db_password  
+  password = var.db_password
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [var.rds_security_group_id]
@@ -55,35 +70,44 @@ resource "aws_db_instance" "main" {
   storage_encrypted = true
   kms_key_id        = var.data_storage_kms_key_arn
 
-  multi_az = true
+  # Multi-AZ only in prod
+  multi_az = local.is_prod
 
-  backup_retention_period   = 7       
-  backup_window             = "02:00-03:00"
-  maintenance_window        = "Sun:04:00-Sun:05:00"
-  copy_tags_to_snapshot     = true
-  delete_automated_backups  = false
+  # Backup retention — 1 day dev, 7 days prod
+  backup_retention_period  = local.backup_retention
+  backup_window            = "02:00-03:00"
+  maintenance_window       = "Sun:04:00-Sun:05:00"
+  copy_tags_to_snapshot    = true
+  delete_automated_backups = false
 
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.env}-mysql-final-snapshot"
+  # Always take a final snapshot before destroy in prod
+  skip_final_snapshot       = !local.is_prod
+  final_snapshot_identifier = local.is_prod ? "${var.env}-${var.app}-mysql-final-snapshot" : null
 
-  monitoring_interval             = 60   
-  monitoring_role_arn             = var.rds_monitoring_role_arn
-  enabled_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
-  performance_insights_enabled    = true
-  performance_insights_kms_key_id = var.data_storage_kms_key_arn
-  performance_insights_retention_period = 7
+  # Enhanced monitoring — disabled in dev and enabled in prod for OS-level metrics (CPU steal, memory, disk I/O)
+  monitoring_interval = local.monitoring_interval
+  monitoring_role_arn = local.is_prod ? var.rds_monitoring_role_arn : null
 
-  deletion_protection = true
-  publicly_accessible = false
+  enabled_cloudwatch_logs_exports = ["error", "slowquery"]
 
+  # Performance Insights — free at 7 days, enable in both environments
+  performance_insights_enabled          = true
+  performance_insights_kms_key_id       = var.data_storage_kms_key_arn
+  performance_insights_retention_period = local.pi_retention
+
+  deletion_protection = local.is_prod
+
+  publicly_accessible        = false
   auto_minor_version_upgrade = true
 
   tags = {
-    resource = "rds"
+    resource    = "rds"
+    environment = var.env
+    cost-centre = "${var.env}-${var.app}"
   }
 
   lifecycle {
-    ignore_changes = [password]  
+    ignore_changes = [password]
   }
 }
 

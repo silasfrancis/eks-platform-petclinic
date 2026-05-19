@@ -1,7 +1,7 @@
 resource "aws_eks_cluster" "main_cluster" {
   name     = "${var.env}-${var.app}-cluster"
   version  = var.cluster_version
-  role_arn = var.cluster_role_arn
+  role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
     subnet_ids              = var.private_subnets
@@ -37,8 +37,12 @@ resource "aws_eks_cluster" "main_cluster" {
     resource = "eks"
   }
 
+  depends_on = [
+    aws_iam_role.cluster_role,
+    aws_cloudwatch_log_group.eks_log_group
+  ]
+
   # lifecycle {
   #   prevent_destroy = true
   # }
-
 }

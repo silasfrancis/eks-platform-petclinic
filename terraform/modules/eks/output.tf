@@ -10,6 +10,13 @@ output "oidc_url_stripped" {
   value = replace(aws_iam_openid_connect_provider.eks.url, "https://", "")
 }
 
+output "roles" {
+  value = {
+    cluster_role       = aws_iam_role.cluster_role.arn
+    node_role          = aws_iam_role.node_role.arn
+  }
+}
+
 output "cluster_endpoint" {
   value = aws_eks_cluster.main_cluster.endpoint
 }

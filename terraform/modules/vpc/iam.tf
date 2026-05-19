@@ -1,3 +1,23 @@
+resource "aws_iam_role" "vpc_flow_logs" {
+  name = "${var.env}-${var.app}-vpc-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+  tags = {
+    resource = "iam"
+  }
+}
+
 resource "aws_iam_policy" "vpc_flow_log_policy" {
   name = "${var.env}-${var.app}-vpc-flow-log-policy"
 
@@ -23,7 +43,7 @@ resource "aws_iam_policy" "vpc_flow_log_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "vpc_flow_logs_attach" {
-  role       = aws_iam_role.vpc_flow_logs_role.name
+  role       = aws_iam_role.vpc_flow_logs.name
   policy_arn = aws_iam_policy.vpc_flow_log_policy.arn
   depends_on = [ aws_iam_policy.vpc_flow_log_policy ]
 }

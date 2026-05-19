@@ -3,7 +3,7 @@ resource "aws_instance" "wireguard_server" {
   instance_type = "t4g.micro"
   subnet_id = var.public_subnet_id
   vpc_security_group_ids  = [var.wireguard_server_security_group_id]
-  iam_instance_profile = var.wireguard_server_instance_profile 
+  iam_instance_profile = aws_iam_instance_profile.wireguard_server_profile.name 
   associate_public_ip_address = false
   source_dest_check = false
 

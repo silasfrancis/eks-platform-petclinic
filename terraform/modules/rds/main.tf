@@ -86,7 +86,7 @@ resource "aws_db_instance" "main" {
 
   # Enhanced monitoring — disabled in dev and enabled in prod for OS-level metrics (CPU steal, memory, disk I/O)
   monitoring_interval = local.monitoring_interval
-  monitoring_role_arn = local.is_prod ? var.rds_monitoring_role_arn : null
+  monitoring_role_arn = local.is_prod ? aws_iam_role.rds_enhanced_monitoring[0].arn : null
 
   enabled_cloudwatch_logs_exports = ["error", "slowquery"]
 

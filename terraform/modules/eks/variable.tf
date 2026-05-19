@@ -36,6 +36,10 @@ variable "data_storage_kms_key_arn" {
   type = string
 }
 
+variable "infra_common_kms_key_arn" {
+  type = string
+}
+
 variable "wireguard_server_security_group_id" {
   type = string
 }

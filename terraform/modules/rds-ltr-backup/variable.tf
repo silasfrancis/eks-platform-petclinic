@@ -10,18 +10,6 @@ variable "rds_export_bucket" {
   type = string
 }
 
-variable "rds_export_role_arn" {
-  type = string
-}
-
-variable "lambda_backup_role_arn" {
-  type = string
-}
-
-variable "lambda_notification_role_arn" {
-  type = string
-}
-
 variable "infra_common_kms_key_arn" {
   type = string
 }
@@ -30,7 +18,11 @@ variable "data_storage_kms_key_arn" {
   type = string
 }
 
-variable "slack_webhook_url" {
+variable "rds_export_bucket_arn" {
+  type = string
+}
+
+variable "slack_webhook" {
   type = string
   sensitive = true
 }

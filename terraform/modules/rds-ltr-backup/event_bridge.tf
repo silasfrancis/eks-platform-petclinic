@@ -1,4 +1,4 @@
-resource "aws_cloudwatch_event_rule" "rds_snapshot_complete" {
+resource "aws_cloudwatch_event_rule" "rds_snapshot_events" {
   name        = "${var.env}-${var.app}-rds-snapshot-complete"
   description = "Fires when RDS automated snapshot completes"
 
@@ -15,10 +15,20 @@ resource "aws_cloudwatch_event_rule" "rds_snapshot_complete" {
   }
 }
 
-resource "aws_cloudwatch_event_target" "rds_export" {
-  rule      = aws_cloudwatch_event_rule.rds_snapshot_complete.name
-  target_id = "TriggerSnapshotExport"
-  arn       = aws_lambda_function.rds_export_trigger.arn
-  
-  depends_on = [ aws_lambda_function.rds_export_trigger ]
+resource "aws_cloudwatch_event_target" "to_sqs" {
+  rule = aws_cloudwatch_event_rule.rds_snapshot_events.name
+  arn  = aws_sqs_queue.main.arn
+}
+
+resource "aws_cloudwatch_event_rule" "daily_summary" {
+  name                = "${var.app}-${var.env}-rds-daily-backup-summary"
+  schedule_expression = "cron(0 18 * * ? *)"
+  tags = {
+    resource = "event_bridge"
+  }
+}
+
+resource "aws_cloudwatch_event_target" "summary_target" {
+  rule = aws_cloudwatch_event_rule.daily_summary.name
+  arn  = aws_lambda_function.summary.arn
 }

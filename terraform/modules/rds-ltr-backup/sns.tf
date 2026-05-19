@@ -1,13 +1,9 @@
-resource "aws_sns_topic" "rds_export_alerts" {
-  name              = "${var.env}-${var.app}-rds-export-alerts"
-  kms_master_key_id = var.infra_common_kms_key_arn
-  tags = {
-    resource = "sns"
-  }
+resource "aws_sns_topic" "alerts" {
+  name = "rds-backup-alerts"
 }
 
-resource "aws_sns_topic_subscription" "slack" {
-  topic_arn = aws_sns_topic.rds_export_alerts.arn
+resource "aws_sns_topic_subscription" "dlq_lambda" {
+  topic_arn = aws_sns_topic.alerts.arn
   protocol  = "lambda"
-  endpoint  = aws_lambda_function.slack_notifier.arn
+  endpoint  = aws_lambda_function.dlq_inspector.arn
 }

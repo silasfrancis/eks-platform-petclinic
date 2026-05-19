@@ -1,71 +1,147 @@
-data "archive_file" "rds_export" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/rds_export"
-  output_path = "${path.module}/lambda/rds_export.zip"
+locals {
+  shared_files = {
+    "shared/__init__.py" = "${path.module}/lambda/shared/__init__.py"
+    "shared/utils.py"    = "${path.module}/lambda/shared/utils.py"
+  }
 }
 
-data "archive_file" "slack_sns_notify" {
+data "archive_file" "processor" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/slack_sns_notify"
-  output_path = "${path.module}/lambda/slack_sns_notify.zip"
+  output_path = "${path.module}/build/processor.zip"
+
+  source {
+    content  = file("${path.module}/lambda/processor/handler.py")
+    filename = "handler.py"
+  }
+
+  dynamic "source" {
+    for_each = local.shared_files
+    content {
+      content  = file(source.value)
+      filename = source.key
+    }
+  }
 }
 
-resource "aws_lambda_function" "rds_export_trigger" {
-  function_name    = "${var.env}-${var.app}-rds-export-trigger"
-  filename         = data.archive_file.rds_export.output_path
-  source_code_hash = data.archive_file.rds_export.output_base64sha256
-  runtime          = "python3.12"
-  handler          = "rds_exporter.start_export"
-  role             = var.lambda_backup_role_arn
+data "archive_file" "dlq_inspector" {
+  type        = "zip"
+  output_path = "${path.module}/build/dlq_inspector.zip"
+
+  source {
+    content  = file("${path.module}/lambda/dlq_inspector/handler.py")
+    filename = "handler.py"
+  }
+
+  dynamic "source" {
+    for_each = local.shared_files
+    content {
+      content  = file(source.value)
+      filename = source.key
+    }
+  }
+}
+
+data "archive_file" "summary" {
+  type        = "zip"
+  output_path = "${path.module}/build/summary.zip"
+
+  source {
+    content  = file("${path.module}/lambda/summary/handler.py")
+    filename = "handler.py"
+  }
+
+  dynamic "source" {
+    for_each = local.shared_files
+    content {
+      content  = file(source.value)
+      filename = source.key
+    }
+  }
+}
+
+resource "aws_lambda_function" "processor" {
+  function_name    = "${var.env}-${var.app}-rds-export-processor"
+  role             = aws_iam_policy.lambda_rds_backup.arn
+  filename         = data.archive_file.processor.output_path
+  source_code_hash = data.archive_file.processor.output_base64sha256
+  handler          = "handler.handler"
+  runtime          = "python3.11"
   timeout          = 60
 
   environment {
     variables = {
-      ENV             = var.env
-      S3_BUCKET       = var.rds_export_bucket
-      EXPORT_ROLE_ARN = var.rds_export_role_arn
-      KMS_KEY_ARN     = var.data_storage_kms_key_arn
+      S3_BUCKET        = var.rds_export_bucket
+      IAMROLE_ARN      = aws_iam_role.rds_export_role.arn
+      KMS_KEY_ARN      = var.data_storage_kms_key_arn
+      DB_IDENTIFIER    = var.db_instance_identifier
+      ENV              = var.env
     }
   }
 
-  tags = {
-    resource = "lambda"
-  }
+  tags = { resource = "lambda" }
+
+  depends_on = [aws_cloudwatch_log_group.rds_export_lambda_processor]
 }
 
-resource "aws_lambda_function" "slack_notifier" {
-  function_name = "${var.env}-${var.app}-slack-notifier"
-  filename = data.archive_file.slack_sns_notify.output_path
-  source_code_hash = data.archive_file.slack_sns_notify.output_base64sha256
-  runtime          = "python3.12"
-  handler       = "slack_sns_notify.handler"
-  role = var.lambda_notification_role_arn
-  timeout = 10
+resource "aws_lambda_function" "dlq_inspector" {
+  function_name    = "${var.env}-${var.app}-rds-dlq-inspector"
+  role             = aws_iam_policy.lambda_rds_backup.arn
+  filename         = data.archive_file.dlq_inspector.output_path
+  source_code_hash = data.archive_file.dlq_inspector.output_base64sha256
+  handler          = "handler.handler"
+  runtime          = "python3.11"
+  timeout          = 60
+
   environment {
     variables = {
-      SLACK_WEBHOOK_URL = var.slack_webhook_url 
+      SLACK_WEBHOOK = var.slack_webhook
+      DLQ_URL       = aws_sqs_queue.dlq.id
     }
   }
 
-  tags = {
-    resource = "lambda"
+  tags = { resource = "lambda" }
+
+  depends_on = [aws_cloudwatch_log_group.dlq_inspector]
+}
+
+resource "aws_lambda_function" "summary" {
+  function_name    = "${var.env}-${var.app}-rds-backup-summary"
+  role             = aws_iam_policy.lambda_rds_backup.arn
+  filename         = data.archive_file.summary.output_path
+  source_code_hash = data.archive_file.summary.output_base64sha256
+  handler          = "handler.handler"
+  runtime          = "python3.11"
+  timeout          = 60
+
+  environment {
+    variables = {
+      SLACK_WEBHOOK = var.slack_webhook
+      DLQ_URL       = aws_sqs_queue.dlq.id
+    }
   }
+
+  tags = { resource = "lambda" }
+
+  depends_on = [aws_cloudwatch_log_group.summary]
 }
 
-resource "aws_lambda_permission" "eventbridge_rds_export" {
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.rds_export_trigger.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.rds_snapshot_complete.arn
-  depends_on = [ aws_cloudwatch_event_rule.rds_snapshot_complete ]
+resource "aws_lambda_event_source_mapping" "sqs_trigger" {
+  event_source_arn = aws_sqs_queue.main.arn
+  function_name    = aws_lambda_function.processor.arn
 }
 
-resource "aws_lambda_permission" "sns_notify" {
-  statement_id  = "NotifySlackOnRdsExportAlerts"
+resource "aws_lambda_permission" "allow_sns" {
+  statement_id  = "AllowExecutionFromSNS"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.slack_notifier.function_name
+  function_name = aws_lambda_function.dlq_inspector.function_name
   principal     = "sns.amazonaws.com"
-  source_arn    = aws_sns_topic.rds_export_alerts.arn
-  depends_on = [ aws_sns_topic.rds_export_alerts ]
+  source_arn    = aws_sns_topic.alerts.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.summary.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.daily_summary.arn
 }

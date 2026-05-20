@@ -11,32 +11,20 @@
 
 version: "3"
 
-tasks:
-  validate-env:
-    internal: true
-    cmds:
-    - |
-      if [ -z "{{.ENV}}" ]; then
-        echo "Error: ENV is required (dev or main)"
-        exit 1
-      fi
+vars:
+  ENV: '{{.ENV | default "dev"}}'
 
-      if [ "{{.ENV}}" != "dev" ] && [ "{{.ENV}}" != "main" ]; then
-        echo "Error: ENV must be 'dev' or 'main'"
-        exit 1
-      fi
+tasks:
 
   init:
     desc: "Initialise backend for {{.ENV}}"
     dir: env/{{.ENV}}
-    deps: [validate-env]
     cmds:
       - terraform init -backend-config="state.conf" -reconfigure
 
   validate:
     desc: "Validate configuration"
     dir: env/{{.ENV}}
-    deps: [validate-env]
     cmds:
       - terraform validate
 
@@ -48,14 +36,12 @@ tasks:
   plan:
     desc: "Create execution plan"
     dir: env/{{.ENV}}
-    deps: [validate-env]
     cmds:
       - terraform plan -var-file="terraform.tfvars" -out=tfplan
 
   apply:
     desc: "Apply execution plan"
     dir: env/{{.ENV}}
-    deps: [validate-env]
     cmds:
       - terraform apply tfplan
     preconditions:
@@ -65,7 +51,6 @@ tasks:
   destroy:
     desc: "Teardown infrastructure"
     dir: env/{{.ENV}}
-    deps: [validate-env]
     prompt: "Are you sure you want to destroy {{.ENV}}?"
     cmds:
       - terraform destroy -var-file="terraform.tfvars"
@@ -73,6 +58,5 @@ tasks:
   output:
     desc: "Show outputs"
     dir: env/{{.ENV}}
-    deps: [validate-env]
     cmds:
       - terraform output

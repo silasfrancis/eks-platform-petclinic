@@ -120,11 +120,22 @@ tasks:
           --values k8s/argocd/values/env/{{.ENV}}/values.yaml
 
   deploy_platform:
-    desc: "Deploy all platform charts (autoscaling, backup, compute, ingress, monitoring, security)"
+    desc: "Deploy all platform charts"
+
+    requires:
+      vars: [ENV]
+
     vars:
-      PLATFORM_CHARTS: "autoscaling backup compute ingress monitoring security"
+      PLATFORM_CHARTS:
+        - autoscaling
+        - backup
+        - compute
+        - ingress
+        - monitoring
+        - security
+
     cmds:
-      - for: {var: PLATFORM_CHARTS}
+      - for: { var: PLATFORM_CHARTS }
         cmd: |
           helm upgrade --install {{.ITEM}} k8s/platform/{{.ITEM}}/charts \
             --namespace platform \
@@ -142,26 +153,30 @@ tasks:
           --values k8s/policies/values/env/{{.ENV}}/values.yaml
 
   deploy_microservices:
-    desc: "Deploy all microservice ArgoCD apps (iterates per service)"
+    desc: "Deploy all microservices"
+
+    requires:
+      vars: [ENV]
+
     vars:
-      SERVICES: >-
-        admin-server
-        api-gateway
-        config-server
-        customers-service
-        discovery-server
-        genai-service
-        vets-service
-        visits-service
+      SERVICES:
+        - admin-server
+        - api-gateway
+        - config-server
+        - customers-service
+        - discovery-server
+        - genai-service
+        - vets-service
+        - visits-service
+
     cmds:
-      - for: {var: SERVICES}
+      - for: { var: SERVICES }
         cmd: |
           helm upgrade --install {{.ITEM}} k8s/microservice/charts \
             --namespace petclinic \
             --create-namespace \
             --values k8s/microservice/values.yaml \
             --values k8s/microservice/values/env/{{.ENV}}/{{.ITEM}}.yaml
-
 
   bootstrap:
     desc: "Full cluster bootstrap"

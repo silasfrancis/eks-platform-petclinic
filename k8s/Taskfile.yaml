@@ -1,9 +1,6 @@
-# Kubernetes bootstrap and platform operations
 version: "3"
 
 vars:
-  # Values passed at runtime (e.g., task bootstrap ENV=main)
-  # Defaulting here just to prevent empty string errors
   ENV: '{{.ENV | default "dev"}}'
   CLUSTER_NAME: '{{.CLUSTER_NAME | default "dev-petclinic-cluster"}}'
 
@@ -23,16 +20,21 @@ tasks:
       - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
       - helm repo add fairwinds-stable https://charts.fairwinds.com/stable --force-update
       - helm repo add external-secrets https://charts.external-secrets.io --force-update
+      - helm repo add argo https://argoproj.github.io/argo-helm --force-update
       - helm repo update
 
+
   install_cilium:
-    desc: "Install Cilium"
+    desc: "Install Cilium with Hubble"
     cmds:
       - |
         helm upgrade --install cilium cilium/cilium \
-          --version {{ .CILIUM_VERSION }} \
+          --version $CILIUM_VERSION \
           -n kube-system \
           --set cluster.name={{ .CLUSTER_NAME }} \
+          --set hubble.enabled=true \
+          --set hubble.relay.enabled=true \
+          --set hubble.ui.enabled=true \
           --values bootstrap/cilium/values.yaml
 
   install_metrics_server:
@@ -40,7 +42,7 @@ tasks:
     cmds:
       - |
         helm upgrade --install metrics-server metrics-server/metrics-server \
-          --version {{ .METRICS_SERVER_VERSION }} \
+          --version $METRICS_SERVER_VERSION \
           -n kube-system \
           --values bootstrap/metrics-server/values.yaml
 
@@ -72,7 +74,7 @@ tasks:
         helm upgrade --install istio-base istio/base \
           -n istio-system \
           --create-namespace \
-          --version {{ .ISTIO_VERSION }}
+          --version $ISTIO_VERSION
 
   install_istiod:
     desc: "Install Istiod"
@@ -80,24 +82,18 @@ tasks:
       - |
         helm upgrade --install istiod istio/istiod \
           -n istio-system \
-          --version {{ .ISTIO_VERSION }}
+          --version $ISTIO_VERSION
 
   install_argocd:
     desc: "Install ArgoCD"
     cmds:
-      - helm repo add argo https://argoproj.github.io/argo-helm
       - |
         helm upgrade --install argocd argo/argo-cd \
           --namespace argocd \
           --create-namespace \
-          --version {{ .ARGOCD_VERSION }} \
+          --version $ARGOCD_VERSION \
           --set server.extraArgs={--insecure}
 
-  get_argo_pwd:
-    desc: Retrieve the initial admin password for ArgoCD
-    cmds:
-      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
-  
   install_rollouts:
     desc: "Install Argo Rollouts"
     cmds:
@@ -105,17 +101,67 @@ tasks:
         helm upgrade --install argo-rollouts argo/argo-rollouts \
           --namespace argo-rollouts \
           --create-namespace \
-          --version {{ .ARGO_ROLLOUTS_VERSION }}
+          --version $ARGO_ROLLOUTS_VERSION
 
-  deploy_argo_applications:
-    desc: "Deploy ArgoCD Applications"
+  get_argo_pwd:
+    desc: "Retrieve ArgoCD initial admin password"
+    cmds:
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+
+
+  deploy_argocd_apps:
+    desc: "Deploy ArgoCD app-of-apps chart"
     cmds:
       - |
-        helm upgrade --install argocd argocd \
+        helm upgrade --install argocd-apps k8s/argocd \
           --namespace argocd \
           --create-namespace \
-          --values argocd/values.yaml \
-          --values argocd/values/env/{{.ENV}}/values.yaml
+          --values k8s/argocd/values.yaml \
+          --values k8s/argocd/values/env/{{.ENV}}/values.yaml
+
+  deploy_platform:
+    desc: "Deploy all platform charts (autoscaling, backup, compute, ingress, monitoring, security)"
+    vars:
+      PLATFORM_CHARTS: "autoscaling backup compute ingress monitoring security"
+    cmds:
+      - for: {var: PLATFORM_CHARTS}
+        cmd: |
+          helm upgrade --install {{.ITEM}} k8s/platform/{{.ITEM}}/charts \
+            --namespace platform \
+            --create-namespace \
+            --values k8s/platform/{{.ITEM}}/values.yaml \
+            --values k8s/platform/{{.ITEM}}/values/env/{{.ENV}}/values.yaml
+
+  deploy_policies:
+    desc: "Deploy Kyverno policies chart"
+    cmds:
+      - |
+        helm upgrade --install policies k8s/policies/charts \
+          --namespace kyverno \
+          --values k8s/policies/values.yaml \
+          --values k8s/policies/values/env/{{.ENV}}/values.yaml
+
+  deploy_microservices:
+    desc: "Deploy all microservice ArgoCD apps (iterates per service)"
+    vars:
+      SERVICES: >-
+        admin-server
+        api-gateway
+        config-server
+        customers-service
+        discovery-server
+        genai-service
+        vets-service
+        visits-service
+    cmds:
+      - for: {var: SERVICES}
+        cmd: |
+          helm upgrade --install {{.ITEM}} k8s/microservice/charts \
+            --namespace petclinic \
+            --create-namespace \
+            --values k8s/microservice/values.yaml \
+            --values k8s/microservice/values/env/{{.ENV}}/{{.ITEM}}.yaml
+
 
   bootstrap:
     desc: "Full cluster bootstrap"
@@ -129,4 +175,11 @@ tasks:
       - task: install_istiod
       - task: install_rollouts
       - task: install_argocd
-      - task: deploy_argo_applications
+      - task: deploy_argocd_apps
+
+  deploy_all:
+    desc: "Deploy platform, policies, and microservices for ENV"
+    cmds:
+      - task: deploy_platform
+      - task: deploy_policies
+      - task: deploy_microservices

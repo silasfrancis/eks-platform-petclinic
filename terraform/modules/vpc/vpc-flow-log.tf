@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
-  name              = "/aws/vpc-flow-log/${var.env}-${var.app}-main-vpc"
+  name              = "/aws/vpc-flow-log/${var.app}-${var.env}-main-vpc"
   retention_in_days = 3
   kms_key_id        = var.infra_common_kms_key_arn
   

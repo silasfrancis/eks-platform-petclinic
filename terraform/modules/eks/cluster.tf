@@ -1,5 +1,5 @@
 resource "aws_eks_cluster" "main_cluster" {
-  name     = "${var.env}-${var.app}-cluster"
+  name     = "${var.app}-${var.env}-cluster"
   version  = var.cluster_version
   role_arn = aws_iam_role.eks_cluster_role.arn
 

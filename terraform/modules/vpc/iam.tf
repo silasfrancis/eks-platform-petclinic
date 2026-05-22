@@ -1,5 +1,5 @@
 resource "aws_iam_role" "vpc_flow_logs" {
-  name = "${var.env}-${var.app}-vpc-flow-logs-role"
+  name = "${var.app}-${var.env}-vpc-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -19,7 +19,7 @@ resource "aws_iam_role" "vpc_flow_logs" {
 }
 
 resource "aws_iam_policy" "vpc_flow_log_policy" {
-  name = "${var.env}-${var.app}-vpc-flow-log-policy"
+  name = "${var.app}-${var.env}-vpc-flow-log-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"

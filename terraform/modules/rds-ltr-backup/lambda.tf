@@ -60,7 +60,7 @@ data "archive_file" "summary" {
 }
 
 resource "aws_lambda_function" "processor" {
-  function_name    = "${var.env}-${var.app}-rds-export-processor"
+  function_name    = "${var.app}-${var.env}-rds-export-processor"
   role             = aws_iam_policy.lambda_rds_backup.arn
   filename         = data.archive_file.processor.output_path
   source_code_hash = data.archive_file.processor.output_base64sha256
@@ -84,7 +84,7 @@ resource "aws_lambda_function" "processor" {
 }
 
 resource "aws_lambda_function" "dlq_inspector" {
-  function_name    = "${var.env}-${var.app}-rds-dlq-inspector"
+  function_name    = "${var.app}-${var.env}-rds-dlq-inspector"
   role             = aws_iam_policy.lambda_rds_backup.arn
   filename         = data.archive_file.dlq_inspector.output_path
   source_code_hash = data.archive_file.dlq_inspector.output_base64sha256
@@ -105,7 +105,7 @@ resource "aws_lambda_function" "dlq_inspector" {
 }
 
 resource "aws_lambda_function" "summary" {
-  function_name    = "${var.env}-${var.app}-rds-backup-summary"
+  function_name    = "${var.app}-${var.env}-rds-backup-summary"
   role             = aws_iam_policy.lambda_rds_backup.arn
   filename         = data.archive_file.summary.output_path
   source_code_hash = data.archive_file.summary.output_base64sha256

@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_log_group" "rds_export_lambda_processor" {
-  name              = "/aws/lambda/${var.env}-${var.app}-rds-export-processor"
+  name              = "/aws/lambda/${var.app}-${var.env}-rds-export-processor"
   retention_in_days = 3 
   kms_key_id        = var.infra_common_kms_key_arn
 

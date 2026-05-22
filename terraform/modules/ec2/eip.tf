@@ -2,7 +2,7 @@ resource "aws_eip" "wireguard_server_eip" {
   domain   = "vpc"
   
   tags = {
-    Name = "${var.env}-${var.app}-wireguard-server-eip"
+    Name = "wireguard-server-eip"
     resource = "eip"
   }
 }

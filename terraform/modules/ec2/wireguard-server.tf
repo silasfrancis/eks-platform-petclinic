@@ -19,7 +19,7 @@ resource "aws_instance" "wireguard_server" {
     volume_type = "gp3"
   }
   tags = {
-    Name = "${var.env}-${var.app}-wireguard"
+    Name = "wireguard-server"
     resource = "ec2"
   }
 

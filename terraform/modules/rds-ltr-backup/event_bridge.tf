@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_event_rule" "rds_snapshot_events" {
-  name        = "${var.env}-${var.app}-rds-snapshot-complete"
+  name        = "${var.app}-${var.env}-rds-snapshot-complete"
   description = "Fires when RDS automated snapshot completes"
 
   event_pattern = jsonencode({

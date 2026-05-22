@@ -1,5 +1,5 @@
 resource "aws_iam_role" "lambda_rds_backup" {
-  name = "${var.env}-${var.app}-lambda-rds-backup-role"
+  name = "${var.app}-${var.env}-lambda-rds-backup-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -15,7 +15,7 @@ resource "aws_iam_role" "lambda_rds_backup" {
 }
 
 resource "aws_iam_role" "rds_export_role" {
-  name = "${var.env}-${var.app}-rds-snapshot-export-role"
+  name = "${var.app}-${var.env}-rds-snapshot-export-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -35,7 +35,7 @@ resource "aws_iam_role" "rds_export_role" {
 }
 
 resource "aws_iam_policy" "lambda_backup" {
-  name = "${var.env}-${var.app}-lambda-backup-policy"
+  name = "${var.app}-${var.env}-lambda-backup-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -88,7 +88,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 }
 
 resource "aws_iam_policy" "rds_export_policy" {
-  name = "${var.env}-${var.app}-rds-snapshot-export-policy"
+  name = "${var.app}-${var.env}-rds-snapshot-export-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"

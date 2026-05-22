@@ -1,7 +1,7 @@
 resource "aws_iam_role" "rds_enhanced_monitoring" {
   count = local.is_prod ? 1 : 0
 
-  name = "${var.env}-${var.app}-rds-enhanced-monitoring-role"
+  name = "${var.app}-${var.env}-rds-enhanced-monitoring-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

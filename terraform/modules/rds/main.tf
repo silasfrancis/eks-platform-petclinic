@@ -1,5 +1,5 @@
 resource "aws_db_subnet_group" "main" {
-  name       = "${var.env}-${var.app}-rds-subnet-group"
+  name       = "${var.app}-${var.env}-rds-subnet-group"
   subnet_ids = var.private_subnets
 
   tags = {
@@ -8,7 +8,7 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_parameter_group" "mysql" {
-  name   = "${var.env}-${var.app}-mysql-params"
+  name   = "${var.app}-${var.env}-mysql-params"
   family = "mysql8.0"
 
   parameter {
@@ -51,7 +51,7 @@ locals {
 }
 
 resource "aws_db_instance" "main" {
-  identifier     = "${var.env}-${var.app}-mysql"
+  identifier     = "${var.app}-${var.env}-mysql"
   engine         = "mysql"
   engine_version = var.mysql_version
 
@@ -82,7 +82,7 @@ resource "aws_db_instance" "main" {
 
   # Always take a final snapshot before destroy in prod
   skip_final_snapshot       = !local.is_prod
-  final_snapshot_identifier = local.is_prod ? "${var.env}-${var.app}-mysql-final-snapshot" : null
+  final_snapshot_identifier = local.is_prod ? "${var.app}-${var.env}-mysql-final-snapshot" : null
 
   # Enhanced monitoring — disabled in dev and enabled in prod for OS-level metrics (CPU steal, memory, disk I/O)
   monitoring_interval = local.monitoring_interval
@@ -103,7 +103,7 @@ resource "aws_db_instance" "main" {
   tags = {
     resource    = "rds"
     environment = var.env
-    cost-centre = "${var.env}-${var.app}"
+    cost-centre = "${var.app}-${var.env}"
   }
 
   lifecycle {
@@ -113,7 +113,7 @@ resource "aws_db_instance" "main" {
 
 resource "aws_db_snapshot" "pre_deploy" {
   db_instance_identifier = aws_db_instance.main.identifier
-  db_snapshot_identifier = "${var.env}-${var.app}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
+  db_snapshot_identifier = "${var.app}-${var.env}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
 
   tags = {
     resource = "rds"

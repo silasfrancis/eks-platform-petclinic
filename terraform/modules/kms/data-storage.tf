@@ -1,8 +1,8 @@
 locals {
-  karpenter_irsa_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-cluster-karpenter-irsa"
-  node_role_arn      = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-node-role"
-  velero_irsa_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-cluster-velero-irsa"
-  loki_irsa_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.env}-${var.app}-cluster-loki-irsa"
+  karpenter_irsa_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.app}-${var.env}-cluster-karpenter-irsa"
+  node_role_arn      = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.app}-${var.env}-node-role"
+  velero_irsa_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.app}-${var.env}-cluster-velero-irsa"
+  loki_irsa_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.app}-${var.env}-cluster-loki-irsa"
 }
 resource "aws_kms_key" "data_storage" {
   description                        = "KMS Key for Storage Encryption"

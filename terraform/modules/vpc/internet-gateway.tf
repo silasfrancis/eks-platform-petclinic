@@ -2,7 +2,7 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main_vpc.id
   tags = {
     resource = "vpc"
-    Name = "${var.env}-${var.app}-internet-gateway"
+    Name = "${var.app}-${var.env}-internet-gateway"
   }
   depends_on = [ aws_vpc.main_vpc, aws_subnet.public_subnet_1, aws_subnet.public_subnet_2]
 }
@@ -17,7 +17,7 @@ resource "aws_route_table" "public" {
 
   tags = {
     resource = "vpc"
-    Name = "${var.env}-${var.app}-public-route-table"
+    Name = "${var.app}-${var.env}-public-route-table"
   }
 }
 

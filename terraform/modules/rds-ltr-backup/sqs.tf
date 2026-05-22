@@ -1,5 +1,5 @@
 resource "aws_sqs_queue" "dlq" {
-  name = "${var.env}-${var.app}-rds-backup-dlq"
+  name = "${var.app}-${var.env}-rds-backup-dlq"
 
   message_retention_seconds = 345600
 
@@ -7,7 +7,7 @@ resource "aws_sqs_queue" "dlq" {
 }
 
 resource "aws_sqs_queue" "main" {
-  name = "${var.env}-${var.app}-rds-backup-queue"
+  name = "${var.app}-${var.env}-rds-backup-queue"
 
   visibility_timeout_seconds = 300
   message_retention_seconds  = 345600

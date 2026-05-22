@@ -1,5 +1,5 @@
 resource "aws_iam_role" "wireguard_server_role" {
-  name = "${var.env}-${var.app}-wireguard-server-role"
+  name = "wireguard-server-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -24,6 +24,6 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
 }
 
 resource "aws_iam_instance_profile" "wireguard_server_profile" {
-  name = "${var.env}-${var.app}-wireguard-server-profile" 
+  name = "${var.app}-${var.env}-wireguard-server-profile" 
   role = aws_iam_role.wireguard_server_role.name
 }

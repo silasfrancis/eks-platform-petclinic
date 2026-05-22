@@ -5,7 +5,7 @@ resource "aws_subnet" "public_subnet_1" {
   tags = {
     Tier = "public"
     resource = "vpc"
-    Name = "${var.env}-${var.app}-public-subnet-1"
+    Name = "${var.app}-${var.env}-public-subnet-1"
   }
   lifecycle {
     ignore_changes = [
@@ -22,7 +22,7 @@ resource "aws_subnet" "public_subnet_2" {
   tags = {
     Tier = "public"
     resource = "vpc"
-    Name = "${var.env}-${var.app}-public-subnet-2"
+    Name = "${var.app}-${var.env}-public-subnet-2"
   }
   lifecycle {
     ignore_changes = [
@@ -39,7 +39,7 @@ resource "aws_subnet" "private_subnet_1" {
   tags = {
     Tier = "private"
     resource = "vpc"
-    Name = "${var.env}-${var.app}-private-subnet-1"
+    Name = "${var.app}-${var.env}-private-subnet-1"
   }
 
   lifecycle {
@@ -57,7 +57,7 @@ resource "aws_subnet" "private_subnet_2" {
   tags = {
     Tier = "private"
     resource = "vpc"
-    Name = "${var.env}-${var.app}-private-subnet-2"
+    Name = "${var.app}-${var.env}-private-subnet-2"
   }
 
   lifecycle {

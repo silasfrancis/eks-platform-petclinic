@@ -1,15 +1,10 @@
-resource "aws_eip" "nat_eip_1" {
-  domain = "vpc"
-  tags = {
-    resource = "vpc"
-    Name = "${var.app}-${var.env}-nat-eip-1"
-  }
-}
+# Elastic IPs for NAT Gateways (based on the number of public subnets each nat-gateway will be placed in)
+resource "aws_eip" "nat" {
+  for_each = aws_subnet.public
+  domain   = "vpc"
 
-resource "aws_eip" "nat_eip_2" {
-  domain = "vpc"
   tags = {
+    Name     = "${var.app}-${var.env}-nat-eip-${index(local.target_azs, each.key) + 1}"
     resource = "vpc"
-    Name = "${var.app}-${var.env}-nat-eip-2"
   }
 }

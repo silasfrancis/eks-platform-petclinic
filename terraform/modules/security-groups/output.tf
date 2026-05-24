@@ -15,5 +15,5 @@ output "rds_sg_id" {
 }
 
 output "wireguard_sg_id" {
-  value = aws_security_group.wireguard.id
+  value = var.enable_wireguard ? aws_security_group.wireguard_server[0].id : null
 }

@@ -10,10 +10,6 @@ variable "wireguard_sg_id" {
   type = string
 }
 
-variable "wireguard_server_instance_profile" {
-  type = string
-}
-
 variable "app" {
   type = string
 }

@@ -14,12 +14,16 @@ PrivateKey = {{ server_private_key_raw.content | b64decode }}
 # 2. Perform NAT (Masquerade) to allow VPN clients to access the internet via the EC2's public IP
 # Run 'ip route | grep default' to check the VM's network interface name. 
 # For this instance (t4g), the name is 'ens5' due to the Nitro system, not 'eth0'.
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ens5 -j MASQUERADE
+PostUp = iptables -A FORWARD -i %i -j ACCEPT
+PostUp = iptables -A FORWARD -o %i -j ACCEPT
+PostUp = iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
 
 # PostDown: Cleanup commands run when the interface stops
 # 1. Remove the forwarding rule
 # 2. Remove the NAT/Masquerade rule
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ens5 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT
+PostDown = iptables -D FORWARD -o %i -j ACCEPT
+PostDown = iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
 
 # Loop through the list of clients provided by Ansible to create Peer blocks
 {% for client in clients %}

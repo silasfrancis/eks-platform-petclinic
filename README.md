@@ -116,7 +116,11 @@ terraform apply tfplan
 
 ## WireGuard Setup
 
-WireGuard runs on a public EC2 instance and is configured through Ansible over AWS SSM.
+WireGuard runs on a public EC2 instance inside the production VPC and is configured through Ansible over AWS SSM.
+
+The server acts as the single VPN entry point for both environments:
+- direct access to the production EKS cluster
+- routed access to the development EKS cluster through VPC peering
 
 ```bash
 cd ansible
@@ -134,6 +138,10 @@ After setup:
 1. Retrieve the generated client configuration
 2. Import it into your WireGuard client
 3. Connect to the VPN before accessing internal services
+
+Once connected, the VPN can reach:
+- production workloads directly inside the prod VPC
+- development workloads through cross-VPC routing over the peering connection
 
 ---
 

@@ -1,7 +1,7 @@
 resource "aws_security_group" "wireguard_server" {
   description = "Security group for wireguard server"
   name = "wireguard-server-security_group"
-  vpc_id = aws_vpc.main_vpc.id
+  vpc_id = var.vpc_id
   tags = {  
     resource = "vpc"
   }

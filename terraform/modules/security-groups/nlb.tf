@@ -9,7 +9,7 @@ locals {
     internal = {
       description   = "Security group for internal NLB"
       cidr          = null
-      referenced_sg = var.wireguard_server_security_group_id
+      referenced_sg = aws_security_group.wireguard_server.id
     }
   }
 
@@ -36,7 +36,7 @@ resource "aws_security_group" "nlb" {
 
   name        = "${var.app}-${var.env}-nlb-${each.key}-sg"
   description = each.value.description
-  vpc_id      = aws_vpc.main_vpc.id
+  vpc_id      = var.vpc_id
 
   tags = { resource = "vpc" }
 }

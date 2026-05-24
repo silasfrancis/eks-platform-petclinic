@@ -30,15 +30,11 @@ variable "db_password" {
   type = string
 }
 
-variable "rds_security_group_id" {
+variable "rds_sg_id" {
   type = string
 }
 
 variable "eks_node_sg_id" {
-  type = string
-}
-
-variable "wireguard_server_security_group_id" {
   type = string
 }
 

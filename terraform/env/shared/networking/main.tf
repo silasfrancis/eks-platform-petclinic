@@ -1,37 +1,36 @@
+# Remote State for prod VPC
 data "terraform_remote_state" "prod_vpc" {
   backend = "s3"
 
   config = {
-    bucket = "your-tf-state"
-    key    = "prod/vpc/terraform.tfstate"
-    region = "us-east-1"
+    bucket = var.prod_remote_state_bucket
+    region = var.aws_region
+    key    = var.prod_remote_state_key
   }
 }
 
+# Remote State for dev VPC
 data "terraform_remote_state" "dev_vpc" {
   backend = "s3"
 
   config = {
-    bucket = "your-tf-state"
-    key    = "dev/vpc/terraform.tfstate"
-    region = "us-east-1"
+    bucket = var.dev_remote_state_bucket
+    region = var.aws_region
+    key    = var.dev_remote_state_key
   }
 }
 
-module "prod_to_dev_peering" {
+# VPC Peering Connections (prod -> dev)
+module "vpc-peering" {
   source = "../../../modules/vpc-peering"
-
   name = "prod-dev"
 
   requester_vpc_id   = data.terraform_remote_state.prod_vpc.outputs.vpc_id
   accepter_vpc_id    = data.terraform_remote_state.dev_vpc.outputs.vpc_id
 
-  requester_vpc_cidr = data.terraform_remote_state.prod_vpc.outputs.vpc_cidr
-  accepter_vpc_cidr  = data.terraform_remote_state.dev_vpc.outputs.vpc_cidr
+  requester_vpc_cidr = data.terraform_remote_state.prod_vpc.outputs.vpc_cidr_block
+  accepter_vpc_cidr  = data.terraform_remote_state.dev_vpc.outputs.vpc_cidr_block
 
-  requester_route_table_ids =
-    data.terraform_remote_state.prod_vpc.outputs.private_route_table_ids
-
-  accepter_route_table_ids =
-    data.terraform_remote_state.dev_vpc.outputs.private_route_table_ids
+  requester_route_table_ids = data.terraform_remote_state.prod_vpc.outputs.all_route_table_ids
+  accepter_route_table_ids  = data.terraform_remote_state.dev_vpc.outputs.all_route_table_ids
 }

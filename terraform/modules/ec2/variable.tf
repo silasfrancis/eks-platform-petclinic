@@ -6,7 +6,7 @@ variable "public_subnet_id" {
   type = string
 }
 
-variable "wireguard_server_security_group_id" {
+variable "wireguard_sg_id" {
   type = string
 }
 

@@ -1,6 +1,6 @@
 # Default Security Group Locked Down)
 resource "aws_default_security_group" "default" {
-  vpc_id = aws_vpc.main_vpc.id
+  vpc_id = var.vpc_id
   ingress = []
   egress  = []
 

@@ -28,6 +28,10 @@ variable "eks_node_sg_id" {
     type = string
 }
 
+variable "wireguard_sg_id" {
+  type = string
+}
+
 variable "eks_secrets_kms_key_arn" {
   type = string
 }
@@ -39,12 +43,3 @@ variable "data_storage_kms_key_arn" {
 variable "infra_common_kms_key_arn" {
   type = string
 }
-
-variable "wireguard_server_security_group_id" {
-  type = string
-}
-
-variable "nlb_external_security_group_id" {
-  type = string
-}
-

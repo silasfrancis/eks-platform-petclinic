@@ -1,8 +1,8 @@
-variable "nlb_external_sg_id" {
+variable "app" {
     type = string
 }
 
-variable "nlb_internal_sg_id" {
+variable "env" {
     type = string
 }
 

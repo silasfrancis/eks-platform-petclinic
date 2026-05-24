@@ -1,3 +1,12 @@
+resource "aws_security_group" "rds" {
+  description = "Security group for RDS instances"
+  name = "${var.app}-${var.env}-rds-security_group"
+  vpc_id = aws_vpc.main_vpc.id
+  tags = {
+    resource = "vpc"   
+  }
+}
+
 resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_nodes" {
     security_group_id = var.rds_security_group_id
     from_port = 3306

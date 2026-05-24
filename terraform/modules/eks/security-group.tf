@@ -1,3 +1,19 @@
+resource "aws_security_group" "eks_node" {
+  description = "Security group for EKS Nodes"
+  name = "${var.app}-${var.env}-eks-security_group"
+  vpc_id = aws_vpc.main_vpc.id
+  tags = {  
+    resource = "vpc"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
+}
+
 resource "aws_vpc_security_group_ingress_rule" "eks_from_wireguard_server" {
     description = "Allow EKS control plane access from wireguard server"
     security_group_id = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
@@ -45,7 +61,7 @@ resource "aws_vpc_security_group_ingress_rule" "nlb_to_nodes_healthcheck" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "nodes_to_internet" {
-  description       = "Allow nodes to reach AWS APIs and Internet for bootstrapping"
+  description       = "Allow nodes to reach AWS APIs and Internet"
   security_group_id = var.eks_node_sg_id
   
   ip_protocol       = "-1"

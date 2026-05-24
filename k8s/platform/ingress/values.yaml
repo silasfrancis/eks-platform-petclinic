@@ -220,7 +220,8 @@ gateways:
           grafana.lefrancis.org,
           argocd.lefrancis.org,
           prometheus.lefrancis.org,
-          loki.lefrancis.org
+          loki.lefrancis.org,
+          goldilocks.lefrancis.org
         external-dns.alpha.kubernetes.io/ttl: "120"
 
     certificate:

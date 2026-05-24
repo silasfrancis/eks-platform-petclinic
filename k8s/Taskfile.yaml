@@ -145,6 +145,8 @@ tasks:
 
   deploy_policies:
     desc: "Deploy Kyverno policies chart"
+    requires:
+      vars: [ENV]
     cmds:
       - |
         helm upgrade --install policies k8s/policies/charts \
@@ -190,11 +192,25 @@ tasks:
       - task: install_istiod
       - task: install_rollouts
       - task: install_argocd
-      - task: deploy_argocd_apps
-
+      
   deploy_all:
     desc: "Deploy platform, policies, and microservices for ENV"
+    requires:
+      vars: [ENV]
+
     cmds:
       - task: deploy_platform
+        vars:
+          ENV: "{{.ENV}}"
+
       - task: deploy_policies
+        vars:
+          ENV: "{{.ENV}}"
+
       - task: deploy_microservices
+        vars:
+          ENV: "{{.ENV}}"
+
+      - task: deploy_argocd_apps
+        vars:
+          ENV: "{{.ENV}}"

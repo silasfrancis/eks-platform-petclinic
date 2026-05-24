@@ -1,192 +1,254 @@
 # PetClinic Platform
 
-A production-grade Kubernetes platform on AWS EKS demonstrating platform
-engineering practices: GitOps, progressive delivery, multi-layer security,
-full observability, and infrastructure as code.
+Kubernetes platform on AWS EKS built around the Spring PetClinic microservices application.
 
-> Spring Boot PetClinic microservices serve as the reference application.
+The repository combines infrastructure provisioning, GitOps delivery, cluster networking, autoscaling, observability, runtime security, and operational tooling in a single environment.
 
-![Architecture](docs/diagrams/architecture.png)
+![Architecture](docs/diagrams/aws-architecture.drawio.svg)
 
-## Platform Highlights
+---
 
-| Concern | Implementation |
+## Platform Components
+
+| Area | Implementation |
 |---|---|
-| Container orchestration | AWS EKS on Graviton (ARM64) |
-| Node provisioning | Karpenter — SPOT + ON_DEMAND NodePools |
-| Service mesh | Istio — mTLS + canary traffic splitting |
-| GitOps | ArgoCD App of Apps |
-| Progressive delivery | Argo Rollouts canary with Prometheus analysis |
-| Observability | Prometheus + Grafana + Loki + Alertmanager |
-| Supply chain security | Cosign keyless signing + vulnerability attestation |
-| Policy enforcement | Kyverno admission control |
-| Runtime security | Falco eBPF threat detection |
-| Secrets management | AWS Secrets Manager + External Secrets Operator |
-| Backup and DR | Velero — S3 + EBS snapshots |
-| Autoscaling | HPA + KEDA scale-to-zero + Karpenter consolidation |
+| Kubernetes | AWS EKS on Graviton (ARM64) |
+| Networking | AWS VPC CNI + Cilium (CNI chaining mode) |
+| Service Mesh | Istio with mTLS and traffic routing |
+| Ingress | Istio Gateway + ExternalDNS + cert-manager |
+| Node Scaling | Karpenter |
+| Pod Scaling | HPA + KEDA |
+| GitOps | ArgoCD (App of Apps) |
+| Progressive Delivery | Argo Rollouts |
+| Policy Enforcement | Kyverno |
+| Runtime Security | Falco + Trivy Operator |
+| Secrets Management | AWS Secrets Manager + External Secrets Operator |
+| Observability | Prometheus, Grafana, Loki, Alloy |
+| Backup & Recovery | Velero |
+| CI/CD Security | Trivy image scanning + Cosign signing |
+
+---
 
 ## Repository Structure
 
+```txt
+.
+├── terraform/      # AWS infrastructure
+├── k8s/            # Kubernetes platform and GitOps resources
+│   ├── platform/   # Istio, monitoring, autoscaling, security, backups
+│   ├── argocd/     # App of Apps configuration
+│   ├── bootstrap/  # Cluster bootstrap components
+│   └── microservices/ # Shared Helm chart for all microservices
+├── services/       # Spring Boot microservices
+├── ansible/        # WireGuard configuration
+├── migrations/     # Database migrations
+├── docs/           # Documentation and diagrams
+└── scripts/        # Validation and helper scripts
 ```
-spring_boot_micro_services/
-├── .github/workflows/       CI/CD pipelines
-├── k8s/
-│   ├── apps/microservice/   Shared Helm chart for all 8 microservices
-│   ├── argocd/              ArgoCD App of Apps bootstrap
-│   ├── platform/
-│   │   ├── autoscaling/     KEDA + Goldilocks
-│   │   ├── backup/          Velero
-│   │   ├── compute/         Karpenter
-│   │   ├── ingress/         Istio gateway + ExternalDNS + cert-manager
-│   │   ├── monitoring/      kube-prometheus-stack + Loki + Alloy
-│   │   └── security/        Trivy + Falco + cert-manager
-│   └── policies/            Kyverno policies + NetworkPolicies
-└── terraform/               AWS infrastructure
-```
+
+---
 
 ## Prerequisites
 
-| Tool | Version | Purpose |
-|---|---|---|
-| AWS CLI | >= 2.x | AWS authentication |
-| kubectl | >= 1.29 | Cluster management |
-| helm | >= 3.14 | Chart operations |
-| terraform | >= 1.7 | Infrastructure provisioning |
-| ansible | >= 2.15 | WireGuard server configuration |
-| task | >= 3.x | Bootstrap automation |
-| argocd | >= 2.10 | ArgoCD CLI |
+| Tool | Version |
+|---|---|
+| AWS CLI | >= 2.x |
+| kubectl | >= 1.29 |
+| Helm | >= 3.14 |
+| Terraform | >= 1.7 |
+| Ansible | >= 2.15 |
+| Task | >= 3.x |
+| ArgoCD CLI | >= 2.10 |
+| Docker | >= 25.x |
+| Java | >= 17 |
+| Maven | >= 3.9 |
 
-## Getting Started
+---
 
-### 1. Provision Infrastructure
+## Infrastructure Provisioning
+
+### 1. Bootstrap Terraform State
 
 ```bash
-cd terraform
+cd terraform/env/shared/bootstrap
+
+# Create S3 backend buckets for any environment
 terraform init
-terraform plan -var-file=environments/dev.tfvars
-terraform apply -var-file=environments/dev.tfvars
+
+# Review planned backend resources
+terraform plan -var-file=terraform.tfvars -out=tfplan
+
+# Apply backend infrastructure
+terraform apply tfplan
 ```
 
-### 2. Configure WireGuard Server
+### 2. Provision Environment Infrastructure
 
-The WireGuard server runs on a private EC2 instance.
-Ansible configures it via AWS SSM — no SSH port required.
+```bash
+cd terraform/env/main
+
+# Initialize Terraform using partial backend configuration
+terraform init -backend-config=state.conf
+
+# Review infrastructure changes for the EKS environment
+terraform plan -var-file=terraform.tfvars -out=tfplan
+
+# Provision VPC, EKS, IAM, RDS, and platform infrastructure
+terraform apply tfplan
+```
+
+### 3. Provision Shared Networking
+
+```bash
+cd terraform/env/shared/networking
+
+# Initialize Terraform backend
+terraform init -backend-config=state.conf
+
+# Review shared networking resources
+terraform plan -var-file=terraform.tfvars -out=tfplan
+
+# Provision WireGuard server, VPC peering, and shared routing
+terraform apply tfplan
+```
+
+---
+
+## WireGuard Setup
+
+WireGuard runs on a public EC2 instance and is configured through Ansible over AWS SSM.
 
 ```bash
 cd ansible
-ansible-playbook wireguard.yml \
-  -i inventory/dev.yml \
-  --extra-vars "env=dev"
+
+# Configure the WireGuard server
+ansible-playbook -i inventory.yaml wireguard.yaml
+
+# Verify WireGuard tunnel status
+ansible all -i inventory.yaml \
+  -m shell \
+  -a "sudo wg show"
 ```
 
-Connect to VPN before proceeding — internal dashboards and
-ArgoCD are only accessible via WireGuard.
+After setup:
+1. Retrieve the generated client configuration
+2. Import it into your WireGuard client
+3. Connect to the VPN before accessing internal services
 
-```bash
-wg-quick up wg0
-```
+---
 
-### 3. Configure kubectl
+## Configure kubectl
 
 ```bash
 aws eks update-kubeconfig \
   --region us-east-2 \
-  --name <cluster-name>
+  --name <cluster-name> \
+  --role-arn arn:aws:iam::<account-id>:role/EKSAdminRole # role given EKS access entry via terraform
 ```
 
-### 4. Bootstrap the Platform
+---
+
+## Bootstrap the Cluster
 
 ```bash
-# Install pre-ArgoCD dependencies
-task install_istio
-task install_vpa
-task install_external_secrets
-task install_argo_rollouts
+cd k8s
 
-# Install ArgoCD
-task install_argocd
+# Install base platform components
+task bootstrap ENV=prod CLUSTER_NAME=<cluster-name>
 
-# Deploy App of Apps — ArgoCD manages everything from here
-task deploy_root_app
+# Deploy platform services, policies, and workloads
+task deploy_all ENV=prod
 ```
 
-### 5. Verify Platform Health
+---
+
+## Verification
 
 ```bash
-# Check all ArgoCD applications are synced and healthy
-task argocd_status
-
-# Verify nodes are provisioned
+# Verify worker nodes are registered
 kubectl get nodes
 
-# Check all petclinic pods are running
+# Verify platform workloads across all namespaces
+kubectl get pods -A
+
+# Verify PetClinic services are running
 kubectl get pods -n petclinic
 ```
 
-## Accessing Services
+---
 
-| Service | URL | Access |
-|---|---|---|
-| PetClinic | https://petclinic.lefrancis.org | Public |
-| ArgoCD | https://argocd.lefrancis.org | WireGuard VPN |
-| Grafana | https://grafana.lefrancis.org | WireGuard VPN |
-| Prometheus | https://prometheus.lefrancis.org | WireGuard VPN |
-| Loki | https://loki.lefrancis.org | WireGuard VPN |
+## Internal Services
 
-Internal dashboards require an active WireGuard VPN connection.
+| Service | Access |
+|---|---|
+| Petclinic | Public |
+| ArgoCD | WireGuard VPN |
+| Grafana | WireGuard VPN |
+| Prometheus | WireGuard VPN |
+| Loki | WireGuard VPN |
+| Goldilocks | WireGuard VPN |
+
+All internal dashboards are accessible only through the WireGuard VPN.
 See [RUNBOOK.md](docs/RUNBOOK.md#vpn-access) for setup instructions.
+
+---
 
 ## Documentation
 
-| Document | Contents |
+| Document | Description |
 |---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component decisions, traffic flows |
-| [SECURITY.md](docs/SECURITY.md) | Security model, supply chain, secrets management |
-| [RUNBOOK.md](docs/RUNBOOK.md) | Day 2 operations, troubleshooting, common tasks |
-| [TESTING.md](docs/TESTING.md) | Validation procedures after deployment or changes |
-| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Development workflow, conventions |
+| `docs/ARCHITECTURE.md` | Infrastructure layout and traffic flows |
+| `docs/SECURITY.md` | Policies, runtime security, and supply chain controls |
+| `docs/RUNBOOK.md` | Operational procedures and troubleshooting |
+| `docs/TESTING.md` | Validation and deployment checks |
+| `docs/CONTRIBUTING.md` | Development workflow and conventions |
 
-## Tech Stack
+---
+
+## Stack Overview
 
 <details>
 <summary>Full component list</summary>
 
-**Infrastructure**
-- AWS EKS 1.35 — managed Kubernetes
-- Karpenter 1.0.0 — node autoprovisioning
-- AWS RDS MySQL — application database
-- AWS S3 — log and backup storage
-- AWS ECR — container registry
+**Infrastructure & Storage**
+* AWS EKS 1.35 — Managed Kubernetes control plane running *ARM64* Graviton worker nodes
+* Karpenter 1.0.0 — Just-in-time compute provisioning with automated node consolidation
+* AWS RDS MySQL — High-availability *Multi-AZ* application database layer
+* AWS S3 — Object storage tier for Velero backups, RDS LTR backups and Grafana Loki log retention
+* AWS ECR — Secure private container registry for immutable image tags
 
-**Networking**
-- Istio 1.24 — service mesh, mTLS, traffic management
-- Cilium — CNI with NetworkPolicy enforcement
-- AWS NLB — load balancing (EKS Cloud Provider)
-- ExternalDNS — DNS automation (Cloudflare + Route53)
-- cert-manager — TLS certificate lifecycle
+**Networking & Edge Traffic**
+* Istio — Service mesh controlling *STRICT* mTLS enforcement and *VirtualService* traffic routing
+* Cilium — Advanced CNI managing eBPF-based network policy segmentation matrices
+* AWS NLB — Network Load Balancers provisioning public and internal entry gateways
+* ExternalDNS — Automated ingress-to-IP synchronization for Cloudflare and Route53 zones
+* cert-manager — Automated X.509 TLS certificate issuance via Let's Encrypt Wildcard providers
 
-**GitOps and Delivery**
-- ArgoCD 2.13 — GitOps continuous delivery
-- Argo Rollouts — canary deployments
-- GitHub Actions — CI/CD pipelines
+**GitOps & Progressive Delivery**
+* ArgoCD — GitOps continuous delivery engine executing *App-of-Apps* declarative state reconciliation
+* Argo Rollouts — Progressive delivery controller managing automated, metric-analyzed canary promotions
+* GitHub Actions — Distributed CI pipeline for multi-arch image building, scanning, and registry pushing
 
-**Observability**
-- kube-prometheus-stack — Prometheus + Grafana + Alertmanager
-- Loki + Alloy — log aggregation
-- CloudWatch Exporter — RDS metrics
+**Observability & Alerting**
+* kube-prometheus-stack — Integrated Prometheus time-series metrics collection and Grafana dashboard visualization
+* Loki + Grafana Alloy — Cloud-native log aggregation streaming cluster-wide stdout logs to S3 storage
+* CloudWatch Exporter — Bridge agent pulling native AWS RDS resource metrics directly into Prometheus
+* Alert Escalation Framework — High-priority routing via Alertmanager, ArgoCD Notifications, and Falco down to Slack channels
 
-**Security**
-- Kyverno — admission control and policy enforcement
-- Falco — runtime threat detection (eBPF)
-- Trivy Operator — continuous vulnerability scanning
-- Cosign — image signing and attestation
-- External Secrets Operator — secrets management
+**Security & Governance**
+* Kyverno — Mutating, validating, and image provenance admission controller verifying image signatures
+* Falco — Runtime threat detection scanning Linux kernel events inside the container space using eBPF probes
+* Trivy Operator — Continuous in-cluster image vulnerability tracking and static compliance auditing
+* Cosign — Cryptographic image signing and OCI artifact attestation validation
+* External Secrets Operator (ESO) — Secure parameter sync mapping AWS Secrets Manager payloads to native cluster secrets using IRSA
 
-**Autoscaling**
-- KEDA — event-driven autoscaling
-- HPA — CPU/memory autoscaling
-- Goldilocks — resource rightsizing recommendations
-- VPA — vertical pod autoscaler (recommendation mode)
+**Workload Autoscaling**
+* KEDA — Event-driven horizontal pod autoscaling supporting scale-to-zero queue/metric behaviors
+* HPA — Traditional horizontal pod scaling driven by CPU and Memory utilization profiles
+* Goldilocks — VPA dashboard utility identifying container resource footprint anomalies
+* Vertical Pod Autoscaler (VPA) — Non-disruptive, recommendation-only resource limit advisor
 
-**Backup**
-- Velero — Kubernetes backup and DR
+**Backup & Disaster Recovery**
+* Velero — In-cluster backup engine executing scheduled EBS snapshots and S3 control plane state dumps
+
+</details>

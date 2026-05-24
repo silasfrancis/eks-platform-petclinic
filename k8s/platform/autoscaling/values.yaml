@@ -142,7 +142,7 @@ ingress:
   enabled: true
   gateway: istio-ingress/internal-istio-ingressgateway
 
-  monitoring:
+  autoscaling:
     stacks:
       - name: goldilocks
         host: goldilocks.lefrancis.org

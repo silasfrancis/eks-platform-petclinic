@@ -5,6 +5,9 @@ gateways:
         service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-prod-nlb"
         service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-093e5bfda5c0eb8f4,subnet-07756c8c6eefd19e2"
         service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-062fde7e3704e542c"
+        external-dns.alpha.kubernetes.io/provider: "cloudflare"
+        external-dns.alpha.kubernetes.io/hostname: "petclinic.lefrancis.org"
+        external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     certificate:
       enabled: true
       spec:
@@ -12,6 +15,22 @@ gateways:
         issuerRef:
           name: "letsencrypt-cloudflare"
           kind: ClusterIssuer
+
+    gateway:
+      enabled: true
+      servers:
+        http:
+          enabled: true
+          hosts:
+            - "petclinic.lefrancis.org"
+          tls:
+            httpsRedirect: true
+        https:
+          enabled: true
+          hosts:
+            - "petclinic.lefrancis.org"
+          tls:
+            mode: SIMPLE
         
   internal:
     loadbalancer:
@@ -19,6 +38,13 @@ gateways:
         service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-prod-internal-nlb"
         service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-0dd3324f17543edf5,subnet-0730a6c2261114c74"
         service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0a4755eb8a4af212e"
+        external-dns.alpha.kubernetes.io/provider: "route53"
+        external-dns.alpha.kubernetes.io/hostname: >
+          grafana.lefrancis.org,
+          argocd.lefrancis.org,
+          prometheus.lefrancis.org,
+          loki.lefrancis.org,
+          goldilocks.lefrancis.org
     certificate:
       enabled: true
       spec:
@@ -26,6 +52,22 @@ gateways:
         issuerRef:
           name: "letsencrypt-cloudflare"
           kind: ClusterIssuer
+
+    gateway:
+      enabled: true
+      servers:
+        http:
+          enabled: true
+          hosts:
+            - "petclinic.lefrancis.org"
+          tls:
+            httpsRedirect: true
+        https:
+          enabled: true
+          hosts:
+            - "petclinic.lefrancis.org"
+          tls:
+            mode: SIMPLE
 
 external-dns-cloudflare:
   env:
@@ -38,6 +80,7 @@ external-dns-cloudflare:
   registry: txt
   txtOwnerId: "eks-cluster-01-cloudflare"
   txtPrefix: "cloudflare-"
+
 
 
 external-dns-route53:

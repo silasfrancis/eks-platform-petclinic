@@ -1,18 +1,23 @@
-# Root entrypoint for all platform operations.
-# Includes sub-Taskfiles for terraform, k8s bootstrap, ansible and local dev.
+# Root Taskfile for platform operations.
+#
+# This file exposes a unified entrypoint for infrastructure,
+# Kubernetes, WireGuard automation, validation, and local development.
 #
 # Usage:
-#   task --list                     show all available tasks
-#   task tf:plan ENV=dev            terraform plan for dev
-#   task k8s:bootstrap ENV=dev      full cluster bootstrap
-#   task validate ENV=dev           validate all helm charts
-#   task local:up                   start local docker-compose stack
+#   task --list
 #
-# Note: For full configurations, variable definitions, and manual overrides,
-#       refer to the individual Taskfiles and source code in these folders:
-#       - ./terraform/ (Infrastructure as Code)
-#       - ./k8s/       (Kubernetes Manifests & Helm Charts)
-#       - ./ansible/   (Server Configuration)
+#   task tf:plan ENV=dev
+#   task tf:apply ENV=prod
+#
+#   task k8s:bootstrap ENV=prod
+#   task validate ENV=prod
+#
+#   task ansible:configure_wireguard
+#
+#   task platform:up ENV=prod
+#
+#   task local:up
+#   task local:logs SERVICE=customers-service
 
 version: "3"
 
@@ -20,13 +25,14 @@ env:
   ENV: '{{.ENV | default ""}}'
 
 includes:
+
   tf:
     taskfile: ./terraform/Taskfile.yaml
     dir: ./terraform
 
   k8s:
     taskfile: ./k8s/Taskfile.yaml
-    dir: .
+    dir: ./k8s
 
   ansible:
     taskfile: ./ansible/Taskfile.yaml
@@ -35,42 +41,100 @@ includes:
 tasks:
 
   platform:up:
-    desc: "Provision infrastructure and bootstrap platform — ENV=dev|main"
+    desc: "Provision infrastructure and bootstrap platform"
     summary: |
-      1. Terraform — VPC, EKS, RDS, IAM
-      2. Ansible   — WireGuard server via SSM
-      3. k8s       — Cluster bootstrap
+      End-to-end platform provisioning workflow:
+
+        1. Shared resources
+           - AppRegistry metadata
+           - shared platform resources
+
+        2. Environment infrastructure
+           - VPC
+           - EKS
+           - IAM
+           - RDS
+           - platform infrastructure
+
+        3. Shared networking
+           - WireGuard VPN
+           - VPC peering
+           - shared routing
+
+        4. WireGuard configuration via Ansible over SSM
+
+        5. Kubernetes platform bootstrap
+
+      Usage:
+        task platform:up ENV=dev
+        task platform:up ENV=prod
+
     preconditions:
-      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]'
-        msg: "ENV must be dev or main — e.g. task platform:up ENV=dev"
+      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "prod" ]'
+        msg: "ENV must be dev or prod"
+
     cmds:
+      - task: tf:resources:apply
+
       - task: tf:apply
-        vars: { ENV: "{{.ENV}}" }
+        vars:
+          ENV: "{{.ENV}}"
+
+      - task: tf:networking:apply
+
       - task: ansible:configure_wireguard
+
+      - task: validate
+        vars:
+          ENV: "{{.ENV}}"
+
       - task: k8s:bootstrap
-        vars: { ENV: "{{.ENV}}" }
+        vars:
+          ENV: "{{.ENV}}"
 
   validate:
-    desc: "Validate all Helm charts — ENV=dev|main"
+    desc: "Validate all Helm charts"
+    summary: |
+      Renders all Helm charts using helm template.
+
+      Validates:
+        - platform charts
+        - policies
+        - ArgoCD
+        - microservices
+
+      Usage:
+        task validate ENV=dev
+        task validate ENV=prod
+
     preconditions:
-      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]'
-        msg: "ENV must be dev or main — e.g. task validate ENV=dev"
+      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "prod" ]'
+        msg: "ENV must be dev or prod"
+
     cmds:
       - ./scripts/validate-charts.sh {{.ENV}}
 
   validate:export:
-    desc: "Validate and export rendered manifests to rendered/"
+    desc: "Validate charts and export rendered manifests"
+    summary: |
+      Exports rendered manifests into ./rendered/
+
+      Usage:
+        task validate:export ENV=dev
+        task validate:export ENV=prod
+
     preconditions:
-      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "main" ]'
-        msg: "ENV must be dev or main — e.g. task validate:export ENV=dev"
+      - sh: '[ "{{.ENV}}" = "dev" ] || [ "{{.ENV}}" = "prod" ]'
+        msg: "ENV must be dev or prod"
+
     cmds:
       - ./scripts/validate-charts.sh {{.ENV}} --export
 
   local:up:
-    desc: "Start local microservices stack"
+    desc: "Start local docker-compose stack"
     preconditions:
       - sh: "[ -f .env ]"
-        msg: ".env file not found — copy .env.example and fill in values"
+        msg: ".env file not found — copy .env.example first"
     cmds:
       - docker compose up -d
       - |
@@ -80,27 +144,33 @@ tasks:
         echo "Config Server:    http://localhost:8888"
 
   local:down:
-    desc: "Stop local microservices stack"
+    desc: "Stop local docker-compose stack"
     cmds:
       - docker compose down
 
   local:logs:
-    desc: "Tail logs — SERVICE=customers-service"
+    desc: "Tail logs for a service"
+    summary: |
+      Usage:
+        task local:logs SERVICE=customers-service
     preconditions:
       - sh: "[ -n '{{.SERVICE}}' ]"
-        msg: "SERVICE is required — e.g. task local:logs SERVICE=customers-service"
+        msg: "SERVICE is required"
     cmds:
       - docker compose logs -f {{.SERVICE}}
 
   local:build:
-    desc: "Rebuild all service images"
+    desc: "Build local service images"
     cmds:
       - docker compose build
 
   local:restart:
-    desc: "Restart a service — SERVICE=api-gateway"
+    desc: "Restart a local service"
+    summary: |
+      Usage:
+        task local:restart SERVICE=api-gateway
     preconditions:
       - sh: "[ -n '{{.SERVICE}}' ]"
-        msg: "SERVICE is required — e.g. task local:restart SERVICE=api-gateway"
+        msg: "SERVICE is required"
     cmds:
       - docker compose restart {{.SERVICE}}

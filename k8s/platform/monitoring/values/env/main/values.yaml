@@ -75,3 +75,21 @@ serviceAccount:
   annotations: 
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-platformMonitoringSecrets-irsa"
 
+ingress:
+  enabled: true
+  gateway: istio-ingress/internal-istio-ingressgateway
+
+  monitoring:
+    stacks:
+      - name: grafana
+        host: grafana.lefrancis.org
+        serviceName: kube-prometheus-stack-grafana
+        port: 80
+      - name: prometheus
+        host: prometheus.lefrancis.org
+        serviceName: kube-prometheus-stack-prometheus
+        port: 9090
+      - name: loki
+        host: loki.lefrancis.org
+        serviceName: loki-gateway
+        port: 80

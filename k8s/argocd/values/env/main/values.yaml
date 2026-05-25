@@ -7,6 +7,99 @@ argo-cd:
         url: "https://github.com/silasfrancis/eks-platform-petclinic"
         name: petclinic-gitops
         type: git
+ # secret.create: false — ESO creates argocd-notifications-secret from AWS Secrets Manager
+  notifications:
+    enabled: true
+    nodeSelector:
+      node-type: on-demand
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    metrics:
+      enabled: true
+    secret:
+      create: false
+      name: argocd-notifications-secret
+
+    notifiers:
+      # Slack notifier — token sourced from ESO-created secret
+      service.slack: |
+        token: $slack-token
+
+    templates:
+      template.app-deployed: |
+        slack:
+          attachments: |
+            [{
+              "title": "✅ {{ .app.metadata.name }} deployed",
+              "title_link": "https://argocd.lefrancis.org/applications/{{ .app.metadata.name }}",
+              "color": "#18be52",
+              "fields": [
+                {"title": "Sync Status", "value": "{{ .app.status.sync.status }}", "short": true},
+                {"title": "Health", "value": "{{ .app.status.health.status }}", "short": true},
+                {"title": "Revision", "value": "{{ .app.status.sync.revision }}", "short": true}
+              ]
+            }]
+
+      template.app-health-degraded: |
+        slack:
+          attachments: |
+            [{
+              "title": "❌ {{ .app.metadata.name }} degraded",
+              "title_link": "https://argocd.lefrancis.org/applications/{{ .app.metadata.name }}",
+              "color": "#f4c030",
+              "fields": [
+                {"title": "Health", "value": "{{ .app.status.health.status }}", "short": true},
+                {"title": "Sync", "value": "{{ .app.status.sync.status }}", "short": true}
+              ]
+            }]
+
+      template.app-sync-failed: |
+        slack:
+          attachments: |
+            [{
+              "title": "🚨 {{ .app.metadata.name }} sync failed",
+              "title_link": "https://argocd.lefrancis.org/applications/{{ .app.metadata.name }}",
+              "color": "#E96D76",
+              "fields": [
+                {"title": "Error", "value": "{{ .app.status.operationState.message }}", "short": false}
+              ]
+            }]
+
+    triggers:
+      trigger.on-deployed: |
+        - description: Application synced and healthy
+          oncePer: app.status.sync.revision
+          send:
+            - app-deployed
+          when: >
+            app.status.operationState.phase in ['Succeeded']
+            and app.status.health.status == 'Healthy'
+
+      trigger.on-health-degraded: |
+        - description: Application health degraded
+          send:
+            - app-health-degraded
+          when: app.status.health.status == 'Degraded'
+
+      trigger.on-sync-failed: |
+        - description: Sync failed
+          send:
+            - app-sync-failed
+          when: app.status.operationState.phase in ['Error', 'Failed']
+
+    subscriptions:
+      - recipients:
+          - slack:#k8-alerts
+        triggers:
+          - on-deployed
+          - on-health-degraded
+          - on-sync-failed
+
 
 serviceAccount:
   create: true
@@ -56,3 +149,11 @@ argocdBootstrap:
     targetRevision: main
     destination:
       server: https://kubernetes.default.svc
+
+ingress:
+  enabled: true
+  gateway: istio-ingress/internal-istio-ingressgateway
+  argocd:
+    host: argocd.lefrancis.org
+    serviceName: argocd-server
+    port: 80

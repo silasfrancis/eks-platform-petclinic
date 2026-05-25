@@ -1,194 +1,200 @@
 # Security
 
-## Security Model
-
-The platform uses multiple independent controls across networking,
-admission, runtime, and supply chain security.
-
-| Layer | Control | Purpose |
-|---|---|---|
-| 1 | Cilium NetworkPolicy (default deny) | Blocks all ingress and egress traffic by default |
-| 2 | Cilium NetworkPolicy (service rules) | Explicit service-to-service allow rules |
-| 3 | Istio PeerAuthentication | STRICT mTLS between workloads |
-| 4 | Istio AuthorizationPolicy | Service identity-based access control |
-| 5 | Kyverno ImageValidatingPolicy | Verifies Cosign signatures and image provenance |
-| 6 | Kyverno ValidatingPolicy | Enforces pod security requirements |
-| 7 | Kyverno MutatingPolicy | Applies default security configuration |
-| 8 | Falco | Runtime syscall monitoring with eBPF |
-| 9 | Trivy Operator | Continuous vulnerability and compliance scanning |
+Operational security reference for the eks-platform-petclinic platform.
 
 ---
 
-# Supply Chain Security
+## Table of Contents
 
-## Image Signing
+- [Security Model](#security-model)
+- [Supply Chain Security](#supply-chain-security)
+  - [Image Signing](#image-signing)
+  - [Vulnerability Attestation](#vulnerability-attestation)
+  - [CI Security Gates](#ci-security-gates)
+- [Network Security](#network-security)
+  - [Default Deny](#default-deny)
+  - [mTLS](#mtls)
+  - [Service Identity](#service-identity)
+  - [Allowed Traffic Paths](#allowed-traffic-paths)
+- [Secrets Management](#secrets-management)
+  - [IRSA](#irsa)
+- [Pod Security Standards](#pod-security-standards)
+- [Runtime Security](#runtime-security)
+  - [Falco](#falco)
+  - [Trivy Operator](#trivy-operator)
+- [Dashboard Access](#dashboard-access)
+- [Vulnerability Acceptance Policy](#vulnerability-acceptance-policy)
 
-All container images are signed with Cosign using GitHub Actions OIDC.
-No long-lived signing keys are stored in the repository or cluster.
+---
+
+## Security Model
+
+The platform implements multiple independent security controls across networking, admission, runtime, identity, and software supply chain layers.
+
+| Layer | Control | What it enforces |
+|---|---|---|
+| 1 | Cilium NetworkPolicy (default deny) | Blocks all ingress and egress traffic by default |
+| 2 | Cilium NetworkPolicy (service rules) | Explicit per-service allow rules |
+| 3 | Kyverno ImageValidatingPolicy | Cosign signature and attestation verification |
+| 4 | Kyverno ValidatingPolicy | Pod security requirements |
+| 5 | Kyverno MutatingPolicy | Automated security context defaults |
+| 6 | Istio PeerAuthentication | mTLS STRICT between all workloads |
+| 7 | External Secrets Operator | AWS Secrets Manager sync — no secrets in Git |
+| 8 | IRSA | Pod-level AWS identity without static credentials |
+| 9 | Falco | eBPF runtime syscall monitoring |
+| 10 | Trivy Operator | Continuous vulnerability and compliance scanning |
+
+---
+
+## Supply Chain Security
+
+### Image Signing
+
+All container images are signed with Cosign using keyless signing through GitHub Actions OIDC. No long-lived signing keys are stored anywhere.
 
 ```text
 GitHub Actions workflow
-│
-▼
+        │
+        ▼
 Fulcio issues short-lived signing certificate
-│
-▼
+        │
+        ▼
 Cosign signs image digest
-│
-├── Signature stored alongside image in ECR
-└── Transparency entry written to Rekor
+        ├── Signature stored alongside image in ECR
+        └── Transparency entry written to Rekor
 ```
 
-The signature is tied to:
-- repository
-- workflow
-- branch
-- workflow run identity
+The signature is bound to the repository, workflow, branch, and workflow run identity. An image signed in a different context fails Kyverno admission verification.
 
----
+### Vulnerability Attestation
 
-## Vulnerability Attestation
+Each image includes a Trivy vulnerability report attached through Cosign as a signed attestation. The attestation is bound to the image digest and verified during admission alongside the image signature.
 
-Each image includes a Trivy vulnerability attestation attached through
-Cosign.
-
-The attestation is bound to the image digest and verified during
-admission.
-
----
-
-## Admission Enforcement
-
-Kyverno validates workloads before they are admitted to the cluster.
-
-Validation flow:
-
-1. verify image signature
-2. verify vulnerability attestation exists
-3. validate pod security requirements
-4. apply default mutations where required
-
-Unsigned or non-compliant images are rejected before pod creation.
-
----
-
-## CI Security Gates
+### CI Security Gates
 
 ```text
-Git push
-│
-▼
+git push
+        │
+        ▼
 Build multi-arch image (ARM64 + AMD64)
-│
-▼
-Trivy vulnerability scan
-│
-▼
-Push image to ECR
-│
-▼
-Cosign sign image
-│
-▼
+        │
+        ▼
+Trivy vulnerability scan — gate on CRITICAL
+        │
+        ▼
+Push image to ECR (immutable tag)
+        │
+        ▼
+Cosign sign image digest
+        │
+        ▼
 Cosign attach vulnerability attestation
-│
-▼
-ArgoCD detects updated image tag
+        │
+        ▼
+Update Helm values file with new image tag
+        │
+        ▼
+ArgoCD detects change → Kyverno verifies → pod starts
 ```
 
-Accepted findings are documented in `.trivyignore` with justification.
+Accepted findings are documented in `.trivyignore` with justification and review date. The same file is used by both CI scans and Trivy Operator runtime scans.
 
 ---
 
-# Network Security
+## Network Security
 
-## Default Deny
+### Default Deny
 
-A namespace-wide Cilium NetworkPolicy applies default deny ingress and egress rules to the `petclinic` namespace.
-All allowed traffic paths must be explicitly defined.
+A namespace-wide Cilium NetworkPolicy applies default deny to all ingress and egress traffic in the `petclinic` namespace.
 
----
+Every allowed communication path must be explicitly defined.
 
-## mTLS
+### mTLS
 
-Istio `PeerAuthentication` resources enforce STRICT mTLS between services in the cluster.
-Certificates are issued and rotated automatically by Istio.
+Istio `PeerAuthentication: STRICT` is applied to the `petclinic` and `monitoring` namespaces.
 
----
+All pod-to-pod traffic is:
+- encrypted
+- mutually authenticated
+- identity verified through Istio-issued certificates
 
-## Service Identity
+Certificates are issued and rotated automatically by Istiod.
 
-Istio `AuthorizationPolicy` resources use workload identity from Istio-issued certificates rather than IP addresses or pod labels.
-Only explicitly allowed service accounts may communicate with a service.
+### Service Identity
 
----
+Istio `AuthorizationPolicy` uses workload identity from Istio-issued certificates.
 
-## Allowed Traffic
+Access decisions are based on authenticated service identities rather than:
+- pod IP addresses
+- Kubernetes labels
+- node placement
+
+Only explicitly allowed service accounts may communicate with protected services.
+
+### Allowed Traffic Paths
 
 ```text
-Source                    Destination               Port
-────────────────────────────────────────────────────────
-Istio ingress gateway  →  API Gateway               8080
-API Gateway            →  Customers Service         8081
-API Gateway            →  Visits Service            8082
-API Gateway            →  Vets Service              8083
-API Gateway            →  GenAI Service             8084
-All services           →  Config Server             8888
-All services           →  Discovery Server          8761
-Application services   →  RDS MySQL                 3306
-Prometheus             →  Application metrics       8080
-Istio control plane    ↔  Sidecars                  15012,15014,15017
+Source                     Destination            Port
+───────────────────────────────────────────────────────────
+Istio ingress gateway  →   api-gateway            8080
+api-gateway            →   customers-service      8081
+api-gateway            →   visits-service         8082
+api-gateway            →   vets-service           8083
+api-gateway            →   genai-service          8084
+All services           →   config-server          8888
+All services           →   discovery-server       8761
+customers, visits, vets→   RDS MySQL              3306
+Prometheus             →   All services           8080
+Istio control plane    ↔   Sidecars               15012,15014,15017
 ```
 
-All other traffic is denied by Cilium before reaching the Istio proxy.
+All other traffic is blocked by Cilium before reaching the Istio proxy.
 
 ---
 
-# Secrets Management
+## Secrets Management
 
-Secrets are not stored in Git.
+Secrets are not stored in Git in any form.
 
-AWS Secrets Manager is the primary secrets backend for the platform. External Secrets Operator (ESO) synchronizes secrets into Kubernetes using IRSA-authenticated access.
+AWS Secrets Manager acts as the centralized secrets backend for the platform. External Secrets Operator (ESO) synchronizes secrets into Kubernetes using IRSA-authenticated access.
 
-| Secret | Storage | Access Method |
+Secrets are:
+- retrieved dynamically
+- injected at runtime
+- excluded from manifests and values files
+
+| Secret | Storage | Access |
 |---|---|---|
-| Application credentials | AWS Secrets Manager | ESO + IRSA |
+| Application DB credentials | AWS Secrets Manager | ESO + IRSA |
 | Cloudflare API token | AWS Secrets Manager | ESO + IRSA |
 | Slack webhook URLs | AWS Secrets Manager | ESO + IRSA |
 | ArgoCD deploy key | AWS Secrets Manager | ESO + IRSA |
 | Grafana credentials | AWS Secrets Manager | ESO + IRSA |
 | TLS certificates | cert-manager | Kubernetes Secret |
 
-WireGuard keys and client configurations are currently generated and stored locally on the WireGuard EC2 instance under:
+> **WireGuard keys** are generated locally on the WireGuard EC2 instance and stored under `/etc/wireguard/`. Keys are not distributed through external systems. Client configurations should be retrieved through AWS SSM before rebuilding the instance.
 
-```text
-/etc/wireguard/
-```
+### IRSA
 
-This avoids distributing private VPN keys through external systems, but also means client keys are lost if the instance is rebuilt.
+Each platform component authenticates to AWS using a dedicated IAM role mapped to its Kubernetes service account through the EKS OIDC provider.
 
----
+No static AWS credentials exist inside the cluster.
 
-## IRSA
-
-AWS access inside the cluster uses IAM Roles for Service Accounts (IRSA).
-Each platform component has a dedicated IAM role with minimum required permissions. No static AWS credentials are stored in pods.
-
-| Component | AWS Access |
+| Component | AWS permissions |
 |---|---|
-| Loki | S3 log bucket |
-| Velero | S3 backups + EBS snapshots |
-| Karpenter | EC2 + SQS |
-| External Secrets | Secrets Manager |
-| ExternalDNS | Route53 |
+| Loki | S3 read/write — log bucket |
+| Velero | S3 read/write — backup bucket, EBS snapshots |
+| Karpenter | EC2 RunInstances/TerminateInstances, SQS |
+| External Secrets | Secrets Manager GetSecretValue |
+| ExternalDNS (Cloudflare) | None — uses Cloudflare API token via ESO |
+| ExternalDNS (Route53) | Route53 ChangeResourceRecordSets |
 | cert-manager | Route53 DNS validation |
 
 ---
 
-# Pod Security Standards
+## Pod Security Standards
 
-Kyverno enforces baseline security requirements for workloads.
-Required container settings:
+Kyverno enforces the following security context across workloads in the `petclinic` namespace.
 
 ```yaml
 securityContext:
@@ -207,60 +213,79 @@ podSecurityContext:
     type: RuntimeDefault
 ```
 
-The following are rejected:
-- `hostPID`
-- `hostIPC`
-- `hostNetwork`
-- privileged containers
+The following configurations are rejected during admission:
+
+- `hostPID: true`
+- `hostIPC: true`
+- `hostNetwork: true`
+- `privileged: true`
+- containers without resource limits
+
+Missing security context fields are automatically injected by the Kyverno MutatingPolicy before the ValidatingPolicy executes.
 
 ---
 
-# Runtime Security
+## Runtime Security
 
-## Falco
+### Falco
 
-Falco uses the `modern_ebpf` driver for runtime syscall monitoring on EKS AL2023 Graviton nodes.
-Custom Falco rules detect suspicious behavior specific to the platform alongside the default Falco ruleset.
-Alerts are forwarded to Slack through Falcosidekick.
+Falco uses the `modern_ebpf` driver for syscall monitoring on EKS AL2023 ARM64 Graviton nodes.
+
+The DaemonSet tolerates:
+- SPOT node taints
+- dedicated platform node taints
+- disruption-related scheduling constraints
+
+Custom Falco rules supplement the default ruleset with platform-specific detections.
+
+Alerts are forwarded through:
+```text
+Falco → Falcosidekick → Slack (#petclinic-security)
+```
+
+### Trivy Operator
+
+Trivy Operator continuously scans cluster workloads and configuration state.
+
+| Scan type | Schedule |
+|---|---|
+| Image vulnerabilities | On pod creation + every 24h |
+| Kubernetes config audit | Every 6h |
+| EKS CIS benchmark 1.4 | Every 6h |
+| NSA hardening checks | Every 6h |
+| Pod Security Standards | Every 6h |
+
+Reports are exposed as Kubernetes custom resources and surfaced in Grafana dashboards.
 
 ---
 
-## Trivy Operator
+## Dashboard Access
 
-Trivy Operator continuously scans workloads and cluster configuration.
+Internal dashboards are exposed through:
+- a private internal NLB
+- Route53 private hosted zones
+- WireGuard-restricted routing
 
-Scans include:
-- image vulnerabilities
-- Kubernetes configuration audits
-- CIS benchmark checks
-- Pod Security Standards validation
-
-Reports are exposed as Kubernetes resources and surfaced through Grafana.
-
----
-
-# Dashboard Access
-
-Internal dashboards are exposed only through a private internal NLB and a Route53 private hosted zone.
-
-Services include:
-- ArgoCD
-- Grafana
-- Prometheus
-- Loki
-- Goldilocks
+They do not resolve from the public internet.
 
 Access requires an active WireGuard VPN connection.
 
-The WireGuard server runs in the prod VPC and reaches the dev VPC through VPC peering.
-The server is managed through AWS SSM and does not expose SSH publicly.
+The WireGuard server runs in the prod VPC and routes traffic to both prod and dev clusters through VPC peering.
+
+| Service | URL |
+|---|---|
+| ArgoCD | https://argocd.lefrancis.org |
+| Grafana | https://grafana.lefrancis.org |
+| Prometheus | https://prometheus.lefrancis.org |
+| Loki | https://loki.lefrancis.org |
+| Goldilocks | https://goldilocks.lefrancis.org |
 
 ---
 
-# Vulnerability Acceptance Policy
+## Vulnerability Acceptance Policy
 
 Accepted vulnerabilities are documented in `.trivyignore` with:
-- CVE ID
+- CVE identifier
 - justification
 - review date
 
@@ -268,11 +293,13 @@ Example:
 
 ```text
 # CVE-2024-XXXX
-# Accepted because feature is unused in this workload.
-# Review date: 2026-12-01
+# Reason: affected feature is not used by this workload
+# Review: 2026-12-01
 CVE-2024-XXXX
 ```
 
-The same `.trivyignore` rules are used by both:
+The same `.trivyignore` file is used by:
 - CI Trivy scans
 - Trivy Operator runtime scans
+
+A vulnerability accepted in CI must also be accepted by the runtime scanning policy.

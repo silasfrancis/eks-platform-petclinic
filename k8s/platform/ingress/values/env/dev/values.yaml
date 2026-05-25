@@ -2,9 +2,12 @@ gateways:
   public:
     loadbalancer:
       annotations:
-        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-nlb"
-        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
-        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-dev-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-093e5bfda5c0eb8f4,subnet-07756c8c6eefd19e2"
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-062fde7e3704e542c"
+        external-dns.alpha.kubernetes.io/provider: "cloudflare"
+        external-dns.alpha.kubernetes.io/hostname: "petclinic-dev.lefrancis.org"
+        external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     certificate:
       enabled: true
       spec:
@@ -12,13 +15,36 @@ gateways:
         issuerRef:
           name: "letsencrypt-cloudflare"
           kind: ClusterIssuer
+
+    gateway:
+      enabled: true
+      servers:
+        http:
+          enabled: true
+          hosts:
+            - "petclinic-dev.lefrancis.org"
+          tls:
+            httpsRedirect: true
+        https:
+          enabled: true
+          hosts:
+            - "petclinic-dev.lefrancis.org"
+          tls:
+            mode: SIMPLE
         
   internal:
     loadbalancer:
       annotations:
-        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-internal-nlb"
-        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
-        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-dev-internal-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-0dd3324f17543edf5,subnet-0730a6c2261114c74"
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0a4755eb8a4af212e"
+        external-dns.alpha.kubernetes.io/provider: "route53"
+        external-dns.alpha.kubernetes.io/hostname: >
+          grafana-dev.lefrancis.org,
+          argocd-dev.lefrancis.org,
+          prometheus-dev.lefrancis.org,
+          loki-dev.lefrancis.org,
+          goldilocks-dev.lefrancis.org
     certificate:
       enabled: true
       spec:
@@ -27,17 +53,34 @@ gateways:
           name: "letsencrypt-cloudflare"
           kind: ClusterIssuer
 
+    gateway:
+      enabled: true
+      servers:
+        http:
+          enabled: true
+          hosts:
+            - "petclinic-dev.lefrancis.org"
+          tls:
+            httpsRedirect: true
+        https:
+          enabled: true
+          hosts:
+            - "petclinic-dev.lefrancis.org"
+          tls:
+            mode: SIMPLE
+
 external-dns-cloudflare:
   env:
     - name: CF_API_TOKEN
       valueFrom:
         secretKeyRef:
-          name: platform-ingress-secrets 
-          key: cloudflare_api_token
+          name: cloudflare-api-token
+          key: cloudflare-api-token
 
   registry: txt
   txtOwnerId: "eks-cluster-01-cloudflare"
   txtPrefix: "cloudflare-"
+
 
 
 external-dns-route53:
@@ -47,7 +90,7 @@ external-dns-route53:
     create: true
     name: external-dns-route53
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<cluster-name>-external-dns"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-petclinic-cluster-externalDnsRoute53-irsa"
 
   registry: txt
   txtOwnerId: "eks-cluster-01-route53"
@@ -63,15 +106,15 @@ externalSecret:
   name: ""
   refreshInterval: 1h
   target: 
-    name: "cloudflare_api_token"
+    name: cloudflare-api-token
     creationPolicy: Owner
   data:
-    - secretKey: cloudflare_api_token
+    - secretKey: cloudflare-api-token
       remoteRef:
-        key: "" 
-        property: cloudflare_api_token
+        key: "dev/platform-dns" 
+        property: cloudflare-api-token
 
 esoServiceAccount:
-  name: "external-dns-sa"
+  name: "external-dns-cloudflare"
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-petclinic-cluster-externalDnsSecrets-irsa"

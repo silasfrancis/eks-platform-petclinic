@@ -1,27 +1,96 @@
 # Runbook
 
-Operational reference for the platform.
+Operational reference for the eks-platform-petclinic platform.
 
 ---
 
-# Domain Configuration
+## Table of Contents
 
-The repository uses `lefrancis.org` as the default domain.
+- [Before You Start](#before-you-start)
+  - [Domain Configuration](#domain-configuration)
+- [VPN Access](#vpn-access)
+- [Internal Dashboards](#internal-dashboards)
+- [Deployments](#deployments)
+  - [Standard Deployment](#standard-deployment)
+  - [Promote a Canary](#promote-a-canary)
+  - [Roll Back a Deployment](#roll-back-a-deployment)
+  - [Force ArgoCD Sync](#force-argocd-sync)
+- [Scaling](#scaling)
+- [Observability](#observability)
+  - [Logs](#logs)
+  - [Metrics](#metrics)
+- [Backup and Restore](#backup-and-restore)
+- [Secrets Rotation](#secrets-rotation)
+- [Certificate Management](#certificate-management)
+- [Node Management](#node-management)
+- [WireGuard Server Management](#wireguard-server-management)
+- [Alerts Reference](#alerts-reference)
+- [Common Issues](#common-issues)
+  - [Pods Stuck in Pending](#pods-stuck-in-pending)
+  - [ArgoCD Sync Stuck or Degraded](#argocd-sync-stuck-or-degraded)
+  - [Image Pull Errors](#image-pull-errors)
+  - [Canary Stuck in Analysis](#canary-stuck-in-analysis)
+  - [Internal Dashboard Not Resolving](#internal-dashboard-not-resolving)
 
-Before deployment, update the ingress and DNS values to use your own domain.
+---
+
+## Before You Start
+
+### Domain Configuration
+
+The repository uses `lefrancis.org` as the default domain. Before deploying to your own environment, replace all domain references.
 
 Files to update:
 
-```text
-k8s/platform/ingress/values.yaml
-k8s/platform/ingress/values-<env>.yaml
-k8s/platform/external-dns/
-k8s/platform/cert-manager/
+```txt
+k8s/platform/ingress/values/env/<env>/values.yaml
+k8s/platform/monitoring/values/env/<env>/values.yaml
+k8s/platform/autoscaling/values/env/<env>/values.yaml
+k8s/argocd/values/env/<env>/values.yaml
 ```
 
-Typical values to replace:
+Ingress and dashboard hostnames are configured within the individual chart values files.
+
+Examples:
 
 ```yaml
+# k8s/platform/ingress/values/env/<env>/values.yaml
+petclinic:
+  host: petclinic.example.com
+```
+
+```yaml
+# k8s/platform/monitoring/values/env/<env>/values.yaml
+grafana:
+  ingress:
+    host: grafana.example.com
+
+prometheus:
+  ingress:
+    host: prometheus.example.com
+
+loki:
+  ingress:
+    host: loki.example.com
+```
+
+```yaml
+# k8s/platform/autoscaling/values/env/<env>/values.yaml
+goldilocks:
+  ingress:
+    host: goldilocks.example.com
+```
+
+```yaml
+# k8s/argocd/values/env/<env>/values.yaml
+server:
+  ingress:
+    hostname: argocd.example.com
+```
+
+Hostnames to replace:
+
+```txt
 petclinic.lefrancis.org
 argocd.lefrancis.org
 grafana.lefrancis.org
@@ -31,50 +100,47 @@ goldilocks.lefrancis.org
 ```
 
 Also update:
-- Cloudflare zone configuration
+- Cloudflare or Route53 hosted zones
 - Route53 private hosted zone names
-- cert-manager ClusterIssuer email/domain values if required
-
-Internal dashboards use private Route53 records and resolve only through the WireGuard VPN.
+- cert-manager ClusterIssuer email configuration
 
 ---
 
-# VPN Access
+## VPN Access
 
-Internal services are reachable only through WireGuard.
+All internal services require an active WireGuard connection.
 
-The WireGuard server runs in the prod VPC and routes traffic to both:
-- prod cluster (`10.0.0.0/16`)
-- dev cluster (`10.1.0.0/16`)
+The WireGuard server runs in the prod VPC (`10.0.0.0/16`) and routes traffic to both clusters via VPC peering:
 
-through VPC peering.
+- prod EKS — `10.0.0.0/16`
+- dev EKS — `10.1.0.0/16`
 
 ```bash
 # Connect
 wg-quick up wg0
 
-# Verify DNS resolution through the VPN
+# Verify DNS resolves to a private IP
 nslookup grafana.lefrancis.org
-
-# Expected:
-# Private/internal IP
-# NOT a public IP
+# Expected: private IP — not a public IP
 
 # Disconnect
 wg-quick down wg0
 ```
 
-WireGuard client configurations are generated directly on the VPN server under:
+WireGuard client configs are generated on the VPN server. Retrieve them via SSM before rebuilding the instance.
 
-```text
-/etc/wireguard/clients/
+```bash
+aws ssm start-session \
+  --target <instance-id> \
+  --region us-east-2
+
+# Inside the session
+sudo cat /etc/wireguard/clients/<client>.conf
 ```
-
-Retrieve the client config from the server through SSM access.
 
 ---
 
-# Internal Dashboards
+## Internal Dashboards
 
 | Service | URL |
 |---|---|
@@ -91,30 +157,20 @@ Retrieve credentials:
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d && echo
 
-# Grafana credentials
+# Grafana credentials from Secrets Manager
 aws secretsmanager get-secret-value \
-  --secret-id <secret path where grafana credentials are stored> \
+  --secret-id <env>/platform-monitoring \
   --query SecretString \
   --output text | jq .
 ```
 
 ---
 
-# Deployments
+## Deployments
 
-## Standard Deployment
+### Standard Deployment
 
-Push changes to the tracked branch.
-
-CI pipeline:
-- builds multi-arch images
-- runs Trivy scans
-- signs images with Cosign
-- pushes images to ECR
-- updates Helm image tags
-
-ArgoCD detects the change and syncs automatically.
-Argo Rollouts manages the canary deployment.
+Push to the tracked branch. CI builds, scans, signs, and pushes the image. ArgoCD detects the updated image tag and syncs. Argo Rollouts manages the canary progression automatically.
 
 ```bash
 git push origin dev
@@ -128,23 +184,18 @@ kubectl argo rollouts get rollout customers-service \
   --watch
 ```
 
----
-
-## Promote a Canary
+### Promote a Canary
 
 ```bash
 kubectl argo rollouts promote customers-service \
   -n petclinic
 ```
 
----
-
-## Roll Back a Deployment
+### Roll Back a Deployment
 
 ```bash
 # Roll back to previous stable revision
-kubectl argo rollouts undo customers-service \
-  -n petclinic
+kubectl argo rollouts undo customers-service -n petclinic
 
 # Roll back to a specific revision
 kubectl argo rollouts undo customers-service \
@@ -156,9 +207,7 @@ kubectl argo rollouts history rollout customers-service \
   -n petclinic
 ```
 
----
-
-## Force ArgoCD Sync
+### Force ArgoCD Sync
 
 VPN access required.
 
@@ -171,7 +220,7 @@ argocd app sync --all
 
 ---
 
-# Scaling
+## Scaling
 
 ```bash
 # Temporarily scale a rollout
@@ -185,15 +234,15 @@ kubectl get hpa -n petclinic
 # View KEDA ScaledObjects
 kubectl get scaledobject -n petclinic
 
-# View Karpenter node provisioning
+# View Karpenter node provisioning activity
 kubectl get nodeclaims
 ```
 
 ---
 
-# Observability
+## Observability
 
-## Logs
+### Logs
 
 ```bash
 # Stream service logs
@@ -203,11 +252,10 @@ kubectl logs -n petclinic \
   --tail=100
 
 # Logs from a specific pod
-kubectl logs -n petclinic <pod-name> \
-  -c customers-service
+kubectl logs -n petclinic <pod-name> -c customers-service
 ```
 
-Example Loki LogQL queries:
+Loki LogQL queries:
 
 ```logql
 # All application errors
@@ -217,19 +265,16 @@ Example Loki LogQL queries:
 {namespace="petclinic", app="customers-service"} | json
 ```
 
----
+### Metrics
 
-## Metrics
-
-```bash
-# Check Prometheus targets
-# VPN required
+```txt
+# Prometheus targets (VPN required)
 https://prometheus.lefrancis.org/targets
 ```
 
 ---
 
-# Backup and Restore
+## Backup and Restore
 
 ```bash
 # List backups
@@ -243,7 +288,7 @@ velero backup create manual-$(date +%Y%m%d-%H%M) \
 # Describe backup
 velero backup describe <backup-name> --details
 
-# Restore backup
+# Restore from backup
 velero restore create \
   --from-backup <backup-name> \
   --include-namespaces petclinic \
@@ -255,15 +300,15 @@ velero restore describe <restore-name>
 
 ---
 
-# Secrets Rotation
+## Secrets Rotation
 
 ```bash
-# Update secret value
+# Update a secret value
 aws secretsmanager put-secret-value \
-  --secret-id dev/petclinic/customers-service \
+  --secret-id dev/petclinic \
   --secret-string '{"db_password":"new-value"}'
 
-# Force ESO refresh
+# Force ESO to re-sync immediately
 kubectl annotate externalsecret customers-service-secrets \
   -n petclinic \
   force-sync=$(date +%s) \
@@ -272,33 +317,31 @@ kubectl annotate externalsecret customers-service-secrets \
 
 ---
 
-# Certificate Management
+## Certificate Management
 
 ```bash
-# Check certificates
+# Check certificate status
 kubectl get certificates -n istio-ingress
 
 # Validate ClusterIssuer
 kubectl get clusterissuer letsencrypt-cloudflare -o yaml
 
 # Force certificate re-issuance
-kubectl delete secret petclinic-public-tls \
-  -n istio-ingress
+kubectl delete secret petclinic-public-tls -n istio-ingress
 
-# Monitor issuance
-kubectl describe certificate petclinic-public-tls \
-  -n istio-ingress
+# Monitor issuance progress
+kubectl describe certificate petclinic-public-tls -n istio-ingress
 ```
 
 ---
 
-# Node Management
+## Node Management
 
 ```bash
 # List Karpenter-managed nodes
 kubectl get nodes -l karpenter.sh/nodepool
 
-# Drain node
+# Cordon and drain a node
 kubectl cordon <node-name>
 
 kubectl drain <node-name> \
@@ -313,17 +356,16 @@ kubectl get events \
 
 ---
 
-# WireGuard Server Management
+## WireGuard Server Management
 
-The WireGuard server is provisioned through Terraform and configured through Ansible over AWS SSM. No SSH access is enabled.
+The WireGuard server is provisioned via Terraform and configured via Ansible over AWS SSM. SSH is not enabled on the instance.
 
 ```bash
 # Re-apply WireGuard configuration
-cd ansible
+task ansible:configure_wireguard
 
-ansible-playbook \
-  -i inventory.yaml \
-  wireguard.yaml
+# Verify tunnel status
+task ansible:check_wireguard
 
 # Start SSM session
 aws ssm start-session \
@@ -336,53 +378,46 @@ sudo wg show
 
 ---
 
-# Alerts Reference
+## Alerts Reference
 
 | Alert | Severity | Meaning | Action |
 |---|---|---|---|
-| ArgoAppNotSynced | Warning | App not synced for 12h | Check ArgoCD sync status |
-| ArgoAppHealthDegraded | Critical | Application unhealthy | Check pod logs and events |
+| ArgoAppNotSynced | Warning | App not synced for 12h | Check ArgoCD sync status and logs |
+| ArgoAppHealthDegraded | Critical | Application health degraded | Check pod logs and events |
 | VeleroBackupFailed | Critical | Backup job failed | Check Velero controller logs |
-| VeleroNoNewBackup | Critical | No backup in 25h | Verify schedules and storage |
-| KarpenterNodeNotLaunched | Warning | Node provisioning failure | Check EC2 limits and Karpenter logs |
+| VeleroNoNewBackup | Critical | No backup in 25h | Verify schedules and S3 storage |
+| KarpenterNodeNotLaunched | Warning | Node provisioning failed | Check EC2 limits and Karpenter logs |
 
 ---
 
-# Common Issues
+## Common Issues
 
-## Pods Stuck in Pending
+### Pods Stuck in Pending
 
 ```bash
 kubectl describe pod <pod-name> -n petclinic
-
-# Check:
-# - insufficient CPU/memory
-# - taints
-# - affinity rules
+# Check: insufficient resources, taints, affinity rules
 
 kubectl get nodeclaims
+# Check: Karpenter has provisioned or is provisioning a node
 ```
 
----
-
-## ArgoCD Sync Stuck or Degraded
+### ArgoCD Sync Stuck or Degraded
 
 VPN required.
 
 ```bash
-# Check Kyverno policy reports
+# Check Kyverno policy reports — image may be failing admission
 kubectl get policyreport -n petclinic
 
-# Check failed hook jobs
+# Check failed pre-install hook jobs (Flyway migration failure)
 kubectl get jobs -n petclinic
 
-# Force refresh
+# Force a hard refresh
 argocd app get <app-name> --hard-refresh
 ```
 
----
-
-## Image Pull Errors
+### Image Pull Errors
 
 ```bash
 aws ecr describe-images \
@@ -391,17 +426,16 @@ aws ecr describe-images \
   --query 'imageDetails[*].imageTags'
 ```
 
----
-
-## Canary Stuck in Analysis
+### Canary Stuck in Analysis
 
 ```bash
+# View active AnalysisRuns
 kubectl get analysisrun -n petclinic
 
-kubectl describe analysisrun <name> \
-  -n petclinic
+# Describe failing AnalysisRun
+kubectl describe analysisrun <name> -n petclinic
 
-# Verify Prometheus connectivity
+# Verify Prometheus is reachable from the petclinic namespace
 kubectl run -it --rm debug \
   --image=curlimages/curl \
   --restart=Never \
@@ -409,22 +443,16 @@ kubectl run -it --rm debug \
   -- curl http://platform-monitoring-prometheus.monitoring:9090/-/healthy
 ```
 
----
-
-## Internal Dashboard Not Resolving
+### Internal Dashboard Not Resolving
 
 ```bash
-# Verify VPN connection
+# Verify VPN is connected
 wg show
 
-# Verify DNS resolution
+# Verify DNS resolves to a private IP
 nslookup grafana.lefrancis.org
 
-# Expected:
-# Private/internal IP
-# NOT a public IP
-
-# Verify Route53 private record
+# Verify Route53 private record exists
 aws route53 list-resource-record-sets \
   --hosted-zone-id <zone-id> \
   --query "ResourceRecordSets[?Name=='grafana.lefrancis.org.']"

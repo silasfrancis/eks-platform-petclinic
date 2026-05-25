@@ -1,351 +1,455 @@
 # Architecture
 
-## System Overview
+## Overview
 
+Kubernetes platform on AWS EKS built around the [Spring PetClinic](https://github.com/spring-petclinic/spring-petclinic-microservices) microservices application.
+
+The platform runs two isolated environments:
+- `dev`
+- `prod`
+
+Each environment has:
+- its own VPC
+- its own EKS cluster
+- separate networking and database resources
+
+A single WireGuard server in the production VPC provides VPN access to both environments through VPC peering. ArgoCD running in the production cluster also manages the development cluster remotely through the same peering connection.
+
+![AWS Infrastructure](diagrams/aws-architecture.drawio.svg)
+
+![EKS Platform Architecture](diagrams/eks-platform-architecture.drawio.svg)
+
+---
+
+# Network Architecture
+
+## VPC Layout
+
+```txt
+Prod VPC — 10.0.0.0/16              Dev VPC — 10.1.0.0/16
+
+┌─────────────────────────┐         ┌──────────────────────────┐
+│                         │         │                          │
+│ Public Subnets          │         │ Public Subnets           │
+│ ├── WireGuard EC2       │         │ ├── External NLB         │
+│ ├── External NLB        │         │ └── NAT Gateway          │
+│ └── NAT Gateway         │         │                          │
+│                         │◄──────► │ Private Subnets          │
+│ Private Subnets         │ Peering │ ├── EKS worker nodes     │
+│ ├── EKS worker nodes    │         │ └── Internal NLB         │
+│ └── Internal NLB        │         │                          │
+│                         │         │ Data Subnets             │
+│ Data Subnets            │         │ └── RDS MySQL            │
+│ └── RDS MySQL           │         │                          │
+│                         │         └──────────────────────────┘
+└─────────────────────────┘
 ```
-Git Repository (single source of truth)
-          │
-          ▼
-      ArgoCD (App of Apps)
-          │
-    ┌─────┴──────────────┐
-    │                    │
-Platform Layer       Application Layer
-    │                    │
-    ├── Compute          └── 8 PetClinic Microservices
-    ├── Ingress
-    ├── Monitoring
-    ├── Autoscaling
-    ├── Backup
-    │
-    └── Security
-         ├── Kyverno (policies)
-         └── NetworkPolicies
+
+---
+
+## VPC Peering
+
+A single VPC peering connection links the production and development VPCs.
+
+The peering connection is used for:
+
+1. VPN access from the WireGuard server to both clusters
+2. ArgoCD multi-cluster management from prod to dev
+
+```txt
+Engineer Laptop
+        │
+        │ WireGuard VPN (UDP 51820)
+        ▼
+WireGuard EC2
+(prod public subnet)
+        │
+        ├──────────────► Prod EKS API
+        │
+        └──► VPC Peering ─────► Dev EKS API
+
+
+ArgoCD (prod cluster)
+        │
+        └──► VPC Peering ─────► Dev EKS cluster
 ```
 
-See [architecture.png](diagrams/architecture.png) for the full AWS diagram.
+The WireGuard client routes both VPC CIDRs through the tunnel:
 
-## Infrastructure
-
-### VPC Layout
-
+```txt
+AllowedIPs = 10.0.0.0/16, 10.1.0.0/16, 10.10.0.0/24
 ```
-VPC — us-east-2 (10.0.0.0/16)
+
+The development EKS API server allows inbound HTTPS traffic from the production VPC CIDR to support remote cluster management.
+
+---
+
+## Subnet Design
+
+| Subnet Type | Resources |
+|---|---|
+| Public | WireGuard EC2, NAT Gateway, external NLB |
+| Private | EKS nodes, internal NLB |
+| Data | RDS MySQL |
+
+Both environments use multi-AZ subnet layouts across two availability zones.
+
+---
+
+## WireGuard
+
+WireGuard runs on a public EC2 instance in the production VPC with an Elastic IP.
+
+The server is configured through Ansible over AWS SSM:
+- no inbound SSH access
+- no public Kubernetes endpoints
+- internal tooling accessible only through VPN
+
+The server acts as the single entry point for:
+- engineers
+- internal dashboards
+- private cluster access
+
+---
+
+## DNS
+
+| Record Type | Provider | Purpose |
+|---|---|---|
+| Public DNS | Cloudflare | Public application ingress |
+| Private DNS | Route53 Private Hosted Zone | Internal dashboards and services |
+
+ExternalDNS runs as separate deployments:
+- Cloudflare controller for public records
+- Route53 controller for private records
+
+DNS records are created automatically from Kubernetes ingress resources.
+
+---
+
+# EKS Cluster
+
+## Cluster Configuration
+
+| Attribute | Value |
+|---|---|
+| Kubernetes Version | 1.35 |
+| Architecture | ARM64 (Graviton) |
+| Region | us-east-2 |
+| Node Provisioning | Karpenter |
+| CNI | AWS VPC CNI + Cilium |
+
+---
+
+## Node Pools
+
+| Pool | Capacity Type | Workloads |
+|---|---|---|
+| Bootstrap | ON_DEMAND | Karpenter controller |
+| ON_DEMAND | ON_DEMAND | config-server, discovery-server, api-gateway, admin-server |
+| SPOT | SPOT | customers, visits, vets, genai |
+
+SPOT interruption handling uses:
+- EventBridge
+- SQS interruption queue
+- Karpenter node draining
+
+---
+
+# Traffic Flow
+
+## Public Traffic
+
+```txt
+User
+  ↓
+Cloudflare DNS
+  ↓
+External NLB
+  ↓
+Istio Ingress Gateway
+  ↓
+VirtualService routing
+  ↓
+api-gateway
+  ↓
+Microservices
+```
+
+TLS certificates are managed through cert-manager using Let's Encrypt wildcard certificates.
+
+---
+
+## Internal Traffic
+
+```txt
+Engineer
+  ↓
+WireGuard VPN
+  ↓
+Private Route53 DNS
+  ↓
+Internal NLB
+  ↓
+Istio Internal Gateway
+  ↓
+Grafana / ArgoCD / Prometheus / Loki / Goldilocks
+```
+
+Internal dashboards are accessible only through the VPN.
+
+---
+
+## Service-to-Service Traffic
+
+All inter-service communication flows through Istio sidecars with `STRICT` mTLS enabled cluster-wide.
+
+AuthorizationPolicy resources restrict which workloads may communicate with each other.
+
+Argo Rollouts controls VirtualService traffic weights during canary deployments.
+
+---
+
+# Application Layer
+
+Eight Spring Boot services run in the `petclinic` namespace.
+
+All services share:
+- a single Helm chart
+- per-service values files
+- common deployment patterns
+
+```txt
+api-gateway
 │
-├── Public Subnets (2 AZs)
-│   ├── Internet Gateway
-│   ├── NAT Gateway
-│   ├── Internet-facing NLB (petclinic.lefrancis.org)
-│   └── WireGuard EC2 (Elastic IP)
-│
-├── Private Subnets (2 AZs)
-│   ├── EKS Worker Nodes (Karpenter)
-│   └── Internal NLB (dashboards — VPN only)
-│
-└── Data Subnets (2 AZs)
-    └── RDS MySQL (Multi-AZ)
+├── customers-service
+├── visits-service
+├── vets-service
+├── genai-service
+├── config-server
+├── discovery-server
+└── admin-server
+        │
+        ▼
+RDS MySQL 8.0
 ```
 
-### EKS Node Architecture
+Flyway migrations run as Helm hooks during deployment.
 
-Karpenter manages two NodePools:
+Database credentials are pulled dynamically from AWS Secrets Manager through External Secrets Operator and IRSA.
 
-| NodePool | Instance Types | Capacity | Workloads |
-|---|---|---|---|
-| on-demand | t4g.medium/large | Guaranteed | Config server, Discovery server, API gateway, Admin server |
-| spot | t4g/m6g/c6g/r6g | Interruptible | Customers, Visits, Vets, GenAI services |
+No application secrets are stored in Git.
 
-A bootstrap node group (1× t4g.medium, Terraform-managed) runs Karpenter only.
-Application workloads never land on the bootstrap group.
+---
 
-All nodes run AL2023 ARM64 (Graviton). Images are built for `linux/arm64`
-via Docker Buildx with `BUILDPLATFORM`/`TARGETPLATFORM` args.
+# GitOps and Delivery
 
-### WireGuard Server
+## Deployment Flow
 
-A private EC2 instance (t4g.nano) acts as the VPN gateway for internal
-dashboard access. It is configured via Ansible over AWS SSM — no SSH port
-is open. This is provisioned and configured before any platform bootstrap
-steps, as ArgoCD and all internal dashboards sit behind it.
-
-```
-Ansible → AWS SSM → WireGuard EC2 (public subnet, Elastic IP)
-                          │
-                    WireGuard tunnel (UDP 51820)
-                          │
-              VPN client (engineer's laptop)
-                          │
-              Route53 Private Hosted Zone (DNS resolution)
-                          │
-              Internal NLB (private subnets)
-                          │
-        Grafana / ArgoCD / Prometheus / Loki
-```
-
-## Application Architecture
-
-### Microservices
-
-Eight Spring Boot services communicate internally via the Istio service mesh:
-
-```
-                   ┌──────────────────┐
-External traffic   │  Istio Gateway   │  petclinic.lefrancis.org
-──────────────────▶│  (Public NLB)    │
-                   └────────┬─────────┘
-                            │
-                   ┌────────▼─────────┐
-                   │   API Gateway    │  :8080
-                   └──┬──┬──┬──┬─────┘
-                      │  │  │  │
-          ┌───────────┘  │  │  └──────────────┐
-          │              │  │                  │
-  ┌───────▼──────┐ ┌─────▼──┴──────┐ ┌────────▼───────┐
-  │  Customers   │ │    Visits     │ │     Vets       │
-  │  :8081       │ │    :8082      │ │     :8083      │
-  └──────┬───────┘ └──────┬────────┘ └───────┬────────┘
-         └────────────────┼───────────────────┘
-                          │
-                  ┌───────▼───────┐
-                  │  RDS MySQL    │
-                  └───────────────┘
-
-All services → Config Server (:8888) at startup
-All services → Discovery Server (:8761) for Eureka registration
-API Gateway  → GenAI Service (:8084) for AI features
+```txt
+git push
+   │
+   ▼
+GitHub Actions
+├── Build multi-arch images
+├── Trivy vulnerability scan
+├── Push image to ECR
+├── Cosign signing
+└── Cosign attestation
+   │
+   ▼
+Commit updated image tag
+   │
+   ▼
+ArgoCD sync
+   │
+   ▼
+Kyverno admission validation
+   │
+   ▼
+Argo Rollouts canary deployment
+   │
+   ├── 20%
+   ├── analysis
+   ├── 40%
+   ├── analysis
+   ├── 80%
+   ├── analysis
+   └── 100%
 ```
 
-### Canary Deployment Flow
+Failed rollout analysis triggers automatic rollback.
 
-```
-CI pushes new image to ECR
-          │
-          ▼
-ArgoCD detects image change → triggers sync
-          │
-          ▼
-Argo Rollouts starts canary
-          │
-    setWeight: 20%
-          │
-    pause: 60s
-          │
-    AnalysisRun → queries Prometheus
-      ├── success rate >= 99%     ✓ continue
-      ├── P99 latency <= 2s       ✓ continue
-      └── error count <= 10       ✓ continue
-          │
-    setWeight: 50% → pause → analysis
-          │
-    setWeight: 100% → promote
-          │
-    ✗ any metric fails → auto-rollback to stable
+---
+
+## ArgoCD Multi-Cluster
+
+ArgoCD runs in the production cluster and manages:
+- production applications locally
+- development applications remotely through VPC peering
+
+```txt
+ArgoCD
+├── prod applications
+└── dev applications
 ```
 
-Istio VirtualService weights are managed by Argo Rollouts during the canary.
-ArgoCD is configured to ignore VirtualService weight diffs to prevent
-sync conflicts.
+The development cluster is registered as a remote cluster using its private API endpoint.
 
-## GitOps Architecture
+---
 
-### App of Apps
+## Rollout Analysis
 
-```
-root-app.yaml (applied once manually via task deploy_root_app)
-          │
-          ▼
-ArgoCD watches k8s/argocd/
-          │
-          ├── Wave 0  argocd          (self-managed, prune: false)
-          ├── Wave 1  policies        (Kyverno — must exist before workloads)
-          ├── Wave 1  compute         (Karpenter — nodes before workloads)
-          ├── Wave 1  ingress         (Istio gateway + DNS + certs)
-          ├── Wave 1  monitoring      (Prometheus + Grafana + Loki)
-          ├── Wave 2  security        (Trivy + Falco)
-          ├── Wave 2  autoscaling     (KEDA + Goldilocks)
-          ├── Wave 2  backup          (Velero)
-          └── Wave 3  microservices   (one Application per service)
-```
+| Metric | Threshold |
+|---|---|
+| Success rate | >= 99% |
+| P99 latency | <= 2s |
+| Error count | <= 10 |
 
-### Per-Service Applications
+Any threshold breach triggers rollback.
 
-Each microservice is an independent ArgoCD Application pointing to the
-same shared Helm chart with a per-service values override:
+---
 
-```
-ArgoCD Application: customers-service
-  source:
-    path: k8s/apps/microservice          (shared chart)
-    helm.valueFiles:
-      - values.yaml                      (common defaults)
-      - values/env/dev/customers-service.yaml  (service overrides)
-```
+# Security
 
-This means deploying one service does not affect others, and each service
-can be synced, rolled back, or paused independently.
+## Security Layers
 
-### ArgoCD Notifications
+| Layer | Tool | Purpose |
+|---|---|---|
+| Network segmentation | Cilium NetworkPolicy | Default deny and service allow rules |
+| Image verification | Kyverno | Cosign signature validation |
+| Pod policy enforcement | Kyverno | Security schema validation |
+| mTLS | Istio | Encrypted service communication |
+| Secrets management | ESO + IRSA | Dynamic AWS secrets access |
+| Runtime detection | Falco | eBPF runtime monitoring |
+| Vulnerability scanning | Trivy Operator | Continuous image scanning |
 
-ArgoCD sends deployment events to Slack via the notifications controller.
-The CI pipeline does not trigger ArgoCD — ArgoCD polls Git and syncs
-automatically. Notifications inform the team when:
+---
 
-- An application syncs and becomes healthy (on-deployed)
-- An application health degrades (on-health-degraded)
-- A sync operation fails (on-sync-failed)
+## Supply Chain Security
 
-## Networking Architecture
-
-### Dual Gateway Setup
-
-Two Istio ingress gateways handle different traffic:
-
-```
-Public gateway  (internet-facing NLB)
-  Hosts:   petclinic.lefrancis.org
-  DNS:     Cloudflare (public records)
-  Access:  Anyone on the internet
-
-Internal gateway  (private NLB)
-  Hosts:   grafana / argocd / prometheus / loki .lefrancis.org
-  DNS:     Route53 private hosted zone (VPC-only resolution)
-  Access:  WireGuard VPN clients only
+```txt
+GitHub Actions
+    ↓
+Trivy scan
+    ↓
+Push to ECR
+    ↓
+Cosign signing
+    ↓
+Cosign attestation
+    ↓
+Kyverno verification
+    ↓
+Deployment
 ```
 
-### ExternalDNS Split
+Unsigned or unattested images are rejected at admission time.
 
-Two ExternalDNS instances run independently:
+---
 
-| Instance | Provider | Annotation filter | Zone type |
-|---|---|---|---|
-| external-dns-cloudflare | Cloudflare | provider=cloudflare | public |
-| external-dns-route53 | AWS Route53 | provider=route53 | private |
+## IRSA
 
-Each instance only manages records for resources with its matching
-provider annotation, preventing cross-contamination.
+AWS access is handled through IAM Roles for Service Accounts.
 
-### Network Policy Model
+No static AWS credentials are stored inside workloads.
 
-Default-deny-all is applied to the petclinic namespace.
-Explicit allow rules are generated from the `clusterPolicy.services` map
-in `k8s/policies/values.yaml` — adding a service requires one values entry,
-no template changes.
+| Component | AWS Access |
+|---|---|
+| Loki | S3 |
+| Velero | S3 + EBS snapshots |
+| Karpenter | EC2 + SQS |
+| External Secrets | Secrets Manager |
+| ExternalDNS | Route53 |
 
-```
-Allowed traffic paths:
-  Istio Gateway → API Gateway
-  API Gateway   → Customers, Visits, Vets, GenAI
-  All services  → Config Server   (startup config pull)
-  All services  → Discovery Server (Eureka registration)
-  Customers, Visits, Vets → RDS MySQL (:3306)
-  Prometheus    → All services (/actuator/prometheus)
-  Istio control plane ↔ all sidecars
-```
+---
 
-### Three-Layer Pod-to-Pod Security
+# Observability
 
-```
-Request: api-gateway → customers-service
+## Metrics
 
-Layer 1  Cilium NetworkPolicy
-         "Is the source pod allowed to connect on this port?"
-         Blocks at TCP level before any data is sent.
+Prometheus collects metrics from:
+- Spring Boot Actuator
+- Istio sidecars
+- Kubernetes workloads
+- Karpenter
+- Velero
+- ArgoCD
+- RDS exporters
 
-Layer 2  Istio PeerAuthentication (mTLS STRICT)
-         "Are both pods presenting valid mesh certificates?"
-         Rejects any non-mTLS connection.
+---
 
-Layer 3  Istio AuthorizationPolicy
-         "Is the source service account authorised to call this path?"
-         Returns HTTP 403 if not explicitly allowed.
+## Logs
 
-All three must pass for the request to reach the destination container.
-```
+Alloy collects logs from cluster workloads and ships them to Loki with S3 object storage retention.
 
-## Observability Architecture
+---
 
-### Metrics
+## Dashboards
 
-```
-Spring Boot Actuator (/actuator/prometheus)
-Istio Envoy sidecar (/stats/prometheus)
-AWS RDS via CloudWatch Exporter
-          │
-          ▼ ServiceMonitor / PodMonitor
-     Prometheus (20Gi PVC, 15 day retention)
-          │
-          ▼
-       Grafana (7 dashboards)
-         ├── Cluster Health
-         ├── Namespace / Workload Overview
-         ├── Per-Service Deep Dive
-         ├── Istio / Traffic
-         ├── ArgoCD / GitOps
-         ├── SLO / Error Budget
-         └── RDS / Database
-```
+| Dashboard | Purpose |
+|---|---|
+| Cluster Health | Node and workload health |
+| Workloads | Namespace resource usage |
+| Service Metrics | Request rate, errors, latency |
+| Istio Traffic | Traffic flow and canary visibility |
+| GitOps | ArgoCD sync and deployment state |
+| Database | RDS metrics and performance |
 
-### Logs
+All dashboards require VPN access.
 
-```
-Pod stdout/stderr
-          │
-          ▼ Alloy DaemonSet (HCL pipeline)
-          │   ├── filter: petclinic, monitoring, istio-ingress namespaces
-          │   └── parse: JSON structured logs, extract level label
-          ▼
-       Loki (SingleBinary, S3 backend, 31 day retention)
-          │
-          ▼
-       Grafana Explore (LogQL queries)
-```
+---
 
-### Alerts
+## Alerts
 
-```
-PrometheusRules (30+ rules)
-          │
-          ▼
-     Alertmanager
-          │
-    ┌─────┴──────┐
-    │            │
- warning       critical
-    │            │
- Slack          Slack + Email
- #petclinic-    #petclinic-
- warnings       critical
+| Severity | Destination |
+|---|---|
+| Warning | Slack |
+| Critical | Slack + Email |
+| Security | Falcosidekick → Slack |
+| GitOps | ArgoCD Notifications |
+| Backup Failures | Slack |
 
-Falco events → Falcosidekick → Slack #petclinic-security
-Velero backup failures → Prometheus → Alertmanager → critical path
-```
+---
 
-## Design Decisions
+# Backup and Recovery
 
-### Karpenter over Cluster Autoscaler
-Direct EC2 provisioning — 30-60s node ready time versus 3-5 minutes for
-Cluster Autoscaler. No predefined node groups needed. Karpenter consolidates
-underutilised nodes automatically, reducing cluster cost.
+## Velero
 
-### Istio for Traffic Management
-Native Argo Rollouts integration via VirtualService weight management.
-mTLS STRICT enforces encrypted communication without application changes.
-Precise canary traffic splitting regardless of replica count — 10% traffic
-to canary does not require 10% of pods to be canary.
+| Scope | Schedule | Retention |
+|---|---|---|
+| Full cluster | Daily | 30 days |
+| petclinic namespace | Hourly | 7 days |
+| monitoring namespace | Daily | 7 days |
 
-### Loki over Elasticsearch
-S3 backend eliminates large persistent volumes and index management overhead.
-Sufficient query capability for structured log analysis at this scale.
-Lower operational complexity — no JVM heap tuning or shard management.
+Backups are stored in S3.
 
-### ESO over Sealed Secrets
-Secrets never exist in Git in any form. AWS Secrets Manager provides
-automatic rotation support, audit logging, and access control via IAM.
-IRSA authentication eliminates static credentials from the cluster entirely.
+PVC filesystem backups run through the Velero node-agent DaemonSet.
 
-### Policy-as-Data Pattern
-Both `clusterPolicy` (NetworkPolicy + Kyverno) and `argocdBootstrap`
-(ArgoCD Applications) use a map-based values structure where templates
-loop over data. Adding a service or application requires a values change
-only — no template modifications. This mirrors how mature platform teams
-manage policy at scale.
+---
+
+## RDS Backup Export
+
+Production uses automated RDS snapshot exports to S3 triggered through:
+- EventBridge
+- Lambda
+
+Snapshots are encrypted using KMS.
+
+The export workflow is disabled in development.
+
+---
+
+# Cost Controls
+
+| Resource | Dev | Prod |
+|---|---|---|
+| RDS | Single-AZ micro instance | Multi-AZ medium instance |
+| NAT Gateway | Single NAT | NAT per AZ |
+| RDS monitoring | Disabled | Enabled |
+| Backup retention | 1 day | 7 days |
+| Deletion protection | Disabled | Enabled |
+| CloudWatch retention | 7 days | 30 days |
+| Control plane logs | Disabled | Enabled |
+| RDS export workflow | Disabled | Enabled |
+| KMS deletion window | 7 days | 30 days |

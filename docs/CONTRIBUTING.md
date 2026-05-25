@@ -2,125 +2,249 @@
 
 ## Branch Strategy
 
-| Branch | Purpose | Cluster |
+| Branch | Purpose | Target Environment |
 |---|---|---|
-| `main` | Production source of truth | main cluster |
+| `main` | Production source of truth | prod cluster |
 | `dev` | Development source of truth | dev cluster |
-| `feature/*` | Feature development | local / dev |
+| `feature/*` | Feature and platform changes | local / dev |
 
-Feature branches merge to `dev` via pull request.
-`dev` merges to `main` via pull request after validation in the dev cluster.
+Branch rules are enforced through GitHub Actions.
 
-## Development Workflow
+Allowed merge paths:
 
-### Making Platform Changes
+| From | To |
+|---|---|
+| `feature/*` | `dev` |
+| `dev` | `main` |
+
+Direct pull requests to `main` are blocked unless they originate from
+`dev`.
+
+---
+
+# Development Workflow
+
+## Platform Changes
 
 ```bash
-# 1. Create a feature branch
-git checkout -b feature/your-change dev
+# Create a feature branch from dev
+git checkout dev
+git pull origin dev
+git checkout -b feature/<change-name>
 
-# 2. Make changes to Helm values or templates
+# Make changes to Helm charts or values
 
-# 3. Lint and render templates locally
+# Lint the chart
 helm lint k8s/platform/monitoring
+
+# Render manifests locally
 helm template monitoring k8s/platform/monitoring \
   -f k8s/platform/monitoring/values.yaml
 
-# 4. Diff against live cluster (requires kubectl + VPN)
+# Compare against the live cluster (VPN required)
 helm diff upgrade monitoring k8s/platform/monitoring \
   -f k8s/platform/monitoring/values.yaml \
   -n monitoring
 
-# 5. Open PR against dev
-# 6. After merge — ArgoCD syncs the dev cluster automatically
+# Push the branch
+git push origin feature/<change-name>
 ```
 
-### Making Application Changes
+Open a pull request:
+
+```txt
+feature/* → dev
+```
+
+After merge:
+- ArgoCD syncs the dev cluster automatically
+- changes are validated in dev before promotion to production
+
+Production deployments flow through:
+
+```txt
+dev → main
+```
+
+---
+
+## Application Changes
 
 ```bash
-# 1. Update application code in the service directory
+# Create a feature branch
+git checkout dev
+git pull origin dev
+git checkout -b feature/<service-change>
 
-# 2. Push to dev branch — CI handles the rest
-git push origin dev
+# Update application code
 
-# CI pipeline:
-#   Build multi-arch image (ARM64 + AMD64)
-#   Trivy scan
-#   Push to ECR
-#   Cosign sign
-#   Cosign attest vulnerability report
-
-# 3. ArgoCD detects the new image tag and syncs
-# 4. Argo Rollouts runs the canary automatically
-# 5. Slack notifications confirm deployment stages
+# Push branch
+git push origin feature/<service-change>
 ```
 
-### Adding a New Microservice
+Open a pull request:
 
-1. Add the service entry to `k8s/policies/values.yaml` under
-   `clusterPolicy.services` with port, ingressFrom, egressTo flags
-2. Create `k8s/apps/microservice/values/env/dev/<service>.yaml`
-3. Add the service to `argocdBootstrap.apps.microservices.services`
-   in `k8s/argocd/values.yaml`
+```txt
+feature/* → dev
+```
+
+CI pipeline actions:
+- build ARM64 and AMD64 images
+- run Trivy scans
+- push images to ECR
+- sign images with Cosign
+- generate vulnerability attestations
+
+After merge:
+- automated Helm update PRs are created
+- ArgoCD detects image updates
+- Argo Rollouts handles canary deployment
+
+---
+
+## Adding a New Microservice
+
+1. Add the service entry to:
+
+```txt
+k8s/policies/values.yaml
+```
+
+under:
+
+```yaml
+clusterPolicy.services
+```
+
+2. Create:
+
+```txt
+k8s/microservice/values/env/dev/<service>.yaml
+```
+
+3. Add the service to:
+
+```txt
+k8s/argocd/values.yaml
+```
+
+under:
+
+```yaml
+argocdBootstrap.apps.microservices.services
+```
+
 4. Add the service to the GitHub Actions build matrix
+
 5. Create the ECR repository in Terraform
 
-### Adding a New Platform Component
+---
 
-1. Create `k8s/platform/<component>/` with Chart.yaml and values.yaml
-2. Add an entry to `argocdBootstrap.apps` in `k8s/argocd/values.yaml`
-3. ArgoCD will create the Application and sync it on the next wave
+## Adding a Platform Component
 
-## Helm Chart Development
+1. Create:
+
+```txt
+k8s/platform/<component>/
+```
+
+2. Add:
+- `Chart.yaml`
+- `values.yaml`
+- templates
+
+3. Register the component in:
+
+```txt
+k8s/argocd/values.yaml
+```
+
+under:
+
+```yaml
+argocdBootstrap.apps
+```
+
+ArgoCD creates and syncs the application automatically.
+
+---
+
+# Helm Chart Development
 
 ```bash
-# Lint a chart
-helm lint k8s/apps/microservice
+# Lint chart
+helm lint k8s/microservice/charts
 
-# Render templates locally for a specific service
-helm template customers-service k8s/apps/microservice \
-  -f k8s/apps/microservice/values.yaml \
-  -f k8s/apps/microservice/values/env/dev/customers-service.yaml
+# Render manifests locally
+helm template customers-service k8s/microservice/charts \
+  -f k8s/microservice/values.yaml \
+  -f k8s/microservice/values/env/dev/customers-service.yaml
 
-# Diff against live cluster (VPN required)
-helm diff upgrade customers-service k8s/apps/microservice \
-  -f k8s/apps/microservice/values.yaml \
-  -f k8s/apps/microservice/values/env/dev/customers-service.yaml \
+# Compare against live cluster (VPN required)
+helm diff upgrade customers-service k8s/microservice/charts \
+  -f k8s/microservice/values.yaml \
+  -f k8s/microservice/values/env/dev/customers-service.yaml \
   -n petclinic
 ```
 
-## Commit Convention
+---
 
-```
+# Commit Convention
+
+```txt
 feat: add KEDA triggers for visits-service
-fix: correct VirtualService weight after canary
-docs: update architecture diagram
-chore: bump karpenter to 1.1.0
-ci: add attestation step to build pipeline
-refactor: extract gateway helpers to _helpers.tpl
+fix: correct VirtualService canary weights
+docs: update architecture diagrams
+chore: bump karpenter version
+ci: add Cosign attestation step
+refactor: extract gateway helper templates
 ```
 
-## Secrets
+---
 
-Never commit secrets. Add to AWS Secrets Manager and reference via ESO.
-See [SECURITY.md](SECURITY.md#secrets-management) for the secrets model.
+# Secrets
 
-Adding a new secret:
-1. Create the secret in AWS Secrets Manager following the path convention
-   `<env>/petclinic/<service>` for app secrets
-2. Add an entry to the ExternalSecret `data` list in the relevant values file
-3. Reference in the application via environment variable
+Secrets are stored in AWS Secrets Manager and synced into Kubernetes
+through External Secrets Operator.
 
-## Updating .trivyignore
+Never commit secrets to Git.
+
+See:
+
+```txt
+docs/SECURITY.md#secrets-management
+```
+
+---
+
+## Adding a Secret
+
+1. Create the secret in AWS Secrets Manager:
+
+```txt
+<env>/petclinic/<service>
+```
+
+2. Add the secret mapping to the relevant ExternalSecret values file
+
+3. Reference the secret through environment variables in the workload
+
+---
+
+# Updating `.trivyignore`
 
 When accepting a vulnerability finding:
-1. Add the CVE ID to `.trivyignore`
-2. Add a comment above it with the justification
-3. Include the accepted date and a review date
 
-```
-# CVE-2023-XXXXX — accepted 2024-01-15, review 2024-07-15
-# Justification: affects feature X which is not used in this service.
-# No fix available upstream. Monitor for fix.
+1. Add the CVE to `.trivyignore`
+2. Document the reason
+3. Include review and expiry dates
+
+Example:
+
+```txt
+# CVE-2023-XXXXX
+# Accepted: 2024-01-15
+# Review: 2024-07-15
+# Reason: affected feature is not used by this service
 CVE-2023-XXXXX
 ```

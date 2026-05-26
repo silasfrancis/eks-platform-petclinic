@@ -34,7 +34,11 @@ variable "wireguard_public_subnet_ids" {
   type = list(string)
 }
 
-variable "wireguard_vpc_cidr" {
+variable "prod_vpc_cidr" {
+  type = string
+}
+
+variable "dev_vpc_cidr" {
   type = string
 }
 

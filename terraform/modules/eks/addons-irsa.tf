@@ -130,6 +130,12 @@ resource "aws_iam_role" "irsa" {
       }
     }]
   })
+  tags = merge(
+      {
+        system = "irsa"
+      },
+      var.extended_tags
+    )
 }
 
 resource "aws_iam_policy" "custom_irsa" {
@@ -149,6 +155,12 @@ resource "aws_iam_policy" "custom_irsa" {
       lookup(each.value, "extra_statements", [])
     )
   })
+  tags = merge(
+      {
+        system = "irsa"
+      },
+      var.extended_tags
+    )
 }
 
 locals {

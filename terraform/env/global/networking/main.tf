@@ -1,4 +1,4 @@
-# Remote State for prod VPC
+# Remote State for prod emvironment 
 data "terraform_remote_state" "prod_state" {
   backend = "s3"
 
@@ -9,7 +9,7 @@ data "terraform_remote_state" "prod_state" {
   }
 }
 
-# Remote State for dev VPC
+# Remote State for dev environment
 data "terraform_remote_state" "dev_state" {
   backend = "s3"
 

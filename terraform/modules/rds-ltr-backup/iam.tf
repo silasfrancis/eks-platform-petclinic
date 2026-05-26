@@ -9,9 +9,8 @@ resource "aws_iam_role" "lambda_rds_backup" {
       Action    = "sts:AssumeRole"
     }]
   })
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
+
 }
 
 resource "aws_iam_role" "rds_export_role" {
@@ -29,9 +28,7 @@ resource "aws_iam_role" "rds_export_role" {
       }
     ]
   })
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
 }
 
 resource "aws_iam_policy" "lambda_backup" {
@@ -68,9 +65,8 @@ resource "aws_iam_policy" "lambda_backup" {
     ]
   })
 
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
+
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_backup" {
@@ -125,9 +121,8 @@ resource "aws_iam_policy" "rds_export_policy" {
     ]
   })
 
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
+
 }
 
 resource "aws_iam_role_policy_attachment" "rds_export" {

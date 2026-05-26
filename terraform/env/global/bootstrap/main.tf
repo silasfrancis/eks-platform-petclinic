@@ -3,7 +3,7 @@ data "aws_region" "current" {}
 
 locals {
   # Environments to bootstrap
-  environments = toset(["dev", "prod"])
+  environments = toset(["global", "dev", "prod"])
   bucket_suffix = "${data.aws_caller_identity.current.account_id}-${data.aws_region.current.name}"
 }
 

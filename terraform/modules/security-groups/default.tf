@@ -4,8 +4,8 @@ resource "aws_default_security_group" "default" {
   ingress = []
   egress  = []
 
-  tags = {
-    Name     = "${var.app}-${var.env}-default-sg-do-not-use"
-    resource = "vpc"
-  }
+  tags = merge(
+    { Name     = "${var.app}-${var.env}-default-sg-do-not-use"}
+    , var.extended_tags
+  )
 }

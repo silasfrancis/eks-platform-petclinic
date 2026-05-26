@@ -1,13 +1,24 @@
-# NAT Gateways (placed dynamically inside each corresponding public subnet)
+# NAT Gateways (placed dynamically inside a public subnet depending on the nat_gateway_count and corresponding public_subnet_count variable)
 resource "aws_nat_gateway" "nat" {
-  for_each      = aws_subnet.public
-  allocation_id = aws_eip.nat[each.key].id
-  subnet_id     = each.value.id
-
-  tags = {
-    Name     = "${var.app}-${var.env}-nat-gateway-${index(local.target_azs, each.key) + 1}"
-    resource = "vpc"
+  for_each = {
+    for index, az in local.nat_azs :
+    az => {
+      index = index
+      az    = az
+    }
   }
 
-  depends_on = [aws_internet_gateway.igw]
+  allocation_id = aws_eip.nat[each.key].id
+  subnet_id     = aws_subnet.public[each.key].id
+
+  tags = merge(
+    {
+      Name = "${var.vpc_name_prefix}-${var.env}-nat-gateway-${each.value.index + 1}"
+    },
+    var.extended_tags
+  )
+
+  depends_on = [
+    aws_internet_gateway.igw
+  ]
 }

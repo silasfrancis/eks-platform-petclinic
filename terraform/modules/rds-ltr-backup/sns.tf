@@ -1,5 +1,5 @@
 resource "aws_sns_topic" "alerts" {
-  name = "rds-backup-alerts"
+  name = "${var.app}-${var.env}-rds-backup-alerts"
 }
 
 resource "aws_sns_topic_subscription" "dlq_lambda" {

@@ -19,9 +19,12 @@ resource "aws_iam_role" "irsa" {
       }
     }]
   })
-  tags = {
-    system = "irsa"
-  }
+  tags = merge(
+      {
+        system = "irsa"
+      },
+      var.extended_tags
+    )
 }
 
 resource "aws_iam_policy" "irsa" {
@@ -40,9 +43,12 @@ resource "aws_iam_policy" "irsa" {
     )
   })
   
-  tags = {
-    system = "irsa"
-  }
+  tags = merge(
+      {
+        system = "irsa"
+      },
+      var.extended_tags
+    )
 }
 
 resource "aws_iam_role_policy_attachment" "irsa" {

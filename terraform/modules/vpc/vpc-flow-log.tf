@@ -1,20 +1,21 @@
 resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
-  name              = "/aws/vpc-flow-log/${var.app}-${var.env}-main-vpc"
+  count = var.enable_flow_logs ? 1 : 0
+
+  name              = "/aws/vpc-flow-log/${var.vpc_name_prefix}-${var.env}-main-vpc"
   retention_in_days = 3
-  kms_key_id        = var.infra_common_kms_key_arn
-  
-  tags = {
-    resource = "cloudwatch"
-  }
+
+  kms_key_id = var.infra_common_kms_key_arn
+
+  tags = var.extended_tags
 }
 
 
 resource "aws_flow_log" "main_vpc_flow_log" {
-  iam_role_arn    = aws_iam_role.vpc_flow_logs.arn
-  log_destination = aws_cloudwatch_log_group.vpc_flow_log_group.arn
-  traffic_type    = "ALL"
-  vpc_id          = aws_vpc.main_vpc.id
-  tags = {
-    resource = "vpc"
-  }
+  count = var.enable_flow_logs ? 1 : 0
+
+  iam_role_arn = aws_iam_role.vpc_flow_logs[0].arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_log_group[0].arn
+  traffic_type = "ALL"
+  vpc_id = aws_vpc.main_vpc.id
+  tags = var.extended_tags
 }

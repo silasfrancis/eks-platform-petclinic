@@ -1,47 +1,95 @@
 # Public Subnets
 resource "aws_subnet" "public" {
-  for_each          = toset(local.target_azs)
-  vpc_id            = aws_vpc.main_vpc.id
-  availability_zone = each.value
-  cidr_block        = "${local.network_prefix}.${index(local.target_azs, each.value) + 1}.0/24"
-
-  tags = {
-    Tier     = "public"
-    resource = "vpc"
-    Name     = "${var.app}-${var.env}-public-subnet-${index(local.target_azs, each.value) + 1}"
+  for_each = {
+    for index, az in local.public_azs :
+    az => {
+      index = index
+      az    = az
+    }
   }
 
-  lifecycle { ignore_changes = [tags, tags_all] }
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = each.value.az
+
+  cidr_block = "${local.network_prefix}.${each.value.index + 1}.0/24"
+
+  map_public_ip_on_launch = true
+
+  tags = merge(
+    {
+      Tier = "public"
+      Name = "${var.vpc_name_prefix}-${var.env}-public-subnet-${each.value.index + 1}"
+    },
+    var.extended_tags
+  )
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all
+    ]
+  }
 }
 
 # Private Subnets
 resource "aws_subnet" "private" {
-  for_each          = toset(local.target_azs)
-  vpc_id            = aws_vpc.main_vpc.id
-  availability_zone = each.value
-  cidr_block        = "${local.network_prefix}.${index(local.target_azs, each.value) + 11}.0/24"
-
-  tags = {
-    Tier     = "private"
-    resource = "vpc"
-    Name     = "${var.app}-${var.env}-private-subnet-${index(local.target_azs, each.value) + 1}"
+  for_each = {
+    for index, az in local.private_azs :
+    az => {
+      index = index
+      az    = az
+    }
   }
 
-  lifecycle { ignore_changes = [tags, tags_all] }
-}
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = each.value.az
 
+  cidr_block = "${local.network_prefix}.${each.value.index + 11}.0/24"
+
+  tags = merge(
+    {
+      Tier = "private"
+      Name = "${var.vpc_name_prefix}-${var.env}-private-subnet-${each.value.index + 1}"
+
+      "kubernetes.io/role/internal-elb" = "1"
+    },
+    var.extended_tags
+  )
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all
+    ]
+  }
+}
 # Data Subnets
 resource "aws_subnet" "data" {
-  for_each          = toset(local.target_azs)
-  vpc_id            = aws_vpc.main_vpc.id
-  availability_zone = each.value
-  cidr_block        = "${local.network_prefix}.${index(local.target_azs, each.value) + 21}.0/24"
-
-  tags = {
-    Tier     = "data"
-    resource = "vpc"
-    Name     = "${var.app}-${var.env}-data-subnet-${index(local.target_azs, each.value) + 1}"
+  for_each = {
+    for index, az in local.data_azs :
+    az => {
+      index = index
+      az    = az
+    }
   }
 
-  lifecycle { ignore_changes = [tags, tags_all] }
+  vpc_id            = aws_vpc.main_vpc.id
+  availability_zone = each.value.az
+
+  cidr_block = "${local.network_prefix}.${each.value.index + 21}.0/24"
+
+  tags = merge(
+    {
+      Tier = "data"
+      Name = "${var.vpc_name_prefix}-${var.env}-data-subnet-${each.value.index + 1}"
+    },
+    var.extended_tags
+  )
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all
+    ]
+  }
 }

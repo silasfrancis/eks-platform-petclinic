@@ -38,9 +38,12 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
     delete = "30m"
   }
 
-  tags = {
-    resource = "eks"
-  }
+  tags = merge(
+      {
+        Name = "${var.app}-${var.env}-karpenter-bootstrap"
+      },
+      var.extended_tags
+    )
 
   depends_on = [
     aws_iam_role.node_role

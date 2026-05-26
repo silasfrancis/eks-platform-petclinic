@@ -19,9 +19,8 @@ resource "aws_s3_bucket" "this" {
   bucket        = "${var.env}-${each.value.name}-${local.bucket_suffix}"
   force_destroy = each.value.force_destroy
 
-  tags = {
-    resource = "s3"
-  }
+  tags = var.extended_tags
+
 }
 
 # Public Access Blocks

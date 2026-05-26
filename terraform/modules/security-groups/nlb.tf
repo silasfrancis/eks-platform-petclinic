@@ -38,7 +38,14 @@ resource "aws_security_group" "nlb" {
   description = each.value.description
   vpc_id      = var.vpc_id
 
-  tags = { resource = "vpc" }
+  tags = var.extended_tags
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
 }
 
 # Ingress Rules (HTTP + HTTPS per NLB type)
@@ -53,7 +60,6 @@ resource "aws_vpc_security_group_ingress_rule" "nlb" {
   cidr_ipv4                    = each.value.cidr
   referenced_security_group_id = each.value.referenced_sg
 
-  tags = { resource = "vpc" }
 }
 
 # Egress Rules
@@ -65,5 +71,4 @@ resource "aws_vpc_security_group_egress_rule" "nlb" {
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
 
-  tags = { resource = "vpc" }
 }

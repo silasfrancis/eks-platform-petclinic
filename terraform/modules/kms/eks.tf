@@ -25,7 +25,10 @@ resource "aws_kms_key" "eks_secrets" {
       }
     ])
   })
-  tags = {
-    resource = "kms"
-  }
+  tags = merge(
+    {
+    scope    = "eks-secrets"
+    },
+    var.extended_tags
+  )
 }

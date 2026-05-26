@@ -33,9 +33,12 @@ resource "aws_eks_cluster" "main_cluster" {
     update = "60m"
     delete = "30m"
   }
-  tags = {
-    resource = "eks"
-  }
+  tags = merge(
+      {
+        Name = "${var.app}-${var.env}-cluster"
+      },
+      var.extended_tags
+    )
 
   depends_on = [
     aws_iam_role.cluster_role,

@@ -1,7 +1,3 @@
 environment = "prod"
 aws_region  = "us-east-2"
 app         = "petclinic"
-owner       = "silasfrancis"
-repo        = "https://github.com/silasfrancis/eks-platform-petclinic"
-language    = "java"
-framework   = "spring-boot"

@@ -40,8 +40,10 @@ resource "aws_kms_key" "infra_common" {
     ])
   })
 
-  tags = {
-    resource = "kms"
+  tags = merge(
+    {
     scope    = "common-infra"
-  }
+    },
+    var.extended_tags
+  )
 }

@@ -2,9 +2,8 @@ resource "aws_security_group" "eks_node" {
   description = "Security group for EKS Nodes"
   name = "${var.app}-${var.env}-eks-security_group"
   vpc_id = var.vpc_id
-  tags = {  
-    resource = "vpc"
-  }
+
+  tags = var.extended_tags
 
   lifecycle {
     ignore_changes = [
@@ -66,7 +65,4 @@ resource "aws_vpc_security_group_egress_rule" "nodes_to_internet" {
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
   
-  tags = {
-    Name = "node-egress-all"
-  }
 }

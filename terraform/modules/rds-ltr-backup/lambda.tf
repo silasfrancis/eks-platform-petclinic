@@ -78,7 +78,7 @@ resource "aws_lambda_function" "processor" {
     }
   }
 
-  tags = { resource = "lambda" }
+  tags = var.extended_tags
 
   depends_on = [aws_cloudwatch_log_group.rds_export_lambda_processor]
 }
@@ -99,7 +99,7 @@ resource "aws_lambda_function" "dlq_inspector" {
     }
   }
 
-  tags = { resource = "lambda" }
+  tags = var.extended_tags
 
   depends_on = [aws_cloudwatch_log_group.dlq_inspector]
 }
@@ -120,7 +120,7 @@ resource "aws_lambda_function" "summary" {
     }
   }
 
-  tags = { resource = "lambda" }
+  tags = var.extended_tags
 
   depends_on = [aws_cloudwatch_log_group.summary]
 }

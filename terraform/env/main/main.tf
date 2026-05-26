@@ -1,22 +1,29 @@
+# Availability Zones
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# App Registry
-# Provides application metadata and tags used across modules
-module "app-registry" {
-  source = "../../modules/app-registry"
+# Remote State for global/resource-level outputs (App registry metadata)
+data "terraform_remote_state" "global_resources" {
+  backend = "s3"
 
-  providers = {
-    aws = aws.appregistry
+  config = {
+    bucket = var.global_remote_state_bucket
+    region = var.aws_region
+    key    = var.global_resources_remote_state_key
   }
+}
 
-  env       = var.environment
-  app       = var.app
-  owner     = var.owner
-  repo      = var.repo
-  language  = var.language
-  framework = var.framework
+locals {
+  # Resource tags for all resources in this environment, merged with global application tags from remote state
+  extended_tags = merge(
+    {
+      env        = var.environment
+      app        = var.app
+      managed_by = "terraform"
+    },
+    data.terraform_remote_state.global_resources.outputs.application_tag
+  )
 }
 
 # KMS

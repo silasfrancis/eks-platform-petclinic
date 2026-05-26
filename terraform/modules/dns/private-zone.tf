@@ -5,8 +5,10 @@ resource "aws_route53_zone" "private" {
     vpc_id = var.vpc_id
   }
 
-  tags = {
-    Name        = "${var.cluster_name}-private-zone"
-    resource = "route53"
-  }
+  tags = merge(
+      {
+        Name = "${var.cluster_name}-private-zone"
+      },
+      var.extended_tags
+    )
 }

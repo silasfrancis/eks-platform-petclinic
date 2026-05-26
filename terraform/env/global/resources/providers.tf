@@ -10,17 +10,11 @@ terraform {
 }
 
 provider "aws" {
-  alias  = "appregistry"
-  region = var.aws_region
-}
-
-provider "aws" {
   region = var.aws_region
 
   default_tags {
     tags = {
       env        = var.environment
-      app        = var.app
       managed_by = "terraform"
     }
   }

@@ -102,7 +102,10 @@ resource "aws_kms_key" "data_storage" {
     ])
   })
 
-  tags = {
-    resource = "kms"
-  }
+  tags = merge(
+    {
+    scope    = "data-storage"
+    },
+    var.extended_tags
+  )
 }

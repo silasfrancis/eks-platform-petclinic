@@ -15,3 +15,9 @@ variable "enable_wireguard" {
   type        = bool
   default     = false
 }
+
+variable "extended_tags" {
+  description = "Additional resource tags passed from the parent environment"
+  type        = map(string)
+  default     = {}
+}

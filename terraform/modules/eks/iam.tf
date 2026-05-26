@@ -15,9 +15,7 @@ resource "aws_iam_role" "cluster_role" {
         }
     ]
   })
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
 }
 
 resource "aws_iam_role" "node_role" {
@@ -35,9 +33,7 @@ resource "aws_iam_role" "node_role" {
         }
     ]
   })
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
 }
 
 resource "aws_iam_role_policy_attachment" "eks_block_storage_policy_attachment" {

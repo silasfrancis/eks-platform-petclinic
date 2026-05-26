@@ -44,12 +44,7 @@ resource "aws_eks_addon" "vpc_cni" {
       AWS_VPC_K8S_CNI_EXTERNALSNAT = "true"
     }
   })
-
-
-  tags = {
-    resource    = "eks-addon-vpc-cni"
-  }
-
+  
   depends_on = [
     aws_eks_cluster.main_cluster,
     aws_iam_role.irsa["vpcCni"]

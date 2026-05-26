@@ -5,9 +5,6 @@ resource "aws_vpc_security_group_ingress_rule" "eks_from_wireguard_server" {
     to_port = 443
     ip_protocol = "tcp"
     referenced_security_group_id = var.wireguard_sg_id
-    tags = {
-    resource = "vpc"
-  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "control_plane_to_nodes" {

@@ -1,6 +1,6 @@
 locals {
   irsa_roles = {
-    appSecrets = {
+    app-secrets = {
       namespace = "petclinic"
       sas       = [
         "config-server", 
@@ -46,7 +46,7 @@ locals {
       }]
     }
 
-    cloudwatchExporter = {
+    cloud-watch-exporter = {
       namespace = "monitoring"
       sas       = ["cloudwatch-exporter"]
       policy    = {
@@ -60,7 +60,7 @@ locals {
       }
     }
 
-  argocdSecrets = {
+  argocd-secrets = {
     enabled   = var.env == "prod"
     namespace = "argocd"
     sas       = ["argocd-sa"]
@@ -74,7 +74,7 @@ locals {
     }
   }
 
-  platformMonitoringSecrets = {
+  platform-monitoring-secrets = {
     namespace = "monitoring"
     sas       = ["platform-monitoring-sa"]
 
@@ -87,7 +87,7 @@ locals {
     }
   }
 
-  platformSecuritySecrets = {
+  platform-security-secrets = {
     namespace = "security"
     sas       = ["platform-security-sa"]
 
@@ -146,7 +146,7 @@ locals {
       }]
     }
 
-  externalDnsSecrets = {
+  external-dns-secrets = {
     namespace = "istio-ingress"
     sas       = ["external-dns-cloudflare"]
 
@@ -158,7 +158,7 @@ locals {
       resources = var.platform_dns_secrets_arn
     }
   }
-  externalDnsRoute53 = {
+  external-dns-route53 = {
       namespace = "istio-ingress"
       sas       = ["external-dns-route53"]
       policy    = {

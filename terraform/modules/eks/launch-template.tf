@@ -56,15 +56,21 @@ resource "aws_launch_template" "eks_nodes" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = {
-      Name = "${var.env}-eks-node"
-    }
+    tags = merge(
+      {
+        Name = "${var.env}-karpenter-node"
+      },
+      var.extended_tags
+    )
   }
 
   tag_specifications {
     resource_type = "volume"
-    tags = {
-      Name = "${var.env}-eks-node-volume"
-    }
+    tags = merge(
+      {
+        Name = "${var.env}-karpenter-node-volume"
+      },
+      var.extended_tags
+    )
   }
 }

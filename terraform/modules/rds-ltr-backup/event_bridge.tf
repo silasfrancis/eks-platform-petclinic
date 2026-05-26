@@ -10,9 +10,7 @@ resource "aws_cloudwatch_event_rule" "rds_snapshot_events" {
       SourceIdentifier = [var.db_instance_identifier]
     }
   })
-  tags = {
-    resource = "event_bridge"
-  }
+  tags = var.extended_tags
 }
 
 resource "aws_cloudwatch_event_target" "to_sqs" {
@@ -23,9 +21,7 @@ resource "aws_cloudwatch_event_target" "to_sqs" {
 resource "aws_cloudwatch_event_rule" "daily_summary" {
   name                = "${var.app}-${var.env}-rds-daily-backup-summary"
   schedule_expression = "cron(0 18 * * ? *)"
-  tags = {
-    resource = "event_bridge"
-  }
+  tags = var.extended_tags
 }
 
 resource "aws_cloudwatch_event_target" "summary_target" {

@@ -51,3 +51,8 @@ variable "route53_private_zone_arn" {
   type = list(string)
 }
 
+variable "extended_tags" {
+  description = "Additional resource tags passed from the parent environment"
+  type        = map(string)
+  default     = {}
+}

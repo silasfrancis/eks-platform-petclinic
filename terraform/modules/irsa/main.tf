@@ -1,12 +1,12 @@
 resource "aws_iam_role" "irsa" {
-  for_each = local.irsa_roles
+  for_each = local.active_irsa_roles
   name     = "${var.cluster_name}-${each.key}-irsa"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect    = "Allow"
+      Action    = "sts:AssumeRoleWithWebIdentity"
       Principal = { Federated = var.oidc_arn }
       Condition = {
         StringLike = {
@@ -25,7 +25,7 @@ resource "aws_iam_role" "irsa" {
 }
 
 resource "aws_iam_policy" "irsa" {
-  for_each = local.irsa_roles
+  for_each = local.active_irsa_roles
   name     = "${var.cluster_name}-${each.key}-policy"
 
   policy = jsonencode({
@@ -46,7 +46,7 @@ resource "aws_iam_policy" "irsa" {
 }
 
 resource "aws_iam_role_policy_attachment" "irsa" {
-  for_each   = local.irsa_roles
+  for_each   = local.active_irsa_roles
   role       = aws_iam_role.irsa[each.key].name
   policy_arn = aws_iam_policy.irsa[each.key].arn
 }

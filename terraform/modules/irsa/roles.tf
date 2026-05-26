@@ -61,6 +61,7 @@ locals {
     }
 
   argocdSecrets = {
+    enabled   = var.env == "prod"
     namespace = "argocd"
     sas       = ["argocd-sa"]
 
@@ -178,4 +179,10 @@ locals {
       }]
     }
   }
+
+  # This creates a clean map containing only enabled roles for each environment
+  active_irsa_roles = {
+      for k, v in local.irsa_roles : k => v
+      if lookup(v, "enabled", true) == true
+    }
 }

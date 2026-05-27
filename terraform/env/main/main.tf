@@ -3,8 +3,8 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Remote State for global/resource-level outputs (App registry metadata)
-data "terraform_remote_state" "global_resources" {
+# Remote State for global/app-registry outputs (App registry metadata)
+data "terraform_remote_state" "app-registry" {
   backend = "s3"
 
   config = {
@@ -34,7 +34,7 @@ locals {
       app        = var.app
       managed_by = "terraform"
     },
-    data.terraform_remote_state.global_resources.outputs.application_tag
+    data.terraform_remote_state.app-registry.outputs.application_tag
   )
 }
 

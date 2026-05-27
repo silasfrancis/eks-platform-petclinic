@@ -22,6 +22,6 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
 }
 
 resource "aws_iam_instance_profile" "wireguard_server_profile" {
-  name = "${var.app}-${var.env}-wireguard-server-profile" 
+  name = "wireguard-server-instance-profile" 
   role = aws_iam_role.wireguard_server_role.name
 }

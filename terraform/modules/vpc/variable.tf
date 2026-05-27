@@ -27,7 +27,9 @@ variable "enable_flow_logs" {
 }
 
 variable "infra_common_kms_key_arn" {
+  description = "KMS key ARN for encrypting common infrastructure resources (e.g. VPC flow logs) not required for dev or wireguard vpc's"
   type = string
+  default     = null
 }
 
 variable "availability_zones" {

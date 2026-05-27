@@ -6,7 +6,7 @@ variable "db_instance_identifier" {
   type = string
 }
 
-variable "rds_export_bucket" {
+variable "rds_backup_bucket" {
   type = string
 }
 
@@ -18,7 +18,7 @@ variable "data_storage_kms_key_arn" {
   type = string
 }
 
-variable "rds_export_bucket_arn" {
+variable "rds_backup_bucket_arn" {
   type = string
 }
 

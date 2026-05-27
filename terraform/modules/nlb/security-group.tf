@@ -9,7 +9,7 @@ locals {
     internal = {
       description   = "Security group for internal NLB"
       cidr          = null
-      referenced_sg = aws_security_group.wireguard_server.id
+      referenced_sg = var.wireguard_sg_id
     }
   }
 

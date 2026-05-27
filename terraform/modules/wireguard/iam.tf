@@ -13,9 +13,7 @@ resource "aws_iam_role" "wireguard_server_role" {
         }
     ]
   })
-  tags = {
-    resource = "iam"
-  }
+  tags = var.extended_tags
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_core" {

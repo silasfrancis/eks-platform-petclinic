@@ -36,6 +36,10 @@ output "irsa_role_arns" {
   }
 }
 
+output "eks_node_sg_id" {
+  value = aws_security_group.eks_node.id
+}
+
 output "karpenter_interruption_queue_name" {
   value = aws_sqs_queue.karpenter_interruption.name
 }

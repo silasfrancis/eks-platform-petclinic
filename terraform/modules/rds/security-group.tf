@@ -17,7 +17,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_nodes" {
     from_port = 3306
     to_port = 3306
     ip_protocol = "tcp"
-    referenced_security_group_id = aws_security_group.eks_node.id
+    referenced_security_group_id = var.eks_node_sg_id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_from_wireguard_server" {
@@ -25,7 +25,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_wireguard_server" {
     from_port = 3306
     to_port = 3306
     ip_protocol = "tcp"
-    referenced_security_group_id = aws_security_group.wireguard_server.id
+    referenced_security_group_id = var.wireguard_sg_id
 }
 
 resource "aws_vpc_security_group_egress_rule" "rds_egress_rule" {

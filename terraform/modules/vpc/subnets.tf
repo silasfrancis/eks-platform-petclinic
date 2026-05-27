@@ -8,7 +8,7 @@ resource "aws_subnet" "public" {
     }
   }
 
-  vpc_id            = aws_vpc.main_vpc.id
+  vpc_id            = aws_vpc.vpc.id
   availability_zone = each.value.az
 
   cidr_block = "${local.network_prefix}.${each.value.index + 1}.0/24"
@@ -41,7 +41,7 @@ resource "aws_subnet" "private" {
     }
   }
 
-  vpc_id            = aws_vpc.main_vpc.id
+  vpc_id            = aws_vpc.vpc.id
   availability_zone = each.value.az
 
   cidr_block = "${local.network_prefix}.${each.value.index + 11}.0/24"
@@ -73,7 +73,7 @@ resource "aws_subnet" "data" {
     }
   }
 
-  vpc_id            = aws_vpc.main_vpc.id
+  vpc_id            = aws_vpc.vpc.id
   availability_zone = each.value.az
 
   cidr_block = "${local.network_prefix}.${each.value.index + 21}.0/24"

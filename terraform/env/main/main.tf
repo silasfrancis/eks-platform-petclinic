@@ -14,6 +14,18 @@ data "terraform_remote_state" "global_resources" {
   }
 }
 
+# Remote State for Wireguard Server (Security group IDs for NLB rules and EKS control plane access)
+data "terraform_remote_state" "wireguard_server" {
+  backend = "s3"
+
+  config = {
+    bucket = var.global_remote_state_bucket
+    region = var.aws_region
+    key    = var.wireguard_server_remote_state_key
+  }
+}
+
+
 locals {
   # Resource tags for all resources in this environment, merged with global application tags from remote state
   extended_tags = merge(
@@ -33,6 +45,7 @@ module "kms" {
 
   env = var.environment
   app = var.app
+  extended_tags = local.extended_tags
 }
 
 # Secrets Manager 
@@ -53,74 +66,56 @@ module "s3" {
   env                      = var.environment
   app                      = var.app
   data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
-}
-
-# IAM
-# IAM roles for EC2, EKS, RDS, Lambda, and VPC flow logs
-module "iam" {
-  source = "../../modules/iam"
-
-  env                      = var.environment
-  app                      = var.app
-  rds_export_bucket_arn    = module.s3.bucket_arn["rds_export_bucket_arn"]
-  data_storage_kms_key_arn = module.kms.kms_key_arn["data_storage"]
-}
-
-# CloudWatch Logs
-# Log groups for EKS and VPC flow logs
-module "cloudwatch_logs" {
-  source = "../../modules/cloudwatch_logs"
-
-  env                      = var.environment
-  app                      = var.app
-  infra_common_kms_key_arn = module.kms.kms_key_arn["infra_common"]
+  extended_tags = local.extended_tags
 }
 
 # VPC 
-# Networking layer (subnets, security groups, NAT, flow logs)
+# Networking layer (subnets, NAT, IGW, Route-tables,flow logs)
 module "vpc" {
   source = "../../modules/vpc"
 
-  app                      = var.app
   env                      = var.environment
+  vpc_name_prefix           = var.app
   availability_zones       = data.aws_availability_zones.available.names
-  vpc_flow_log_role_arn    = module.iam.roles["vpc_flow_logs_role"]
-  vpc_flow_log_destination = module.cloudwatch_logs.logs_arn["vpc_flow_log_group_arn"]
+  public_subnet_count       = 2
+  private_subnet_count      = 2
+  data_subnet_count         = 2
+  nat_gateway_count         = 2
+  enable_flow_logs          = true
+  infra_common_kms_key_arn = module.kms.kms_key_arn["infra_common"]
+  extended_tags = local.extended_tags
 }
 
-# EC2 (WireGuard Server) 
-# Public EC2 instance for WireGuard VPN
-# Configured via Ansible over SSM after Terraform — no SSH port needed
-# KMS dependency added — EBS root volume is encrypted
-module "ec2" {
-  source = "../../modules/ec2"
+# NLB
+# Security groups for the NLB created by via Kubernetes Service of type LoadBalancer for isitio gateways
+module "nlb" {
+  source = "../../modules/nlb"
 
-  env                                = var.environment
-  app                                = var.app
-  public_subnet_id                   = module.vpc.public_subnets[0]
-  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
-  wireguard_server_instance_profile  = module.iam.wireguard_server_instance_profile
-  data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"] # EBS volume encryption
-  platform_engineers_group_name      = "platform"
+  env = var.environment
+  app = var.app
+  vpc_id = module.vpc.vpc_id
+  wireguard_sg_id = data.terraform_remote_state.wireguard_server.outputs.wireguard_sg_id
+  extended_tags = local.extended_tags
 }
 
 # EKS
 # EKS control plane + bootstrap node group (runs Karpenter only)
-# VPC, IAM roles and KMS keys must exist first
 module "eks" {
   source = "../../modules/eks"
 
   env                                = var.environment
   app                                = var.app
   cluster_version                    = "1.35"
-  cluster_role_arn                   = module.iam.roles["cluster_role"]
-  node_role_arn                      = module.iam.roles["node_role"]
-  private_subnets                    = module.vpc.private_subnets
-  eks_node_sg_id                     = module.vpc.security_group["eks_node"]
-  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
-  nlb_external_security_group_id     = module.vpc.security_group["nlb_external"]
-  eks_secrets_kms_key_arn            = module.kms.kms_key_arn["eks_secrets"]
-  data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
+  vpc_id                             = module.vpc.vpc_id
+  private_subnets                    = module.vpc.private_subnet_ids
+  nlb_external_sg_id                = module.nlb.nlb_external_sg_id
+  nlb_internal_sg_id                = module.nlb.nlb_internal_sg_id
+  wireguard_sg_id                   = data.terraform_remote_state.wireguard_server.outputs.wireguard_sg_id
+  eks_secrets_kms_key_arn          = module.kms.kms_key_arn["eks_secrets"]
+  data_storage_kms_key_arn         = module.kms.kms_key_arn["data_storage"]
+  infra_common_kms_key_arn        = module.kms.kms_key_arn["infra_common"]
+  extended_tags = local.extended_tags
+
 }
 
 # DNS (Route53 Private Hosted Zone) 
@@ -152,9 +147,10 @@ module "irsa" {
   platform_security_secrets_arn   = [module.secret_manager.secret_arns["monitoring"], module.secret_manager.secret_arns["dns"]]
   argocd_secrets_arn              = [module.secret_manager.secret_arns["argocd"]]
   route53_private_zone_arn        = [module.dns.zone_arn]
-  loki_bucket_arn                 = module.s3.bucket_arn["loki_bucket_arn"]
-  velero_bucket_arn               = module.s3.bucket_arn["velero_bucket_arn"]
+  loki_bucket_arn                 = module.s3.bucket_arns["loki"]
+  velero_bucket_arn               = module.s3.bucket_arns["velero"]
   data_storage_kms_key_arn        = module.kms.kms_key_arn["data_storage"]
+  extended_tags = local.extended_tags
 }
 
 # RDS
@@ -166,44 +162,36 @@ module "rds" {
 
   env                                = var.environment
   app                                = var.app
-  private_subnets                    = module.vpc.private_subnets
+  vpc_id                             = module.vpc.vpc_id
+  data_subnet_ids                    = module.vpc.data_subnet_ids
   mysql_version                      = "8.0"
   db_instance_class                  = "db.t3.medium"
   allocated_storage                  = 20
   db_name                            = module.secret_manager.db_credentials["database"]
   db_username                        = module.secret_manager.db_credentials["username"]
   db_password                        = module.secret_manager.db_credentials["password"]
-  rds_security_group_id              = module.vpc.security_group["rds"]
-  eks_node_sg_id                     = module.vpc.security_group["eks_node"]
-  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
+  eks_node_sg_id                     = module.eks.eks_node_sg_id
+  wireguard_sg_id = data.terraform_remote_state.wireguard_server.outputs.wireguard_sg_id
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
-  rds_monitoring_role_arn            = module.iam.roles["rds_monitoring_role"]
+  extended_tags = local.extended_tags
 }
 
-# RDS Automated Backup
-# Lambda-based scheduled export of RDS snapshots to S3
-# with Slack notifications for backup failures
-module "rds-automated-backup" {
-  source = "../../modules/rds-automated-backup"
+# RDS LTR (Long-term Retention) Automated Backup
+# Automated backup of RDS snapshot exports to S3
+# Uses Envent bridge, SQS and DLQ for orchestration, and Lambda for execution
+# Cloudwatch Alarms for monitoring and alerting on DLQ messages (backup failures) with SNS topic for notifications to slack via Lambda subscription
+# Daily Summary reports for backups to Slack via webhook URL stored in Secrets Manager
+
+module "rds_ltr_backup" {
+  source = "../../modules/rds-ltr-backup"
 
   env                          = var.environment
   app                          = var.app
   db_instance_identifier       = module.rds.db_identifier
-  rds_export_bucket            = module.s3.bucket_name["rds_export_bucket_name"]
-  rds_export_role_arn          = module.iam.roles["rds_export_role"]
-  lambda_backup_role_arn       = module.iam.roles["lambda_backup_role"]
-  lambda_notification_role_arn = module.iam.roles["lambda_notification_role"]
+  rds_backup_bucket            = module.s3.bucket_names["rds_backup"]
+  rds_backup_bucket_arn        = module.s3.bucket_arns["rds_backup"]
   infra_common_kms_key_arn     = module.kms.kms_key_arn["infra_common"]
   data_storage_kms_key_arn     = module.kms.kms_key_arn["data_storage"]
-  slack_webhook_url            = module.secret_manager.slack_webhook_url
-}
-
-# NLB Security Group Rules
-# Manages ingress/egress rules on the NLB security groups
-module "nlb" {
-  source = "../../modules/nlb"
-
-  nlb_external_sg_id                 = module.vpc.security_group["nlb_external"]
-  nlb_internal_sg_id                 = module.vpc.security_group["nlb_internal"]
-  wireguard_server_security_group_id = module.vpc.security_group["wireguard_server"]
+  slack_webhook            = module.secret_manager.slack_webhook_url
+  extended_tags = local.extended_tags
 }

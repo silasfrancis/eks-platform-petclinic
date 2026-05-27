@@ -2,7 +2,23 @@ variable "env" {
   type = string
 }
 
-variable "private_subnets" {
+variable "app" {
+  type = string
+}
+
+variable "vpc_id" {
+  type = string
+}
+
+variable "eks_node_sg_id" {
+  type = string
+}
+
+variable "wireguard_sg_id" {
+  type = string
+}
+
+variable "data_subnet_ids" {
   type = list(string)
 }
 
@@ -30,23 +46,7 @@ variable "db_password" {
   type = string
 }
 
-variable "rds_sg_id" {
-  type = string
-}
-
-variable "eks_node_sg_id" {
-  type = string
-}
-
 variable "data_storage_kms_key_arn" {
-  type = string
-}
-
-variable "rds_monitoring_role_arn" {
-  type = string
-}
-
-variable "app" {
   type = string
 }
 

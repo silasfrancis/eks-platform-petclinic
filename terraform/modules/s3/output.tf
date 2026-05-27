@@ -1,4 +1,3 @@
-
 output "bucket_arns" {
   description = "Map of all application bucket ARNs"
   value       = { for k, v in aws_s3_bucket.this : k => v.arn }

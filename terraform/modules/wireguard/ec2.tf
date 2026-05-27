@@ -2,7 +2,7 @@ resource "aws_instance" "wireguard_server" {
   ami = data.aws_ami.al2023_arm.id
   instance_type = "t4g.micro"
   subnet_id = var.public_subnet_id
-  vpc_security_group_ids  = [var.wireguard_sg_id]
+  vpc_security_group_ids  = [aws_security_group.wireguard_server.id]
   iam_instance_profile = aws_iam_instance_profile.wireguard_server_profile.name 
   associate_public_ip_address = false
   source_dest_check = false
@@ -18,10 +18,9 @@ resource "aws_instance" "wireguard_server" {
     volume_size = 30
     volume_type = "gp3"
   }
-  tags = {
+  tags = merge({
     Name = "wireguard-server"
-    resource = "ec2"
-  }
+  }, var.extended_tags)
 
   lifecycle {
     # prevent_destroy = true

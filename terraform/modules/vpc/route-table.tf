@@ -1,6 +1,6 @@
 # Public Route Table
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main_vpc.id
+  vpc_id = aws_vpc.vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -28,7 +28,7 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table" "private" {
   for_each = aws_nat_gateway.nat
 
-  vpc_id = aws_vpc.main_vpc.id
+  vpc_id = aws_vpc.vpc.id
 
   route {
     cidr_block     = "0.0.0.0/0"

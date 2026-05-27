@@ -12,11 +12,7 @@ variable "cluster_version" {
   
 }
 
-variable "cluster_role_arn" {
-  type = string
-}
-
-variable "node_role_arn" {
+variable "vpc_id" {
   type = string
 }
 
@@ -24,7 +20,11 @@ variable "private_subnets" {
   type = list(string)
 }
 
-variable "eks_node_sg_id" {
+variable "nlb_external_sg_id" {
+    type = string
+}
+
+variable "nlb_internal_sg_id" {
     type = string
 }
 

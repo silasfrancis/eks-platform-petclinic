@@ -56,7 +56,7 @@ locals {
             "iam:ListInstanceProfiles"
           ]
           Resource = [
-            var.node_role_arn
+            aws_iam_role.node_role.arn
           ]
         },
         {

@@ -19,7 +19,7 @@ locals {
   nat_azs     = slice(var.availability_zones, 0, var.nat_gateway_count)
 }
 
-resource "aws_vpc" "main_vpc" {
+resource "aws_vpc" "vpc" {
   cidr_block = local.chosen_cidr
 
   enable_dns_support   = true

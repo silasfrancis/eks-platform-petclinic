@@ -70,7 +70,7 @@ resource "aws_ec2_tag" "karpenter_subnets" {
 }
 
 resource "aws_ec2_tag" "karpenter_sg" {
-  resource_id = var.eks_node_sg_id
+  resource_id = aws_security_group.eks_node.id
   key   = "karpenter.sh/discovery"
   value = aws_eks_cluster.main_cluster.name
 

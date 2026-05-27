@@ -1,10 +1,9 @@
 resource "aws_eip" "wireguard_server_eip" {
   domain   = "vpc"
   
-  tags = {
+  tags = merge({
     Name = "wireguard-server-eip"
-    resource = "eip"
-  }
+  }, var.extended_tags)
 }
 
 resource "aws_eip_association" "eip_assoc" {

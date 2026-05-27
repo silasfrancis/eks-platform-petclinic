@@ -70,7 +70,7 @@ resource "aws_lambda_function" "processor" {
 
   environment {
     variables = {
-      S3_BUCKET        = var.rds_export_bucket
+      S3_BUCKET        = var.rds_backup_bucket
       IAMROLE_ARN      = aws_iam_role.rds_export_role.arn
       KMS_KEY_ARN      = var.data_storage_kms_key_arn
       DB_IDENTIFIER    = var.db_instance_identifier

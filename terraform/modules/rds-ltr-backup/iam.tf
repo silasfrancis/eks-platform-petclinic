@@ -102,8 +102,8 @@ resource "aws_iam_policy" "rds_export_policy" {
           "s3:AbortMultipartUpload"
         ]
         Resource = [
-          "${var.rds_export_bucket_arn}",
-          "${var.rds_export_bucket_arn}/*"
+          "${var.rds_backup_bucket_arn}",
+          "${var.rds_backup_bucket_arn}/*"
         ]
       },
 

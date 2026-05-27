@@ -10,24 +10,3 @@ variable "environment" {
 variable "app" {
   type = string
 }
-
-variable "appregistry_application_tag" {
-  type    = string
-  default = ""
-}
-
-variable "owner" {
-  type = string
-}
-
-variable "repo" {
-  type = string
-}
-
-variable "language" {
-  type = string
-}
-
-variable "framework" {
-  type = string
-}

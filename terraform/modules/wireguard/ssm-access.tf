@@ -1,6 +1,6 @@
 resource "aws_iam_policy" "ssm_wireguard_server_access" {
-  name        = "ssm-jumphost-access"
-  description = "Allows SSM access to jumphost only"
+  name        = "ssm-wireguard-server-access"
+  description = "Allows SSM access to wireguard server only"
 
   policy = jsonencode({
       Version = "2012-10-17"

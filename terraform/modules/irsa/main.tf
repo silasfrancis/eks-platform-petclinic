@@ -1,5 +1,5 @@
 resource "aws_iam_role" "irsa" {
-  for_each = local.active_irsa_roles
+  for_each = local.irsa_roles
   name     = "${var.cluster_name}-${each.key}-irsa"
 
   assume_role_policy = jsonencode({
@@ -28,7 +28,7 @@ resource "aws_iam_role" "irsa" {
 }
 
 resource "aws_iam_policy" "irsa" {
-  for_each = local.active_irsa_roles
+  for_each = local.irsa_roles
   name     = "${var.cluster_name}-${each.key}-policy"
 
   policy = jsonencode({
@@ -52,7 +52,7 @@ resource "aws_iam_policy" "irsa" {
 }
 
 resource "aws_iam_role_policy_attachment" "irsa" {
-  for_each   = local.active_irsa_roles
+  for_each   = local.irsa_roles
   role       = aws_iam_role.irsa[each.key].name
   policy_arn = aws_iam_policy.irsa[each.key].arn
 }

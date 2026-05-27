@@ -1,5 +1,4 @@
 resource "aws_security_group" "wireguard_server" {
-  count = var.enable_wireguard ? 1 : 0
 
   description = "Security group for wireguard server"
   name        = "wireguard-server-security_group"
@@ -15,7 +14,6 @@ resource "aws_security_group" "wireguard_server" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "wireguard_ingress_rule" {
-  count = var.enable_wireguard ? 1 : 0
 
   description       = "Allow inbound WireGuard traffic"
   security_group_id = aws_security_group.wireguard_server[0].id
@@ -26,7 +24,6 @@ resource "aws_vpc_security_group_ingress_rule" "wireguard_ingress_rule" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "wireguard_egress_all" {
-  count = var.enable_wireguard ? 1 : 0
 
   description       = "Allow all outbound traffic for VPN clients"
   security_group_id = aws_security_group.wireguard_server[0].id

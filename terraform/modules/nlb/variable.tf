@@ -10,10 +10,8 @@ variable "vpc_id" {
   type = string
 }
 
-variable "enable_wireguard" {
-  description = "Whether to create WireGuard SG and rules (prod only)"
-  type        = bool
-  default     = false
+variable "wireguard_sg_id" {
+  type = string
 }
 
 variable "extended_tags" {

@@ -3,9 +3,11 @@
 Validation procedures to run after deployment or major platform changes.
 
 > The platform may not always be running continuously due to AWS costs.
-> If endpoints are unreachable, reprovision infrastructure and follow the deployment steps in the README and RUNBOOK.
+> If endpoints are unreachable, reprovision infrastructure and follow
+> the deployment steps in the README and RUNBOOK.
 
-Run test suites in order — later validation steps assume earlier platform components are healthy.
+Run test suites in order — later validation steps assume earlier
+platform components are healthy.
 
 ---
 
@@ -44,7 +46,8 @@ kubectl get nodes -l node-type=karpenter-bootstrap
 
 ## 2. Platform Health
 
-VPN access required for ArgoCD.
+VPN access required for ArgoCD. Each environment has its own ArgoCD
+instance — ensure the CLI is authenticated to the correct cluster.
 
 ```bash
 # All ArgoCD applications healthy
@@ -65,7 +68,7 @@ Optional validation:
 
 ```bash
 # Render and validate all Helm charts
-task validate ENV=prod
+task validate ENV=dev
 ```
 
 ---
@@ -126,7 +129,11 @@ curl -I https://grafana.lefrancis.org
 curl -I https://argocd.lefrancis.org
 # Expected: HTTP 200 or 302
 
-# Dev cluster API reachable via VPC peering
+# Prod cluster API reachable via Transit Gateway
+kubectl --context <prod-context> get nodes
+# Expected: prod cluster nodes listed
+
+# Dev cluster API reachable via Transit Gateway
 kubectl --context <dev-context> get nodes
 # Expected: dev cluster nodes listed
 ```
@@ -161,7 +168,7 @@ kubectl run -it --rm nettest \
   -- curl http://config-server-svc:8888/actuator/health
 # Expected: HTTP 200
 
-# Blocked path: petclinic → visits-service
+# Blocked path: petclinic → visits-service (no direct allow)
 kubectl run -it --rm nettest \
   --image=curlimages/curl \
   --restart=Never \

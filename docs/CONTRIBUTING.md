@@ -17,7 +17,8 @@ Allowed merge paths:
 | `feature/*` | `dev` |
 | `dev` | `main` |
 
-Direct pull requests to `main` from any branch other than `dev` are automatically closed by the branch policy GitHub Actions workflow.
+Direct pull requests to `main` from any branch other than `dev` are
+automatically closed by the branch policy GitHub Actions workflow.
 
 ---
 
@@ -86,7 +87,9 @@ After merge:
 
 ## Adding a New Microservice
 
-1. Add a service entry to `k8s/policies/values.yaml` under `clusterPolicy.services` — this generates the NetworkPolicy allow rules automatically.
+1. Add a service entry to `k8s/policies/values.yaml` under
+   `clusterPolicy.services` — this generates the NetworkPolicy allow
+   rules automatically.
 
 2. Create per-service values file:
    ```
@@ -94,13 +97,17 @@ After merge:
    k8s/microservice/values/env/main/<service>.yaml
    ```
 
-3. Register the service in `k8s/argocd/values.yaml` under `argocdBootstrap.apps.microservices.services` — this generates the ArgoCD Application automatically.
+3. Register the service in `k8s/argocd/values.yaml` under
+   `argocdBootstrap.apps.microservices.services` — this generates
+   the ArgoCD Application automatically.
 
-4. Add the service to the GitHub Actions build matrix in `.github/workflows/build-push.yaml`.
+4. Add the service to the GitHub Actions build matrix in
+   `.github/workflows/build-push.yaml`.
 
 5. Create the ECR repository in `terraform/modules/ecr/`.
 
-No template changes are needed for steps 1 or 3. Both use the policy-as-data pattern — adding a values entry is sufficient.
+No template changes are needed for steps 1 or 3. Both use the
+policy-as-data pattern — adding a values entry is sufficient.
 
 ---
 
@@ -114,7 +121,9 @@ No template changes are needed for steps 1 or 3. Both use the policy-as-data pat
    └── templates/
    ```
 
-2. Register the component in `k8s/argocd/values.yaml` under `argocdBootstrap.apps` — ArgoCD creates and syncs the Application automatically.
+2. Register the component in `k8s/argocd/values.yaml` under
+   `argocdBootstrap.apps` — ArgoCD creates and syncs the Application
+   automatically.
 
 ---
 
@@ -153,9 +162,11 @@ refactor: extract gateway helper templates
 
 ## Secrets
 
-Secrets are stored in AWS Secrets Manager and synced into Kubernetes by External Secrets Operator. Never commit secrets to Git.
+Secrets are stored in AWS Secrets Manager and synced into Kubernetes
+by External Secrets Operator. Never commit secrets to Git.
 
-See [docs/SECURITY.md](SECURITY.md#secrets-management) for the full secrets model.
+See [docs/SECURITY.md](SECURITY.md#secrets-management) for the full
+secrets model.
 
 ### Adding a Secret
 
@@ -182,4 +193,6 @@ When accepting a vulnerability finding, document it clearly:
 CVE-2024-XXXXX
 ```
 
-The same `.trivyignore` is used by both the CI Trivy scan and the Trivy Operator runtime scan. A finding must be documented before it can be accepted in either context.
+The same `.trivyignore` is used by both the CI Trivy scan and the
+Trivy Operator runtime scan. A finding must be documented before it
+can be accepted in either context.

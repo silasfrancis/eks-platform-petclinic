@@ -270,7 +270,10 @@ They do not resolve from the public internet.
 
 Access requires an active WireGuard VPN connection.
 
-The WireGuard server runs in the prod VPC and routes traffic to both prod and dev clusters through VPC peering.
+The WireGuard server runs in a dedicated WireGuard VPC and connects
+to both the prod and dev clusters through the AWS Transit Gateway.
+Dev and prod environments cannot reach each other — isolation is
+enforced at the TGW route table level.
 
 | Service | URL |
 |---|---|

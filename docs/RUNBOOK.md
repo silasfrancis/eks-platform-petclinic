@@ -26,11 +26,6 @@ Operational reference for the eks-platform-petclinic platform.
 - [WireGuard Server Management](#wireguard-server-management)
 - [Alerts Reference](#alerts-reference)
 - [Common Issues](#common-issues)
-  - [Pods Stuck in Pending](#pods-stuck-in-pending)
-  - [ArgoCD Sync Stuck or Degraded](#argocd-sync-stuck-or-degraded)
-  - [Image Pull Errors](#image-pull-errors)
-  - [Canary Stuck in Analysis](#canary-stuck-in-analysis)
-  - [Internal Dashboard Not Resolving](#internal-dashboard-not-resolving)
 
 ---
 
@@ -38,7 +33,8 @@ Operational reference for the eks-platform-petclinic platform.
 
 ### Domain Configuration
 
-The repository uses `lefrancis.org` as the default domain. Before deploying to your own environment, replace all domain references.
+The repository uses `lefrancis.org` as the default domain. Before
+deploying to your own environment, replace all domain references.
 
 Files to update:
 
@@ -48,8 +44,6 @@ k8s/platform/monitoring/values/env/<env>/values.yaml
 k8s/platform/autoscaling/values/env/<env>/values.yaml
 k8s/argocd/values/env/<env>/values.yaml
 ```
-
-Ingress and dashboard hostnames are configured within the individual chart values files.
 
 Examples:
 
@@ -64,11 +58,9 @@ petclinic:
 grafana:
   ingress:
     host: grafana.example.com
-
 prometheus:
   ingress:
     host: prometheus.example.com
-
 loki:
   ingress:
     host: loki.example.com
@@ -88,21 +80,8 @@ server:
     hostname: argocd.example.com
 ```
 
-Hostnames to replace:
-
-```txt
-petclinic.lefrancis.org
-argocd.lefrancis.org
-grafana.lefrancis.org
-prometheus.lefrancis.org
-loki.lefrancis.org
-goldilocks.lefrancis.org
-```
-
-Also update:
-- Cloudflare or Route53 hosted zones
-- Route53 private hosted zone names
-- cert-manager ClusterIssuer email configuration
+Also update Cloudflare or Route53 hosted zones, Route53 private hosted
+zone names, and cert-manager ClusterIssuer email configuration.
 
 ---
 
@@ -110,10 +89,14 @@ Also update:
 
 All internal services require an active WireGuard connection.
 
-The WireGuard server runs in the prod VPC (`10.0.0.0/16`) and routes traffic to both clusters via VPC peering:
+The WireGuard server runs in a dedicated WireGuard VPC (`10.2.0.0/16`)
+and routes traffic to both clusters through the Transit Gateway:
 
 - prod EKS — `10.0.0.0/16`
 - dev EKS — `10.1.0.0/16`
+
+Dev and prod cannot reach each other — isolation is enforced at the
+TGW route table level.
 
 ```bash
 # Connect
@@ -127,7 +110,8 @@ nslookup grafana.lefrancis.org
 wg-quick down wg0
 ```
 
-WireGuard client configs are generated on the VPN server. Retrieve them via SSM before rebuilding the instance.
+WireGuard client configs are generated on the VPN server. Retrieve
+them via SSM before rebuilding the instance.
 
 ```bash
 aws ssm start-session \
@@ -170,7 +154,9 @@ aws secretsmanager get-secret-value \
 
 ### Standard Deployment
 
-Push to the tracked branch. CI builds, scans, signs, and pushes the image. ArgoCD detects the updated image tag and syncs. Argo Rollouts manages the canary progression automatically.
+Push to the tracked branch. CI builds, scans, signs, and pushes the
+image. ArgoCD on the target environment detects the updated image tag
+and syncs. Argo Rollouts manages the canary progression automatically.
 
 ```bash
 git push origin dev
@@ -209,7 +195,8 @@ kubectl argo rollouts history rollout customers-service \
 
 ### Force ArgoCD Sync
 
-VPN access required.
+VPN access required. Each environment has its own ArgoCD instance —
+connect to the VPN and target the correct cluster context.
 
 ```bash
 argocd app sync customers-service
@@ -343,7 +330,6 @@ kubectl get nodes -l karpenter.sh/nodepool
 
 # Cordon and drain a node
 kubectl cordon <node-name>
-
 kubectl drain <node-name> \
   --ignore-daemonsets \
   --delete-emptydir-data
@@ -358,7 +344,8 @@ kubectl get events \
 
 ## WireGuard Server Management
 
-The WireGuard server is provisioned via Terraform and configured via Ansible over AWS SSM. SSH is not enabled on the instance.
+The WireGuard server is provisioned in a dedicated WireGuard VPC via
+Terraform and configured via Ansible over AWS SSM. SSH is not enabled.
 
 ```bash
 # Re-apply WireGuard configuration
@@ -404,7 +391,8 @@ kubectl get nodeclaims
 
 ### ArgoCD Sync Stuck or Degraded
 
-VPN required.
+VPN required. Each environment has its own ArgoCD — ensure kubectl
+context and ArgoCD CLI are pointed at the correct cluster.
 
 ```bash
 # Check Kyverno policy reports — image may be failing admission

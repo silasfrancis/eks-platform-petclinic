@@ -4,17 +4,12 @@
 
 Kubernetes platform on AWS EKS built around the [Spring PetClinic](https://github.com/spring-petclinic/spring-petclinic-microservices) microservices application.
 
-The platform combines multi-environment infrastructure, GitOps delivery,
-service mesh networking, progressive delivery, autoscaling, observability,
-runtime security, and disaster recovery into a single production-style
-platform architecture.
-
 <!-- Hero diagrams — visual overview -->
 ![AWS Infrastructure Architecture](diagrams/aws-architecture.drawio.svg)
-*AWS infrastructure — VPC layout, EKS clusters, Transit Gateway, WireGuard VPN, IRSA, and RDS backup automation*
+*AWS infrastructure — VPC layout, EKS cluster, Transit Gateway, IRSA, RDS backup automation*
 
 ![EKS Platform Architecture](diagrams/eks-platform-architecture.drawio.svg)
-*Platform layers — supply chain, GitOps, service mesh, observability, autoscaling, and security enforcement*
+*Platform layers — supply chain, service mesh, security model, observability, GitOps*
 
 ---
 
@@ -37,18 +32,12 @@ The platform is described from the infrastructure layer upward:
 
 ## Multi-Environment Setup
 
-Two environments run as fully independent EKS clusters in separate VPCs.
+Two environments run as independent EKS clusters in separate VPCs.
+Each environment runs its own ArgoCD instance and manages only its own
+applications. A dedicated WireGuard VPC connects to both environments
+through an AWS Transit Gateway.
 
-Each environment:
-- has its own VPC
-- runs its own ArgoCD instance
-- manages only its own applications
-- remains isolated from the other environment
-
-A dedicated WireGuard VPC provides secure administrative access to both
-clusters through an AWS Transit Gateway.
-
-```txt
+```
 WireGuard VPC — 10.2.0.0/16
 ┌──────────────────────┐
 │  Public subnet       │
@@ -66,33 +55,30 @@ WireGuard VPC — 10.2.0.0/16
 │10.1.0.0 │  │10.0.0.0   │
 │  /16    │  │  /16      │
 │         │  │           │
-│Public   │  │Public     │
+│Private  │  │Public     │
 │subnets: │  │subnets:   │
-│Ext. NLB │  │Ext. NLB   │
-│NAT GW   │  │NAT GW     │
+│EKS nodes│  │Ext. NLB   │
+│Int. NLB │  │NAT GW     │
 │         │  │           │
-│Private  │  │Private    │
-│subnets: │  │subnets:   │
-│EKS nodes│  │EKS nodes  │
-│Int. NLB │  │Int. NLB   │
-│         │  │           │
-│Data:    │  │Data:      │
-│RDS      │  │RDS        │
-│         │  │           │
-│ArgoCD   │  │ArgoCD     │
-│(dev)    │  │(prod)     │
-└─────────┘  └───────────┘
+│Data:    │  │Private    │
+│RDS      │  │subnets:   │
+│         │  │EKS nodes  │
+│ArgoCD   │  │Int. NLB   │
+│(dev)    │  │           │
+└─────────┘  │Data:      │
+             │RDS        │
+             │           │
+             │ArgoCD     │
+             │(prod)     │
+             └───────────┘
 ```
 
 ### Transit Gateway
 
-A single AWS Transit Gateway connects all three VPCs using explicit
-route table associations and propagations.
+A single AWS Transit Gateway connects all three VPCs with explicit
+routing and environment isolation.
 
-Default TGW route table association and propagation are disabled so
-all routing remains intentionally defined.
-
-### Isolation Model
+**Isolation model:**
 
 | From | To | Result |
 |---|---|---|
@@ -103,61 +89,50 @@ all routing remains intentionally defined.
 | Dev | Prod | Blocked (explicit black-hole route) |
 | Prod | Dev | Blocked (explicit black-hole route) |
 
-### Administrative Access Flow
+**Traffic flow:**
 
-```txt
+```
 Engineer laptop
     │ WireGuard VPN UDP 51820
     ▼
-WireGuard EC2
-(WireGuard VPC · public subnet · Elastic IP)
+WireGuard EC2 (WireGuard VPC, public subnet, Elastic IP)
     │
     │ Transit Gateway
-    ├──────────────────────► Prod EKS API
+    ├──────────────────────► Prod EKS API (prod private subnet)
     │
-    └──────────────────────► Dev EKS API
+    └──────────────────────► Dev EKS API (dev private subnet)
 
 Client AllowedIPs = 10.0.0.0/8
 ```
 
-### TGW Route Tables
+Each VPC has a dedicated TGW route table:
 
-Each VPC attachment is associated with its own TGW route table.
-
-| Route Table | Allowed Routes |
-|---|---|
-| WireGuard | WireGuard + Dev + Prod |
-| Dev | Dev + WireGuard |
-| Prod | Prod + WireGuard |
-
-Explicit black-hole routes enforce dev ↔ prod isolation even if future
-propagation rules are modified accidentally.
+- **WireGuard route table** — propagates dev and prod routes (can reach both)
+- **Dev route table** — propagates WireGuard route only + black-hole for prod
+- **Prod route table** — propagates WireGuard route only + black-hole for dev
 
 ### ArgoCD Per Environment
 
-Each EKS cluster runs its own ArgoCD instance.
+Each EKS cluster runs its own ArgoCD instance managing only its own
+applications. There is no cross-cluster ArgoCD control.
 
-```txt
+```
 ArgoCD (dev cluster)   → manages dev applications only
 ArgoCD (prod cluster)  → manages prod applications only
 ```
 
-There is no cross-cluster GitOps control plane.
-
-This reduces blast radius:
-- an ArgoCD outage in one environment cannot affect the other
-- sync failures remain isolated
-- RBAC boundaries stay environment-specific
-- clusters remain operationally self-contained
+This reduces blast radius — an ArgoCD outage or misconfiguration in
+one environment cannot affect the other. Each cluster is fully
+self-contained.
 
 ---
 
 ## HOW USERS AND ENGINEERS ACCESS THE PLATFORM
 
-Public application traffic and internal administrative traffic use
-completely separate ingress paths.
+Two separate entry points — public traffic and internal admin traffic
+are handled by completely separate NLBs and Istio Gateways.
 
-```txt
+```
 ┌──────────────────────────────────────────┐  ┌────────────────────────────────────┐
 │  PUBLIC TRAFFIC                          │  │  INTERNAL / ADMIN TRAFFIC          │
 │                                          │  │                                    │
@@ -165,248 +140,195 @@ completely separate ingress paths.
 │          │                               │  │          │                         │
 │          ▼                               │  │          ▼                         │
 │  Cloudflare DNS                          │  │  WireGuard VPN                     │
-│  public A record → External NLB          │  │  Dedicated WireGuard VPC           │
+│  (public A record → External NLB IP)     │  │  EC2 · dedicated WireGuard VPC     │
 │          │                               │  │  Configured via Ansible over SSM   │
 │          ▼                               │  │  No SSH port open                  │
-│  External NLB                            │  │          │                         │
+│  External NLB (public subnet)            │  │          │                         │
 │  internet-facing · port 443              │  │          ▼                         │
-│          │                               │  │  Transit Gateway                   │
-│          ▼                               │  │  Routes to prod or dev VPC         │
+│          │                               │  │  Transit Gateway routes to         │
+│          ▼                               │  │  prod or dev VPC                   │
 │  Istio PUBLIC Gateway                    │  │          │                         │
-│  TLS termination                         │  │          ▼                         │
-│  wildcard certificate                    │  │  Route53 Private Hosted Zone       │
-│  cert-manager DNS-01                     │  │  Internal DNS only                 │
-│          │                               │  │          │                         │
-│          ▼                               │  │          ▼                         │
-│  petclinic.lefrancis.org                 │  │  Internal NLB                      │
-│  Spring PetClinic services               │  │  Private subnet only               │
+│  TLS terminated · wildcard cert          │  │          ▼                         │
+│  cert-manager · Let's Encrypt DNS-01     │  │  Route53 Private Hosted Zone       │
+│          │                               │  │  Resolves only inside VPC          │
+│          ▼                               │  │          │                         │
+│  petclinic.lefrancis.org                 │  │          ▼                         │
+│  PetClinic application (8 services)      │  │  Internal NLB (private subnet)     │
+│                                          │  │  Not reachable from internet       │
 │                                          │  │          │                         │
 │                                          │  │          ▼                         │
 │                                          │  │  Istio INTERNAL Gateway            │
-│                                          │  │  TLS termination                   │
+│                                          │  │  TLS terminated · same wildcard    │
 │                                          │  │          │                         │
 │                                          │  │          ▼                         │
-│                                          │  │  grafana.lefrancis.org             │
-│                                          │  │  argocd.lefrancis.org              │
-│                                          │  │  prometheus.lefrancis.org          │
-│                                          │  │  loki.lefrancis.org                │
+│                                          │  │  grafana.lefrancis.org  → Grafana  │
+│                                          │  │  argocd.lefrancis.org   → ArgoCD   │
+│                                          │  │  prometheus.lefrancis.org→ Prom.   │
+│                                          │  │  loki.lefrancis.org     → Loki     │
 └──────────────────────────────────────────┘  └────────────────────────────────────┘
               │                                                  │
               └──────────────► cert-manager ◄────────────────────┘
                                Let's Encrypt DNS-01
                                Cloudflare API token via ESO
+
+DNS automation:
+  ExternalDNS (Cloudflare) → public A record  → petclinic.lefrancis.org
+  ExternalDNS (Route53)    → private A records → all dashboard hostnames
+  Two independent instances, each with its own annotation filter.
 ```
-
-### DNS Automation
-
-```txt
-ExternalDNS (Cloudflare)
-  → public DNS records
-  → petclinic.lefrancis.org
-
-ExternalDNS (Route53)
-  → private DNS records
-  → Grafana, ArgoCD, Prometheus, Loki, Goldilocks
-```
-
-Two independent ExternalDNS deployments are used:
-- public DNS automation for internet-facing services
-- private Route53 automation for VPN-only services
 
 ---
 
 ## HOW TRAFFIC ROUTES INSIDE THE CLUSTER
 
-Every pod receives an automatically injected Istio Envoy sidecar.
+Every pod has an Istio sidecar (Envoy proxy) injected automatically.
+All inter-service traffic flows through these proxies — encryption,
+traffic splitting, and policy enforcement without application code changes.
 
-All inter-service traffic flows through the service mesh, allowing:
-- mTLS encryption
-- traffic routing
-- canary delivery
-- policy enforcement
-- telemetry collection
-
-without modifying application code.
-
-```txt
+```
 Request arrives at Istio Gateway
         │
         ▼
-VirtualService routes by path:
+VirtualService — routes by path prefix:
+  /api/customer/*  →  customers-service
+  /api/visit/*     →  visits-service
+  /api/vet/*       →  vets-service
+  /api/genai/*     →  genai-service
+  /*               →  api-gateway (catch-all)
 
-  /api/customer/*  → customers-service
-  /api/visit/*     → visits-service
-  /api/vet/*       → vets-service
-  /api/genai/*     → genai-service
-  /*               → api-gateway
+During canary release (Argo Rollouts manages VirtualService weights):
+  Normal:  100% → stable pods
+  Canary:   80% → stable pods  +  20% → canary pods (new version)
+              ↓                        ↓
+          stable-svc             canary-svc
+       (DestinationRule)      (DestinationRule)
 
-Canary release flow:
+ArgoCD ignoreDifferences on VirtualService weights prevents sync
+conflicts while a canary is active.
 
-  80% → stable
-  20% → canary
-
-          stable-svc
-               │
-        DestinationRule
-               │
-          canary-svc
+All pod-to-pod traffic:
+  PeerAuthentication: STRICT — mTLS enforced everywhere
+  AuthorizationPolicy: cryptographic service account identity,
+  not IP-based — only explicitly named accounts may call each service
 ```
-
-Argo Rollouts manages Istio VirtualService weights during progressive
-delivery.
-
-ArgoCD ignores temporary weight drift while a rollout is active to
-prevent reconciliation conflicts.
-
-### Service-to-Service Security
-
-All pod-to-pod traffic uses:
-
-```txt
-PeerAuthentication: STRICT
-AuthorizationPolicy: service-account identity based
-```
-
-Traffic is authenticated using Istio-issued workload certificates rather
-than IP-based rules.
 
 ---
 
 ## THE APPLICATION
 
-Eight Spring Boot microservices are deployed into the `petclinic`
-namespace using a shared Helm chart with per-service overrides.
+Eight Spring Boot microservices deployed to the `petclinic` namespace.
+All share one Helm chart with per-service value overrides.
 
-```txt
+```
                         ┌─────────────────┐
-                        │   api-gateway   │
-                        │ Rollout · Canary│
+                        │   api-gateway   │  Rollout · ON_DEMAND · canary
                         └────────┬────────┘
                                  │
           ┌──────────────────────┼──────────────────────┐
           ▼                      ▼                       ▼
-
   ┌──────────────┐    ┌──────────────────┐    ┌──────────────────┐
-  │ customers    │    │ visits           │    │ vets             │
-  │ Rollout      │    │ Rollout          │    │ Rollout          │
-  │ SPOT · HPA   │    │ SPOT · HPA       │    │ SPOT · HPA       │
+  │  customers   │    │     visits       │    │      vets        │
+  │  Rollout     │    │     Rollout      │    │      Rollout     │
+  │  SPOT · HPA  │    │     SPOT · HPA   │    │      SPOT · HPA  │
   └──────────────┘    └──────────────────┘    └──────────────────┘
 
   ┌──────────────┐    ┌──────────────────┐    ┌──────────────────┐
-  │ config-server│    │ discovery-server │    │ admin-server     │
-  │ Deployment   │    │ Deployment       │    │ Deployment        │
-  │ ON_DEMAND    │    │ ON_DEMAND        │    │ ON_DEMAND         │
+  │config-server │    │discovery-server  │    │  admin-server    │
+  │ Deployment   │    │  Deployment      │    │  Deployment      │
+  │ ON_DEMAND    │    │  ON_DEMAND       │    │  ON_DEMAND       │
   └──────────────┘    └──────────────────┘    └──────────────────┘
 
   ┌──────────────┐
-  │ genai-service│
-  │ Rollout      │
-  │ KEDA         │
-  │ Scale-to-zero│
+  │ genai-service│  Rollout · SPOT · KEDA scale-to-zero when idle
+  │ Scales to 0  │  Prometheus triggers: HTTP rate + CPU + memory
   └──────────────┘
           │
           ▼
   ┌──────────────────┐
-  │ RDS MySQL 8.0    │
-  │ Multi-AZ         │
-  │ KMS encrypted    │
+  │  RDS MySQL 8.0   │  private subnet · KMS encrypted · Multi-AZ
+  │                  │  Flyway migrations run as Helm pre-install hooks
   └──────────────────┘
+
+ESO ExternalSecret pulls credentials from AWS Secrets Manager at pod
+startup. No database passwords in Git or Kubernetes manifests.
 ```
-
-Database credentials are synchronised into the cluster through:
-- AWS Secrets Manager
-- External Secrets Operator
-- IRSA authentication
-
-No database credentials exist in Git or Helm values files.
 
 ---
 
 ## HOW NODES AND PODS SCALE
 
-The platform scales at two levels:
+Two levels of scaling — pods (software replicas) and nodes (EC2 VMs).
 
-1. Pods
-2. Nodes
-
-```txt
+```
 POD SCALING
-────────────────────────────────────────────────────
-
-HPA
-  CPU + memory autoscaling
-
-KEDA
-  Scale-to-zero event-driven scaling
-  Used by genai-service
-
-Goldilocks + VPA
-  Resource recommendations only
-
-────────────────────────────────────────────────────
-               Pods require nodes
-────────────────────────────────────────────────────
+  HPA                        KEDA                    Goldilocks + VPA
+  ──────────────────         ──────────────────      ──────────────────
+  Scales Deployments +       Scales genai-service    Watches running pods
+  Rollouts on CPU +          to zero when idle.      and recommends right
+  memory.                    Scales up on:           CPU/memory requests.
+                             HTTP rate · CPU ·       Advisory only —
+  customers · visits ·       memory metrics.         mode: Off.
+  vets · api-gateway ·       Supports Argo           View in Goldilocks
+  admin-server.              Rollout via             dashboard via VPN.
+                             enableArgoproj.
+                                    │
+                                    ▼ pods need nodes
 
 NODE SCALING — Karpenter
+  Watches pending pods → provisions EC2 in ~30 seconds
+  Consolidates underutilised nodes → terminates to reduce cost
 
-ON_DEMAND NodePool
-  ARM64 Graviton
-  Critical workloads
+  ON_DEMAND NodePool            SPOT NodePool
+  ──────────────────────        ──────────────────────────────
+  t4g (ARM64/Graviton)          t4g, m6g, m7g, c6g, c7g, r6g, r7g
+  weight: 100                   weight: 1
+  config-server                 customers, visits, vets, genai
+  discovery-server              Toleration: spot=true:NoSchedule
+  api-gateway                   SQS queue handles interruptions
+  admin-server                  EventBridge → Karpenter drains
+                                node before AWS reclaims it
 
-SPOT NodePool
-  Mixed-instance ARM64 fleet
-  Cost-optimised workloads
-```
-
-### Karpenter
-
-Karpenter provisions EC2 instances directly through the EC2 API.
-
-Benefits:
-- ~30 second node startup
-- no pre-created node groups
-- automatic consolidation
-- mixed instance scheduling
-- native Spot interruption handling
-
-### Spot Handling
-
-Spot interruption flow:
-
-```txt
-EventBridge
-    → SQS
-    → Karpenter interruption controller
-    → drain node
-    → reschedule pods
+  Bootstrap node group (1× t4g.medium)
+  Terraform-managed · Karpenter only
+  CriticalAddonsOnly taint — no application workloads
 ```
 
 ---
 
 ## WHAT PLATFORM ENGINEERS SEE
 
-```txt
+```
 ┌──────────────────────┐  ┌──────────────────────┐  ┌────────────────────────┐
 │  METRICS             │  │  LOGS                │  │  ALERTS                │
 │                      │  │                      │  │                        │
-│  Prometheus          │  │  Alloy DaemonSet     │  │  Alertmanager          │
-│  Spring metrics      │  │  Parses JSON logs    │  │  Slack + email         │
-│  Istio metrics       │  │  Ships to Loki       │  │                        │
-│  Karpenter metrics   │  │  S3 retention        │  │  Falco alerts          │
-│  Velero metrics      │  │                      │  │  Velero failures       │
-│  ArgoCD metrics      │  │                      │  │  Deployment alerts     │
+│  Prometheus          │  │  Alloy DaemonSet     │  │  30+ PrometheusRules   │
+│  20Gi PVC · 15d      │  │  collects from:      │  │                        │
+│                      │  │  petclinic           │  │  Alertmanager:         │
+│  Scrapes:            │  │  monitoring          │  │  warning → Slack       │
+│  • Spring Boot       │  │  istio-ingress       │  │  critical → Slack      │
+│    Actuator          │  │                      │  │            + email     │
+│  • Istio Envoy       │  │  Parses JSON         │  │                        │
+│  • RDS via CW Exp.   │  │  Extracts level      │  │  Falco → Falcosidekick │
+│  • Karpenter         │  │  Ships to Loki       │  │  → #petclinic-security │
+│  • Velero            │  │                      │  │                        │
+│  • ArgoCD            │  │  S3 backend · 31d    │  │  Velero failures       │
+│  • Falco             │  │  LogQL via Grafana   │  │  → critical channel    │
+│  • Trivy             │  │  Explore             │  │                        │
 └──────────┬───────────┘  └──────────┬───────────┘  └───────────┬────────────┘
-           └─────────────────────────┴──────────────────────────┘
+           └─────────────────────────┴──────────────────────────-┘
                                      │
                                      ▼
                         ┌────────────────────────┐
-                        │ Grafana (VPN only)     │
+                        │   Grafana (VPN only)   │
                         │                        │
-                        │ Cluster dashboards     │
-                        │ Service dashboards     │
-                        │ Istio dashboards       │
-                        │ GitOps dashboards      │
-                        │ SLO dashboards         │
+                        │  7 dashboards:         │
+                        │  • Cluster health      │
+                        │  • Namespace/workload  │
+                        │  • Per-service deep    │
+                        │  • Istio / traffic     │
+                        │  • ArgoCD / GitOps     │
+                        │  • SLO / error budget  │
+                        │  • RDS / database      │
                         └────────────────────────┘
 ```
 
@@ -414,234 +336,182 @@ EventBridge
 
 ## HOW THE PLATFORM ENFORCES RULES — 9 SECURITY LAYERS
 
-Every workload passes through nine independent security layers.
+Every deployment passes through nine independent layers automatically.
 
-```txt
-NETWORK LAYERS
-────────────────────────────────────────
-
-1. Cilium NetworkPolicy
-   Default deny-all
-
-2. Cilium NetworkPolicy
-   Explicit service allow rules
+```
+NETWORK LAYERS (L3/L4)
+  Layer 1 — NetworkPolicy: default-deny-all on petclinic namespace
+  Layer 2 — NetworkPolicy: explicit per-service allow rules
 
 ADMISSION LAYERS
-────────────────────────────────────────
+  Layer 3 — Kyverno ImageValidatingPolicy: Cosign signature verification
+             Image must be signed by CI pipeline (keyless · GitHub OIDC)
+             Vulnerability attestation must exist for the image
 
-3. Kyverno ImageValidatingPolicy
-   Cosign signature verification
-   Vulnerability attestation verification
+  Layer 4 — Kyverno ValidatingPolicy: pod security schema guardrails
+             non-root · read-only root fs · drop ALL caps
+             seccompProfile: RuntimeDefault required
 
-4. Kyverno ValidatingPolicy
-   Pod security enforcement
-
-5. Kyverno MutatingPolicy
-   Automatic security context injection
+  Layer 5 — Kyverno MutatingPolicy: automated security context defaults
+             auto-injects missing security context fields
 
 RUNTIME LAYERS
-────────────────────────────────────────
+  Layer 6 — Istio PeerAuthentication: mTLS STRICT
+             All pod-to-pod traffic encrypted and mutually authenticated
+             Rejects any non-mTLS connection
 
-6. Istio PeerAuthentication
-   STRICT mTLS
+  Layer 7 — External Secrets Operator: AWS Secrets Manager sync
+             No secrets in Git · IRSA authenticates to AWS
+             Secrets injected at pod startup only
 
-7. External Secrets Operator
-   Secrets Manager integration via IRSA
+  Layer 8 — Falco: eBPF runtime threat detection (modern_ebpf driver)
+             Monitors syscalls on all nodes including SPOT
+             Custom petclinic rules · alerts → Falcosidekick → Slack
 
-8. Falco
-   Runtime syscall monitoring via eBPF
-
-9. Trivy Operator
-   Continuous vulnerability scanning
+  Layer 9 — Trivy Operator: continuous image scanning
+             Every 24h · pod creation triggers immediate scan
+             EKS CIS 1.4 + NSA hardening + PSS baseline every 6h
+             .trivyignore mirrored between CI and Trivy Operator
 ```
 
-### Supply Chain Enforcement
-
-```txt
+**Supply chain (pre-admission):**
+```
 git push
-  → Trivy scan
-  → ECR push
-  → Cosign sign
-  → Cosign attest
-  → ArgoCD sync
-  → Kyverno verification
+  → Trivy scan (gate on CRITICAL)
+  → ECR push (immutable tag)
+  → Cosign sign (keyless · GitHub OIDC)
+  → Cosign attest vulnerability report to ECR
+  → Kyverno verifies signature + attestation at admission
   → pod starts
-```
 
-Unsigned or unattested images are rejected at admission.
+No unsigned or unattested image can run in the cluster.
+```
 
 ---
 
 ## HOW DEPLOYMENTS HAPPEN
 
-```txt
-feature/* → dev
-dev       → main
-
-Developer push
-        │
-        ▼
-GitHub Actions CI
-
-  Build multi-arch image
-        │
-        ▼
-  Trivy vulnerability scan
-        │
-        ▼
-  Push immutable image to ECR
-        │
-        ▼
-  Cosign sign image
-        │
-        ▼
-  Cosign attach attestation
-        │
-        ▼
-  Update Helm values
-        │
-        ▼
-  ArgoCD reconciliation
-        │
-        ▼
-  Argo Rollouts canary deployment
 ```
+Branch policy (GitHub Actions):
+  feature/* → dev   (PRs only · auto-closed if violated)
+  dev       → main  (PRs only · auto-closed if violated)
 
-### Canary Analysis
+Developer pushes → PR to dev → CI runs
+        │
+        ▼  GitHub Actions — matrix build, all 8 services in parallel
 
-```txt
-20% traffic → AnalysisRun
-50% traffic → AnalysisRun
-100% promote
+  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌──────────────────┐
+  │ Build image   │  │  Trivy scan   │  │  Push to ECR  │  │  Cosign sign +   │
+  │ Buildx        │→ │  Gate on      │→ │  Immutable    │→ │  attest vuln     │
+  │ ARM64 + AMD64 │  │  CRITICAL     │  │  tag + latest │  │  report to ECR   │
+  └───────────────┘  └───────────────┘  └───────────────┘  └──────────────────┘
+        │
+        ▼  values file updated with new image tag → commit to Git
+
+ArgoCD polls Git every 2 minutes → detects image tag change
+        │
+        ▼  Kyverno admission: verify signature + attestation
+        │
+        ▼  Argo Rollouts canary:
+
+  setWeight: 20%  →  pause 60s  →  AnalysisRun
+    • success rate ≥ 99%
+    • P99 latency ≤ 2s
+    • error count ≤ 10
+
+  setWeight: 50%  →  pause 60s  →  AnalysisRun
+
+  setWeight: 100%  →  promote
+
+  Any analysis failure → automatic rollback → stable restored
+
+ArgoCD notifications → Slack #petclinic-gitops
+  on-deployed · on-health-degraded · on-sync-failed
 ```
-
-Rollback occurs automatically if:
-- success rate drops
-- latency exceeds threshold
-- error rate increases
 
 ---
 
 ## SECRETS AND BACKUP
 
-```txt
-SECRETS
-────────────────────────────────────────
-
-AWS Secrets Manager
-  → database credentials
-  → Cloudflare tokens
-  → Slack webhooks
-  → ArgoCD deploy keys
-
-External Secrets Operator
-  → synchronises secrets into Kubernetes
-
-IRSA
-  → per-service AWS authentication
-
-────────────────────────────────────────
-
-BACKUP
-────────────────────────────────────────
-
-Velero
-  → daily cluster backups
-  → namespace backups
-  → EBS snapshots
-
-RDS snapshot export
-  → EventBridge
-  → Lambda
-  → encrypted S3 storage
+```
+┌──────────────────────────────────────────┐  ┌──────────────────────────────────┐
+│  SECRETS                                 │  │  BACKUP (Velero)                 │
+│                                          │  │                                  │
+│  No secrets in Git — ever.               │  │  Daily full cluster backup       │
+│                                          │  │  30-day retention → S3           │
+│  AWS Secrets Manager:                    │  │                                  │
+│    prod/argocd           SSH deploy key  │  │  Hourly petclinic namespace      │
+│    prod/petclinic         DB credentials │  │  7-day retention → S3            │
+│    prod/platform-monitoring  Slack/email │  │                                  │
+│    prod/platform-dns     Cloudflare token│  │  Daily monitoring namespace      │
+│                                          │  │  Prometheus TSDB · Grafana PVC   │
+│  IRSA: each component has its own IAM    │  │                                  │
+│  role bound to its service account via   │  │  EBS snapshots for PVC data      │
+│  EKS OIDC provider. No static creds.     │  │                                  │
+│                                          │  │  node-agent DaemonSet tolerates  │
+│  ESO ClusterSecretStore syncs secrets    │  │  SPOT — all nodes covered        │
+│  into Kubernetes at pod startup.         │  │                                  │
+└──────────────────────────────────────────┘  └──────────────────────────────────┘
 ```
 
-No secrets are stored in Git.
+**RDS Automated Backup:**
+```
+EventBridge (daily schedule)
+    → Lambda (triggers RDS snapshot export)
+    → RDS snapshot exported to S3 (KMS encrypted)
+    → Lambda (Slack notification on failure)
+
+Prod only — disabled in dev via count = local.is_prod ? 1 : 0
+```
 
 ---
 
 ## DESIGN DECISIONS
 
-### Karpenter over Cluster Autoscaler
+**Karpenter over Cluster Autoscaler**
+Direct EC2 provisioning via RunInstances — 30s node ready time versus
+3-5 minutes for Cluster Autoscaler. Automatic consolidation reduces
+cost without manual intervention. No predefined node groups required.
 
-Karpenter provisions EC2 instances directly rather than scaling managed
-node groups.
+**Istio for traffic management**
+Native Argo Rollouts integration via VirtualService weight management.
+mTLS STRICT enforces encrypted communication without application changes.
+Precise canary splitting regardless of replica count — 20% traffic does
+not require 20% of pods to be canary.
 
-Benefits:
-- faster provisioning
-- mixed-instance flexibility
-- automated consolidation
-- simpler scaling model
+**Transit Gateway over VPC Peering**
+Three VPCs require a hub-and-spoke routing model. Transit Gateway
+provides transitive routing from a single attachment point — WireGuard
+can reach both dev and prod without direct peering between every VPC
+pair. TGW route tables enforce dev ↔ prod isolation with explicit
+black-hole routes. Adding further environments or shared services VPCs
+requires only a new TGW attachment and route table entry.
 
-### Istio for Traffic Management
+**Dedicated WireGuard VPC**
+WireGuard runs in its own VPC with no workloads. This isolates the VPN
+entry point from both application environments, limits the blast radius
+of a compromise, and keeps the networking model clean — the WireGuard
+VPC attaches to TGW the same way as every other VPC.
 
-Istio integrates natively with Argo Rollouts through VirtualService
-weight management.
+**Separate ArgoCD per environment**
+Each EKS cluster runs its own ArgoCD instance managing only its own
+applications. An outage or misconfiguration in one environment cannot
+affect the other. Each cluster is fully self-contained. The tradeoff
+is two ArgoCD instances to maintain, which at this scale is the
+correct tradeoff.
 
-Benefits:
-- precise canary traffic splitting
-- automatic mTLS
-- workload identity
-- traffic observability
+**Loki over Elasticsearch**
+S3 backend eliminates large PVCs and index management. Sufficient for
+structured log analysis at this scale. No JVM heap tuning or shard
+management overhead.
 
-### Transit Gateway over VPC Peering
+**ESO over Sealed Secrets**
+Secrets never exist in Git in any form. AWS Secrets Manager provides
+rotation support, audit logging, and IAM-based access control. IRSA
+eliminates static credentials from the cluster entirely.
 
-Three VPCs require a hub-and-spoke routing model.
-
-Transit Gateway provides:
-- transitive routing
-- centralised routing policy
-- scalable attachment model
-- explicit route-table isolation
-- simpler future expansion
-
-### Dedicated WireGuard VPC
-
-WireGuard runs in its own isolated VPC with no workloads.
-
-Benefits:
-- reduced blast radius
-- isolated VPN entry point
-- cleaner routing boundaries
-- simplified network model
-
-### Separate ArgoCD per Environment
-
-Each environment manages itself independently.
-
-Benefits:
-- isolated failure domains
-- reduced operational risk
-- environment-specific RBAC
-- independent reconciliation
-
-### Loki over Elasticsearch
-
-Loki stores logs in S3 without requiring Elasticsearch index management.
-
-Benefits:
-- lower operational overhead
-- no JVM tuning
-- smaller infrastructure footprint
-- cost-efficient retention
-
-### External Secrets Operator over Sealed Secrets
-
-Secrets never exist in Git.
-
-Benefits:
-- IAM-based access control
-- native AWS audit logging
-- secret rotation support
-- no encrypted secret manifests
-
-### Policy-as-Data
-
-Policies are driven through structured values maps rather than hardcoded
-templates.
-
-Benefits:
-- scalable service onboarding
-- reusable policy logic
-- simplified maintenance
-- reduced template duplication
+**Policy-as-data**
+Both NetworkPolicy and ArgoCD Applications use a map-based values
+structure. Adding a service or application requires a values change
+only — no template modifications. Mirrors how mature platform teams
+manage policy at scale.

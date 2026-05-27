@@ -1,0 +1,51 @@
+# WireGuard Client Configuration
+#
+# One configuration file is generated per client device.
+#
+# This VPN uses split-tunnel routing:
+#
+#   Only RFC1918 platform traffic routes through the VPN.
+#
+# Internet traffic continues using the user's local connection.
+#
+# Routed Networks:
+#
+#   10.0.0.0/16  → prod
+#   10.1.0.0/16  → dev
+#   10.2.0.0/16  → wireguard VPC
+#
+# Simplified as:
+#
+#   10.0.0.0/8
+
+[Interface]
+
+# Client private key
+PrivateKey = {{
+  client_private_keys_raw.results
+  | selectattr('item', 'equalto', item)
+  | map(attribute='content')
+  | first
+  | b64decode
+}}
+
+# Static VPN IP assigned to this client
+Address = {{ client_ip_map[item] }}/32
+
+# Optional DNS resolver while connected
+DNS = 1.1.1.1
+
+[Peer]
+
+# WireGuard server public key
+PublicKey = {{ server_public_key_raw.content | b64decode }}
+
+# Public WireGuard endpoint
+Endpoint = {{ wireguard_public_ip }}:51820
+
+# Split tunnel routing:
+# only internal platform traffic enters the VPN tunnel.
+AllowedIPs = 10.0.0.0/8
+
+# Keeps NAT mappings alive for roaming clients.
+PersistentKeepalive = 25

@@ -31,7 +31,8 @@ tasks:
         - AWS credentials configured
         - inventory.yaml populated with instance ID
     cmds:
-      - ansible-playbook -i inventory.yaml wireguard.yaml
+      - ansible-playbook -i inventory.yaml wireguard.yaml \
+        -e wireguard_public_ip=$(terraform -chdir=terraform/env/global/networking/wireguard output -raw wireguard_public_ip)
     preconditions:
       - sh: "[ -f inventory.yaml ]"
         msg: "inventory.yaml not found — populate with EC2 instance ID from terraform output"

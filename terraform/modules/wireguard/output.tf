@@ -9,3 +9,8 @@ output "wireguard_server_instance_profile" {
 output "wireguard_sg_id" {
   value = aws_security_group.wireguard_server.id
 }
+
+output "wireguard_public_ip" {
+  description = "Public Elastic IP of the WireGuard server"
+  value       = aws_eip.wireguard_server.public_ip
+}

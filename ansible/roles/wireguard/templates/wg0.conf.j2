@@ -1,37 +1,77 @@
+# WireGuard Server Configuration
+#
+# This server acts as the secure VPN entry point into the platform.
+#
+# Routing Model:
+#
+#   Client Laptop
+#       ↓
+#   WireGuard VPN Tunnel
+#       ↓
+#   WireGuard EC2 (Dedicated VPC)
+#       ↓
+#   AWS Transit Gateway
+#       ↓
+#   Dev / Prod VPCs
+#
+# Transit Gateway route tables enforce:
+#
+#   WireGuard → Dev   : allowed
+#   WireGuard → Prod  : allowed
+#   Dev ↔ Prod        : blocked
+#
+
 [Interface]
-# The internal IP address for the WireGuard server within the VPN tunnel
+
+# Internal VPN subnet used for connected clients.
 Address = 10.8.0.1/24
 
-# The UDP port WireGuard listens on for incoming VPN connections (Must match Security Group)
+# UDP port exposed publicly by the WireGuard EC2 security group.
 ListenPort = 51820
 
-# The Server's Private Key, decoded from Ansible's registered variable
+# Server private key generated during provisioning.
 PrivateKey = {{ server_private_key_raw.content | b64decode }}
 
-# Routing and Nat configuration
-# PostUp: Commands run when the interface starts
-# 1. Allow traffic forwarding through the WireGuard interface (%i)
-# 2. Perform NAT (Masquerade) to allow VPN clients to access the internet via the EC2's public IP
-# Run 'ip route | grep default' to check the VM's network interface name. 
-# For this instance (t4g), the name is 'ens5' due to the Nitro system, not 'eth0'.
+# PostUp Rules
+#
+# 1. Allow forwarding into the VPN tunnel.
+# 2. Allow forwarding out of the VPN tunnel.
+# 3. NAT VPN client traffic through the EC2 instance interface.
+#
+# VPN clients route RFC1918 platform traffic through this server:
+#
+#   10.0.0.0/8
+#
+# Which includes:
+#   prod       → 10.0.0.0/16
+#   dev        → 10.1.0.0/16
+#   wireguard  → 10.2.0.0/16
+#
+
 PostUp = iptables -A FORWARD -i %i -j ACCEPT
 PostUp = iptables -A FORWARD -o %i -j ACCEPT
-PostUp = iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
+PostUp = iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
 
-# PostDown: Cleanup commands run when the interface stops
-# 1. Remove the forwarding rule
-# 2. Remove the NAT/Masquerade rule
+# Cleanup rules when the interface stops.
+
 PostDown = iptables -D FORWARD -i %i -j ACCEPT
 PostDown = iptables -D FORWARD -o %i -j ACCEPT
-PostDown = iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
 
-# Loop through the list of clients provided by Ansible to create Peer blocks
+# VPN Clients
+#
+# Each client receives:
+#   - a unique key pair
+#   - a static VPN IP
+#   - routed access into platform RFC1918 networks
+
 {% for client in clients %}
 [Peer]
-# The Public Key of the specific client (phone, laptop, etc.)
+
+# Client public key
 PublicKey = {{ client_public_keys_raw.results[loop.index0].content | b64decode }}
 
-# The static internal VPN IP assigned to this specific client
+# Static VPN IP for this client
 AllowedIPs = {{ client_ip_map[client] }}/32
 
 {% endfor %}

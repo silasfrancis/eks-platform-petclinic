@@ -1,0 +1,6 @@
+# Restart WireGuard whenever configuration changes.
+
+- name: restart wireguard
+  systemd:
+    name: wg-quick@wg0
+    state: restarted

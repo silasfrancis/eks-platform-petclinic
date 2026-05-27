@@ -1,3 +1,22 @@
+# WireGuard Server Configuration
+#
+# Installs and configures a WireGuard VPN server used as the secure
+# administrative entry point into the platform.
+#
+# Architecture:
+#   Engineer Laptop
+#       ↓ WireGuard VPN
+#   WireGuard EC2 (Dedicated VPC)
+#       ↓ AWS Transit Gateway
+#   Dev / Prod VPCs
+#
+# Characteristics:
+#   - Dedicated WireGuard VPC
+#   - SSM-only administration (no SSH exposure)
+#   - Transit Gateway routed access
+#   - Dev ↔ Prod isolation enforced by TGW route tables
+#   - Split tunnel routing for RFC1918 platform traffic only
+
 # Install WireGuard
 - name: Install WireGuard packages
   dnf:
@@ -6,91 +25,151 @@
     state: present
     update_cache: yes
 
-# Ensure directories
-- name: Ensure WireGuard directory exists
+# Directory Structure
+- name: Ensure WireGuard server directory exists
   file:
-    path: /etc/wireguard
+    path: /etc/wireguard/server
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
-- name: Ensure clients directory exists
+- name: Ensure WireGuard client directory exists
   file:
     path: /etc/wireguard/clients
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
-# Server private key
+- name: Ensure WireGuard client subdirectories exist
+  file:
+    path: "/etc/wireguard/clients/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - private
+    - public
+    - configs
+
+# Detect Default Network Interface
+# Required for outbound NAT masquerading.
+- name: Get default outbound network interface
+  shell: ip route show default | awk '/default/ {print $5}'
+  register: default_interface
+  changed_when: false
+
+# Server Key Generation
 - name: Generate server private key
-  shell: wg genkey > /etc/wireguard/server-private.key
+  shell: wg genkey > /etc/wireguard/server/server-private.key
   args:
-    creates: /etc/wireguard/server-private.key
+    creates: /etc/wireguard/server/server-private.key
+  no_log: true
 
-# Server public key
 - name: Generate server public key
-  shell: wg pubkey < /etc/wireguard/server-private.key > /etc/wireguard/server-public.key
+  shell: |
+    wg pubkey < /etc/wireguard/server/server-private.key \
+    > /etc/wireguard/server/server-public.key
   args:
-    creates: /etc/wireguard/server-public.key
+    creates: /etc/wireguard/server/server-public.key
 
-# Client keys
-- name: Generate client keys
-  block:
-    - name: Generate client private key
-      shell: wg genkey > /etc/wireguard/clients/{{ item }}-private.key
-      args:
-        creates: /etc/wireguard/clients/{{ item }}-private.key
-      loop: "{{ clients }}"
+# Client Key Generation
+- name: Generate client private keys
+  shell: |
+    wg genkey > /etc/wireguard/clients/private/{{ item }}-private.key
+  args:
+    creates: /etc/wireguard/clients/private/{{ item }}-private.key
+  loop: "{{ clients }}"
+  no_log: true
 
-    - name: Generate client public key
-      shell: wg pubkey < /etc/wireguard/clients/{{ item }}-private.key > /etc/wireguard/clients/{{ item }}-public.key
-      args:
-        creates: /etc/wireguard/clients/{{ item }}-public.key
-      loop: "{{ clients }}"
+- name: Generate client public keys
+  shell: |
+    wg pubkey < /etc/wireguard/clients/private/{{ item }}-private.key \
+    > /etc/wireguard/clients/public/{{ item }}-public.key
+  args:
+    creates: /etc/wireguard/clients/public/{{ item }}-public.key
+  loop: "{{ clients }}"
 
-# IP forwarding
+# Kernel Networking Configuration
 - name: Enable IPv4 forwarding
   sysctl:
     name: net.ipv4.ip_forward
-    value: '1'
+    value: "1"
     state: present
     reload: yes
 
-# register keys for template configuration
+- name: Enable src_valid_mark for WireGuard
+  sysctl:
+    name: net.ipv4.conf.all.src_valid_mark
+    value: "1"
+    state: present
+    reload: yes
+
+# Read Keys Into Memory
+#
+# Keys are loaded so Jinja templates can dynamically render both
+# server and client WireGuard configurations.
 - name: Read server private key
   slurp:
-    src: /etc/wireguard/server-private.key
+    src: /etc/wireguard/server/server-private.key
   register: server_private_key_raw
+  no_log: true
+
+- name: Read server public key
+  slurp:
+    src: /etc/wireguard/server/server-public.key
+  register: server_public_key_raw
+
+- name: Read client private keys
+  slurp:
+    src: "/etc/wireguard/clients/private/{{ item }}-private.key"
+  loop: "{{ clients }}"
+  register: client_private_keys_raw
+  no_log: true
 
 - name: Read client public keys
   slurp:
-    src: "/etc/wireguard/clients/{{ item }}-public.key"
+    src: "/etc/wireguard/clients/public/{{ item }}-public.key"
   loop: "{{ clients }}"
   register: client_public_keys_raw
 
-# WireGuard configuration
+# Render WireGuard Server Configuration
 - name: Create WireGuard server configuration
   template:
     src: wg0.conf.j2
     dest: /etc/wireguard/wg0.conf
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
+  notify: restart wireguard
 
-# Enable and start WireGuard
+# Render Client Configurations
+#
+# Generates one standalone VPN config per client device.
+- name: Create WireGuard client configurations
+  template:
+    src: client.conf.j2
+    dest: "/etc/wireguard/clients/configs/{{ item }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ clients }}"
+  notify: restart wireguard
+
+# Enable and Start WireGuard
 - name: Enable and start WireGuard service
   systemd:
     name: wg-quick@wg0
     enabled: true
     state: started
 
-# Optional: Check WireGuard status
+# Verification
 - name: Show WireGuard status
   command: wg show wg0
   register: wg_status
-  ignore_errors: true
+  changed_when: false
 
 - name: Debug WireGuard status
   debug:

@@ -1,7 +1,8 @@
 # Root Taskfile for platform operations.
 #
-# This file exposes a unified entrypoint for infrastructure,
-# Kubernetes, WireGuard automation, validation, and local development.
+# Unified entrypoint for infrastructure provisioning,
+# Kubernetes bootstrap, WireGuard automation,
+# validation, and local development workflows.
 #
 # Usage:
 #   task --list
@@ -45,25 +46,31 @@ tasks:
     summary: |
       End-to-end platform provisioning workflow:
 
-        1. Shared resources
-           - AppRegistry metadata
-           - shared platform resources
+        1. Shared application registry resources
+           - AWS AppRegistry metadata
+           - platform metadata propagation
 
         2. Environment infrastructure
            - VPC
            - EKS
-           - IAM
+           - IAM and IRSA
            - RDS
            - platform infrastructure
 
-        3. Shared networking
-           - WireGuard VPN
-           - VPC peering
-           - shared routing
+        3. WireGuard infrastructure
+           - Dedicated WireGuard VPC
+           - VPN EC2 instance
+           - SSM management access
 
-        4. WireGuard configuration via Ansible over SSM
+        4. Transit Gateway networking
+           - TGW attachments
+           - TGW route tables
+           - RFC1918 routing
+           - explicit environment isolation
 
-        5. Kubernetes platform bootstrap
+        5. WireGuard configuration via Ansible over SSM
+
+        6. Kubernetes platform bootstrap
 
       Usage:
         task platform:up ENV=dev
@@ -74,13 +81,15 @@ tasks:
         msg: "ENV must be dev or prod"
 
     cmds:
-      - task: tf:resources:apply
+      - task: tf:app-registry:apply
 
       - task: tf:apply
         vars:
           ENV: "{{.ENV}}"
 
-      - task: tf:networking:apply
+      - task: tf:wireguard:apply
+
+      - task: tf:transit-gateway:apply
 
       - task: ansible:configure_wireguard
 

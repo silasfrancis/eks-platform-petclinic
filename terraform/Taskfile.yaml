@@ -1,14 +1,22 @@
-# Terraform operations per environment.
+# Terraform operations for platform infrastructure.
 #
-# Backend configuration is partial — bucket, key and region live in
-# state.conf per environment to avoid hardcoding backend settings.
+# Backend configuration is partial — bucket, key, and region
+# are defined in state.conf files per Terraform layer.
 #
 # Usage:
 #   task tf:bootstrap
-#   task tf:resources:init
+#
+#   task tf:app-registry:init
+#   task tf:app-registry:apply
+#
 #   task tf:init ENV=dev
-#   task tf:plan ENV=dev
-#   task tf:apply ENV=dev
+#   task tf:apply ENV=prod
+#
+#   task tf:wireguard:init
+#   task tf:wireguard:apply
+#
+#   task tf:transit-gateway:init
+#   task tf:transit-gateway:apply
 
 version: "3"
 
@@ -17,9 +25,10 @@ vars:
 
   ENV_DIR: "env/{{.ENV}}"
 
-  SHARED_BOOTSTRAP_DIR: "env/global/bootstrap"
-  SHARED_NETWORKING_DIR: "env/global/networking"
-  SHARED_RESOURCES_DIR: "env/global/resources"
+  BOOTSTRAP_DIR: "env/global/bootstrap"
+  APP_REGISTRY_DIR: "env/global/app-registry"
+  WIREGUARD_DIR: "env/global/networking/wireguard"
+  TRANSIT_GATEWAY_DIR: "env/global/networking/transit-gateway"
 
   TF_VARS: "terraform.tfvars"
   TF_PLAN: "tfplan"
@@ -27,8 +36,8 @@ vars:
 tasks:
 
   bootstrap:
-    desc: "Bootstrap Terraform state backend for any environment"
-    dir: "{{.SHARED_BOOTSTRAP_DIR}}"
+    desc: "Bootstrap Terraform backend infrastructure"
+    dir: "{{.BOOTSTRAP_DIR}}"
     cmds:
       - terraform init
       - terraform validate
@@ -80,70 +89,104 @@ tasks:
     cmds:
       - terraform output
 
-  resources:init:
-    desc: "Initialise shared resources Terraform"
-    dir: "{{.SHARED_RESOURCES_DIR}}"
+  app-registry:init:
+    desc: "Initialise App Registry Terraform"
+    dir: "{{.APP_REGISTRY_DIR}}"
     cmds:
       - terraform init -backend-config="state.conf" -reconfigure
 
-  resources:validate:
-    desc: "Validate shared resources Terraform"
-    dir: "{{.SHARED_RESOURCES_DIR}}"
+  app-registry:validate:
+    desc: "Validate App Registry Terraform"
+    dir: "{{.APP_REGISTRY_DIR}}"
     cmds:
       - terraform validate
 
-  resources:plan:
-    desc: "Plan shared platform resources"
-    dir: "{{.SHARED_RESOURCES_DIR}}"
+  app-registry:plan:
+    desc: "Plan App Registry infrastructure"
+    dir: "{{.APP_REGISTRY_DIR}}"
     cmds:
       - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
 
-  resources:apply:
-    desc: "Apply shared platform resources"
-    dir: "{{.SHARED_RESOURCES_DIR}}"
+  app-registry:apply:
+    desc: "Apply App Registry infrastructure"
+    dir: "{{.APP_REGISTRY_DIR}}"
     preconditions:
       - sh: "[ -f {{.TF_PLAN}} ]"
-        msg: "Run 'task tf:resources:plan' first"
+        msg: "Run 'task tf:app-registry:plan' first"
     cmds:
       - terraform apply "{{.TF_PLAN}}"
 
-  resources:destroy:
-    desc: "Destroy shared platform resources"
-    dir: "{{.SHARED_RESOURCES_DIR}}"
-    prompt: "Are you sure you want to destroy shared platform resources?"
+  app-registry:destroy:
+    desc: "Destroy App Registry infrastructure"
+    dir: "{{.APP_REGISTRY_DIR}}"
+    prompt: "Are you sure you want to destroy App Registry infrastructure?"
     cmds:
       - terraform destroy -var-file="{{.TF_VARS}}"
 
-  networking:init:
-    desc: "Initialise shared networking Terraform"
-    dir: "{{.SHARED_NETWORKING_DIR}}"
+  wireguard:init:
+    desc: "Initialise WireGuard Terraform"
+    dir: "{{.WIREGUARD_DIR}}"
     cmds:
       - terraform init -backend-config="state.conf" -reconfigure
 
-  networking:validate:
-    desc: "Validate shared networking Terraform"
-    dir: "{{.SHARED_NETWORKING_DIR}}"
+  wireguard:validate:
+    desc: "Validate WireGuard Terraform"
+    dir: "{{.WIREGUARD_DIR}}"
     cmds:
       - terraform validate
 
-  networking:plan:
-    desc: "Plan shared networking infrastructure"
-    dir: "{{.SHARED_NETWORKING_DIR}}"
+  wireguard:plan:
+    desc: "Plan WireGuard infrastructure"
+    dir: "{{.WIREGUARD_DIR}}"
     cmds:
       - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
 
-  networking:apply:
-    desc: "Apply shared networking infrastructure"
-    dir: "{{.SHARED_NETWORKING_DIR}}"
+  wireguard:apply:
+    desc: "Apply WireGuard infrastructure"
+    dir: "{{.WIREGUARD_DIR}}"
     preconditions:
       - sh: "[ -f {{.TF_PLAN}} ]"
-        msg: "Run 'task tf:networking:plan' first"
+        msg: "Run 'task tf:wireguard:plan' first"
     cmds:
       - terraform apply "{{.TF_PLAN}}"
 
-  networking:destroy:
-    desc: "Destroy shared networking infrastructure"
-    dir: "{{.SHARED_NETWORKING_DIR}}"
-    prompt: "Are you sure you want to destroy shared networking?"
+  wireguard:destroy:
+    desc: "Destroy WireGuard infrastructure"
+    dir: "{{.WIREGUARD_DIR}}"
+    prompt: "Are you sure you want to destroy WireGuard infrastructure?"
+    cmds:
+      - terraform destroy -var-file="{{.TF_VARS}}"
+
+  transit-gateway:init:
+    desc: "Initialise Transit Gateway Terraform"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    cmds:
+      - terraform init -backend-config="state.conf" -reconfigure
+
+  transit-gateway:validate:
+    desc: "Validate Transit Gateway Terraform"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    cmds:
+      - terraform validate
+
+  transit-gateway:plan:
+    desc: "Plan Transit Gateway infrastructure"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    cmds:
+      - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
+
+  transit-gateway:apply:
+    desc: "Apply Transit Gateway infrastructure"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    preconditions:
+      - sh: "[ -f {{.TF_PLAN}} ]"
+        msg: "Run 'task tf:transit-gateway:plan' first"
+    cmds:
+      - terraform apply "{{.TF_PLAN}}"
+
+  transit-gateway:destroy:
+    desc: "Destroy Transit Gateway infrastructure"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    prompt: "Are you sure you want to destroy Transit Gateway infrastructure?"
     cmds:
       - terraform destroy -var-file="{{.TF_VARS}}"

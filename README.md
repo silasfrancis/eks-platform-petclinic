@@ -1,8 +1,10 @@
 # PetClinic Platform
 
-Kubernetes platform on AWS EKS built around the Spring PetClinic microservices application.
+Production-style Kubernetes platform on AWS EKS built around the Spring PetClinic microservices application.
 
-The repository combines infrastructure provisioning, GitOps delivery, cluster networking, autoscaling, observability, runtime security, and operational tooling in a single environment.
+The repository combines infrastructure provisioning, GitOps delivery, cluster networking, autoscaling, observability, runtime security, and operational tooling across isolated production and development environments.
+
+Production and development environments are isolated at the Transit Gateway routing layer while remaining accessible through a dedicated WireGuard VPN VPC.
 
 ![Architecture](docs/diagrams/aws-architecture.drawio.svg)
 
@@ -15,9 +17,10 @@ The repository combines infrastructure provisioning, GitOps delivery, cluster ne
 - [Prerequisites](#prerequisites)
 - [Infrastructure Provisioning](#infrastructure-provisioning)
   - [Bootstrap Terraform State](#1-bootstrap-terraform-state)
-  - [Provision Shared Platform Resources](#2-provision-shared-platform-resources)
+  - [Provision Shared Application Registry Resources](#2-provision-shared-application-registry-resources)
   - [Provision Environment Infrastructure](#3-provision-environment-infrastructure)
-  - [Provision Shared Networking](#4-provision-shared-networking)
+  - [Provision WireGuard Infrastructure](#4-provision-wireguard-infrastructure)
+  - [Provision Transit Gateway Networking](#5-provision-transit-gateway-networking)
 - [WireGuard Setup](#wireguard-setup)
 - [Configure kubectl](#configure-kubectl)
 - [Configure Platform Domains](#configure-platform-domains)
@@ -39,7 +42,7 @@ The repository combines infrastructure provisioning, GitOps delivery, cluster ne
 | Ingress | Istio Gateway + ExternalDNS + cert-manager |
 | Node Scaling | Karpenter |
 | Pod Scaling | HPA + KEDA |
-| GitOps | ArgoCD (App of Apps) |
+| GitOps | ArgoCD (App of Apps, one instance per environment) |
 | Progressive Delivery | Argo Rollouts |
 | Policy Enforcement | Kyverno |
 | Runtime Security | Falco + Trivy Operator |
@@ -88,18 +91,19 @@ The repository combines infrastructure provisioning, GitOps delivery, cluster ne
 
 ## Infrastructure Provisioning
 
-Infrastructure is split into four layers:
+Infrastructure is split into five layers:
 
 1. Terraform backend state
-2. Shared platform resources
+2. Shared application registry resources
 3. Environment infrastructure
-4. Shared networking
+4. WireGuard infrastructure
+5. Transit Gateway networking
 
 ---
 
 ### 1. Bootstrap Terraform State
 
-Creates shared S3 backend infrastructure used by Terraform state.
+Creates S3 backend infrastructure used by Terraform state.
 
 ```bash
 task tf:bootstrap
@@ -107,26 +111,27 @@ task tf:bootstrap
 
 ---
 
-### 2. Provision Shared Platform Resources
+### 2. Provision Shared Application Registry Resources
 
-Shared resources are provisioned once and reused across environments.
+Shared metadata resources provisioned once and reused across environments.
 
 This layer currently manages:
+
 - AWS Service Catalog AppRegistry metadata
-- shared platform metadata propagation
+- shared resource metadata tagging
 
 ```bash
 # Initialise backend
-task tf:resources:init
+task tf:app-registry:init
 
 # Validate configuration
-task tf:resources:validate
+task tf:app-registry:validate
 
 # Review planned changes
-task tf:resources:plan
+task tf:app-registry:plan
 
 # Provision shared resources
-task tf:resources:apply
+task tf:app-registry:apply
 ```
 
 ---
@@ -136,6 +141,7 @@ task tf:resources:apply
 Provisions environment-specific AWS infrastructure.
 
 Includes:
+
 - VPC networking
 - EKS cluster
 - IAM and IRSA
@@ -144,52 +150,83 @@ Includes:
 
 ```bash
 # Initialise backend
-task tf:init ENV=prod
+task tf:init ENV=dev
 
 # Validate configuration
-task tf:validate ENV=prod
+task tf:validate ENV=dev
 
 # Review infrastructure changes
-task tf:plan ENV=prod
+task tf:plan ENV=dev
 
 # Provision infrastructure
-task tf:apply ENV=prod
+task tf:apply ENV=dev
+```
+
+Run once per environment.
+
+---
+
+### 4. Provision WireGuard Infrastructure
+
+Provision the dedicated WireGuard VPN VPC and EC2 instance.
+
+This layer is independent and may be provisioned before or after environment infrastructure.
+
+```bash
+# Initialise backend
+task tf:wireguard:init
+
+# Validate configuration
+task tf:wireguard:validate
+
+# Review planned changes
+task tf:wireguard:plan
+
+# Provision WireGuard infrastructure
+task tf:wireguard:apply
 ```
 
 ---
 
-### 4. Provision Shared Networking
+### 5. Provision Transit Gateway Networking
 
-Shared networking is deployed once and reused across environments.
+Provision shared Transit Gateway networking connecting all VPCs.
+
+This layer should be applied after all environment and WireGuard VPCs exist.
 
 Includes:
-- WireGuard VPN infrastructure
-- VPC peering
-- shared routing configuration
+
+- AWS Transit Gateway
+- TGW VPC attachments
+- TGW route tables
+- explicit dev ↔ prod isolation black-hole routes
+- RFC1918 routing
 
 ```bash
 # Initialise backend
-task tf:networking:init
+task tf:transit-gateway:init
 
 # Validate configuration
-task tf:networking:validate
+task tf:transit-gateway:validate
 
 # Review planned changes
-task tf:networking:plan
+task tf:transit-gateway:plan
 
-# Provision shared networking
-task tf:networking:apply
+# Provision Transit Gateway networking
+task tf:transit-gateway:apply
 ```
 
 ---
 
 ## WireGuard Setup
 
-WireGuard runs on a public EC2 instance inside the production VPC and is configured through Ansible over AWS Systems Manager Session Manager (SSM).
+WireGuard runs on a public EC2 instance inside a dedicated WireGuard VPC and is configured through Ansible over AWS Systems Manager Session Manager (SSM).
 
-The VPN server acts as the secure internal entry point for:
+The VPN server connects to all environments through the Transit Gateway, acting as the single secure entry point for:
+
 - direct access to the production cluster
-- routed access to the development cluster through VPC peering
+- direct access to the development cluster
+- isolated routing — dev and prod cannot reach each other
 
 ```bash
 # Install Ansible dependencies
@@ -207,7 +244,7 @@ task ansible:check_wireguard
 
 ### Prerequisites
 
-- shared networking infrastructure provisioned
+- WireGuard and Transit Gateway infrastructure provisioned
 - WireGuard EC2 instance running
 - AWS credentials configured locally
 - `inventory.yaml` populated with the EC2 instance ID
@@ -218,9 +255,12 @@ task ansible:check_wireguard
 2. Import it into the WireGuard client application
 3. Connect to the VPN before accessing internal services
 
-Once connected, the VPN provides access to:
-- production workloads directly through the prod VPC
-- development workloads through routed traffic over VPC peering
+Once connected, the VPN routes traffic to both environments through the Transit Gateway:
+
+- production workloads via the prod VPC attachment
+- development workloads via the dev VPC attachment
+
+Dev and prod environments cannot reach each other — isolation is enforced at the TGW route table level.
 
 SSH access is not exposed on the WireGuard server.
 All administration occurs through AWS Systems Manager Session Manager.
@@ -244,8 +284,7 @@ The IAM role above is granted EKS access through Terraform-managed access entrie
 
 The repository uses `lefrancis.org` as the example domain.
 
-Before deployment, update all platform ingress hostnames to match your
-own domain and DNS zones.
+Before deployment, update all platform ingress hostnames to match your own domain and DNS zones.
 
 ### Platform Ingress Gateway
 
@@ -319,6 +358,7 @@ goldilocks:
 ```
 
 Also ensure:
+
 - your DNS provider credentials are configured
 - Cloudflare or Route53 zones exist
 - the domain points to the platform load balancers
@@ -329,13 +369,13 @@ Also ensure:
 
 ```bash
 # Validate all Helm charts
-task validate ENV=prod
+task validate ENV=dev
 
 # Install base platform components
-task k8s:bootstrap ENV=prod CLUSTER_NAME=<cluster-name>
+task k8s:bootstrap ENV=dev CLUSTER_NAME=<cluster-name>
 
 # Deploy platform services and workloads
-task k8s:deploy_all ENV=prod
+task k8s:deploy-all ENV=dev
 ```
 
 ---
@@ -391,14 +431,15 @@ See `docs/RUNBOOK.md` for operational access instructions.
 
 ### Infrastructure & Storage
 
-- AWS EKS 1.35 — Managed Kubernetes control plane running ARM64 Graviton worker nodes
-- Karpenter 1.0.0 — Just-in-time compute provisioning with automated node consolidation
+- AWS EKS — Managed Kubernetes control plane running ARM64 Graviton worker nodes
+- Karpenter — Just-in-time compute provisioning with automated node consolidation
 - AWS RDS MySQL — Multi-AZ relational database layer
 - AWS S3 — Object storage for backups and Loki retention
 - AWS ECR — Private container registry with immutable image tags
 
 ### Networking & Edge Traffic
 
+- AWS Transit Gateway — Central hub connecting WireGuard, dev, and prod VPCs
 - Istio — Service mesh for mTLS and traffic routing
 - Cilium — eBPF-based networking and policy enforcement
 - AWS NLB — Public and internal load balancing
@@ -407,7 +448,7 @@ See `docs/RUNBOOK.md` for operational access instructions.
 
 ### GitOps & Progressive Delivery
 
-- ArgoCD — Declarative GitOps reconciliation
+- ArgoCD — Declarative GitOps reconciliation (one instance per environment)
 - Argo Rollouts — Canary deployments with automated analysis
 - GitHub Actions — Multi-arch CI/CD pipelines
 

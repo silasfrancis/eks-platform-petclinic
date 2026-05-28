@@ -103,9 +103,14 @@ Infrastructure is split into five layers:
 
 ### 1. Bootstrap Terraform State
 
-Creates S3 backend infrastructure used by Terraform state.
+Creates the S3 backend infrastructure used by Terraform state.
+
+> [!NOTE]
+> The bootstrap stack creates the remote Terraform backend itself.
+> Review the task summary before running for the first time.
 
 ```bash
+task tf:bootstrap --summary
 task tf:bootstrap
 ```
 

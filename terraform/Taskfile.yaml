@@ -37,12 +37,37 @@ tasks:
 
   bootstrap:
     desc: "Bootstrap Terraform backend infrastructure"
+    summary: |
+      Bootstraps the remote Terraform state backend infrastructure.
+
+        IMPORTANT:
+          This stack creates the S3 backend bucket used by all other Terraform environments.
+
+          Because the backend infrastructure does not yet exist during the
+          first deployment, you have two options:
+
+          1. Use an already existing temporary S3 backend bucket with:
+              terraform init -backend-config="state.conf" -reconfigure
+
+          2. Temporarily remove/comment the backend configuration from:
+              global/bootstrap/providers.tf
+
+            and also remove:
+              -backend-config="state.conf" -reconfigure 
+
+            from this bootstrap task so Terraform uses local state.
+
+          After the bootstrap resources are created:
+            - restore the backend configuration
+            - re-run terraform init with the new backend
+            - migrate local state into the newly created backend
+
     dir: "{{.BOOTSTRAP_DIR}}"
     cmds:
-      - terraform init
+      - terraform init -backend-config="state.conf" -reconfigure
       - terraform validate
       - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
-      - terraform apply "{{.TF_PLAN}}"
+      - terraform apply "{{.TF_PLAN }}"
 
   init:
     desc: "Initialise Terraform backend for {{.ENV}}"

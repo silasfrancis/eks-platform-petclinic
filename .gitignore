@@ -8,7 +8,7 @@
 *secrets.tfvars
 *state.conf
 *state.tfvars
-*ansible.log
+*ansible/logs/ansible.log
 *errored.tfstate
 *.tfstate*
 *silasfrancis-client.conf

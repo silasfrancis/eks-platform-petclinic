@@ -20,6 +20,8 @@ resource "aws_iam_role" "vpc_flow_logs" {
 }
 
 resource "aws_iam_policy" "vpc_flow_log_policy" {
+  count = var.enable_flow_logs ? 1 : 0
+
   name = "${var.vpc_name_prefix}-${var.env}-vpc-flow-log-policy"
 
   policy = jsonencode({
@@ -43,7 +45,7 @@ resource "aws_iam_policy" "vpc_flow_log_policy" {
 
 resource "aws_iam_role_policy_attachment" "vpc_flow_logs_attach" {
   count = var.enable_flow_logs ? 1 : 0
-  role       = aws_iam_role.vpc_flow_logs.name
-  policy_arn = aws_iam_policy.vpc_flow_log_policy.arn
+  role       = aws_iam_role.vpc_flow_logs[0].name
+  policy_arn = aws_iam_policy.vpc_flow_log_policy[0].arn
   depends_on = [ aws_iam_policy.vpc_flow_log_policy ]
 }

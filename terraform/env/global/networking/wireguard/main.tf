@@ -5,7 +5,7 @@ data "aws_availability_zones" "available" {
 
 #Wireguard VPC
 module "vpc" {
-  source = "../../modules/vpc"
+  source = "../../../../modules/vpc"
 
   env                      = var.environment
   vpc_name_prefix           = "wireguard-server"
@@ -19,7 +19,7 @@ module "vpc" {
 
 # Wireguard sever (EC2 instance) in prod VPC
 module "wireguard" {
-  source = "../../../modules/wireguard"
+  source = "../../../../modules/wireguard"
   
   vpc_id = module.vpc.vpc_id
   public_subnet_id  = module.vpc.public_subnet_ids[0]

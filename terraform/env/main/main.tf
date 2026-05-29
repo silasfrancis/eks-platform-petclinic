@@ -10,7 +10,7 @@ data "terraform_remote_state" "app-registry" {
   config = {
     bucket = var.global_remote_state_bucket
     region = var.aws_region
-    key    = var.global_resources_remote_state_key
+    key    = var.global_app_registry_remote_state_key
   }
 }
 
@@ -181,10 +181,12 @@ module "rds" {
 # Uses Envent bridge, SQS and DLQ for orchestration, and Lambda for execution
 # Cloudwatch Alarms for monitoring and alerting on DLQ messages (backup failures) with SNS topic for notifications to slack via Lambda subscription
 # Daily Summary reports for backups to Slack via webhook URL stored in Secrets Manager
+# Not enabled in the dev environment
 
 module "rds_ltr_backup" {
   source = "../../modules/rds-ltr-backup"
 
+  enable_rds_ltr_backup        = true
   env                          = var.environment
   app                          = var.app
   db_instance_identifier       = module.rds.db_identifier

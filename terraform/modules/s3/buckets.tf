@@ -2,13 +2,20 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  bucket_suffix = "${data.aws_caller_identity.current.account_id}-${data.aws_region.current.name}"
+  bucket_suffix = "${data.aws_caller_identity.current.account_id}-${data.aws_region.current.id}"
 
-  # Pure data configuration detailing unique traits for each application bucket
-  app_buckets = {
-    rds_backup = { name = "rds-backup",     force_destroy = false,  exp_days = 30, versioning = "Enabled" }
+  # Master data configuration detailing unique traits for each application bucket
+  all_app_buckets = {
+    rds_backup = { name = "rds-backup",     force_destroy = false, exp_days = 30, versioning = "Enabled" }
     loki       = { name = "loki-logs",      force_destroy = true,  exp_days = 30, versioning = "Suspended" }
     velero     = { name = "velero-backups", force_destroy = false, exp_days = 30, versioning = "Enabled" }
+  }
+
+  # Dynamically filters the map: skip rds_backup unless var.env is exactly "prod"
+  app_buckets = {
+    for bucket_key, bucket_config in local.all_app_buckets : 
+    bucket_key => bucket_config
+    if bucket_key != "rds_backup" || var.env == "prod"
   }
 }
 
@@ -20,7 +27,6 @@ resource "aws_s3_bucket" "this" {
   force_destroy = each.value.force_destroy
 
   tags = var.extended_tags
-
 }
 
 # Public Access Blocks

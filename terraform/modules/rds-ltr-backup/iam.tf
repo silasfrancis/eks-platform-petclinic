@@ -1,4 +1,6 @@
 resource "aws_iam_role" "lambda_rds_backup" {
+  count = var.enable_rds_ltr_backup ? 1 : 0
+
   name = "${var.app}-${var.env}-lambda-rds-backup-role"
 
   assume_role_policy = jsonencode({
@@ -10,10 +12,11 @@ resource "aws_iam_role" "lambda_rds_backup" {
     }]
   })
   tags = var.extended_tags
-
 }
 
 resource "aws_iam_role" "rds_export_role" {
+  count = var.enable_rds_ltr_backup ? 1 : 0
+
   name = "${var.app}-${var.env}-rds-snapshot-export-role"
 
   assume_role_policy = jsonencode({
@@ -32,12 +35,13 @@ resource "aws_iam_role" "rds_export_role" {
 }
 
 resource "aws_iam_policy" "lambda_backup" {
+  count = var.enable_rds_ltr_backup ? 1 : 0
+
   name = "${var.app}-${var.env}-lambda-backup-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-
       {
         Effect = "Allow"
         Action = [
@@ -46,13 +50,11 @@ resource "aws_iam_policy" "lambda_backup" {
         ]
         Resource = "*"
       },
-
       {
         Effect   = "Allow"
         Action   = "iam:PassRole"
-        Resource = aws_iam_role.rds_export_role.arn
+        Resource = aws_iam_role.rds_export_role[0].arn
       },
-
       {
         Effect = "Allow"
         Action = [
@@ -60,36 +62,36 @@ resource "aws_iam_policy" "lambda_backup" {
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes"
         ]
-        Resource = aws_sqs_queue.main.arn
+        Resource = aws_sqs_queue.main[0].arn
       }
     ]
   })
 
   tags = var.extended_tags
-
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_backup" {
-  role       = aws_iam_role.lambda_backup.name
-  policy_arn = aws_iam_policy.lambda_backup.arn
+  count = var.enable_rds_ltr_backup ? 1 : 0
 
-  depends_on = [
-    aws_iam_policy.lambda_backup
-  ]
+  role       = aws_iam_role.lambda_rds_backup[0].name
+  policy_arn = aws_iam_policy.lambda_backup[0].arn
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
-  role       = aws_iam_role.lambda_backup.name
+  count = var.enable_rds_ltr_backup ? 1 : 0
+
+  role       = aws_iam_role.lambda_rds_backup[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_policy" "rds_export_policy" {
+  count = var.enable_rds_ltr_backup ? 1 : 0
+
   name = "${var.app}-${var.env}-rds-snapshot-export-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-
       {
         Effect = "Allow"
         Action = [
@@ -106,7 +108,6 @@ resource "aws_iam_policy" "rds_export_policy" {
           "${var.rds_backup_bucket_arn}/*"
         ]
       },
-
       {
         Effect = "Allow"
         Action = [
@@ -122,14 +123,11 @@ resource "aws_iam_policy" "rds_export_policy" {
   })
 
   tags = var.extended_tags
-
 }
 
 resource "aws_iam_role_policy_attachment" "rds_export" {
-  role       = aws_iam_role.rds_export_role.name
-  policy_arn = aws_iam_policy.rds_export_policy.arn
+  count = var.enable_rds_ltr_backup ? 1 : 0
 
-  depends_on = [
-    aws_iam_policy.rds_export_policy
-  ]
+  role       = aws_iam_role.rds_export_role[0].name
+  policy_arn = aws_iam_policy.rds_export_policy[0].arn
 }

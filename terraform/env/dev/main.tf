@@ -10,7 +10,7 @@ data "terraform_remote_state" "app-registry" {
   config = {
     bucket = var.global_remote_state_bucket
     region = var.aws_region
-    key    = var.global_resources_remote_state_key
+    key    = var.global_app_registry_remote_state_key
   }
 }
 
@@ -77,7 +77,7 @@ module "vpc" {
   env                      = var.environment
   vpc_name_prefix           = var.app
   availability_zones       = data.aws_availability_zones.available.names
-  public_subnet_count       = 2
+  public_subnet_count       = 1
   private_subnet_count      = 2
   data_subnet_count         = 2
   nat_gateway_count         = 2
@@ -165,7 +165,7 @@ module "rds" {
   vpc_id                             = module.vpc.vpc_id
   data_subnet_ids                    = module.vpc.data_subnet_ids
   mysql_version                      = "8.0"
-  db_instance_class                  = "db.t3.medium"
+  db_instance_class                  = "db.t3.micro"
   allocated_storage                  = 20
   db_name                            = module.secret_manager.db_credentials["database"]
   db_username                        = module.secret_manager.db_credentials["username"]
@@ -181,10 +181,12 @@ module "rds" {
 # Uses Envent bridge, SQS and DLQ for orchestration, and Lambda for execution
 # Cloudwatch Alarms for monitoring and alerting on DLQ messages (backup failures) with SNS topic for notifications to slack via Lambda subscription
 # Daily Summary reports for backups to Slack via webhook URL stored in Secrets Manager
+# Not enabled in the dev environment
 
 module "rds_ltr_backup" {
   source = "../../modules/rds-ltr-backup"
 
+  enable_rds_ltr_backup        = false
   env                          = var.environment
   app                          = var.app
   db_instance_identifier       = module.rds.db_identifier

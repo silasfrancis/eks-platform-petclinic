@@ -5,7 +5,7 @@
 *plan.json
 *.terraform.lock.hcl
 *terraform.tfstate*
-*secrets.tfvars
+*secrets.auto.tfvars
 *state.conf
 *state.tfvars
 *ansible/logs/ansible.log

@@ -1,5 +1,9 @@
+data "aws_ssm_parameter" "al2023_arm" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-arm64"
+}
+
 resource "aws_instance" "wireguard_server" {
-  ami = data.aws_ami.al2023_arm.id
+  ami = data.aws_ssm_parameter.al2023_arm.value
   instance_type = "t4g.micro"
   subnet_id = var.public_subnet_id
   vpc_security_group_ids  = [aws_security_group.wireguard_server.id]
@@ -13,11 +17,13 @@ resource "aws_instance" "wireguard_server" {
     http_put_response_hop_limit = 1
   }
   root_block_device {
-    encrypted = true
-    kms_key_id = "alias/aws/ebs"
-    volume_size = 20
+    encrypted   = true
+    kms_key_id  = "alias/aws/ebs"
+    volume_size = 10
     volume_type = "gp3"
+    delete_on_termination = true
   }
+
   tags = merge({
     Name = "wireguard-server"
   }, var.extended_tags)

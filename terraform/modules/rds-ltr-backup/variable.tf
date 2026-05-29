@@ -1,3 +1,8 @@
+variable "enable_rds_ltr_backup" {
+  description = "Flag to enable RDS LTR backup resources. Set to true to create resources, false to skip."
+  type        = bool
+}
+
 variable "env" {
   type = string
 }

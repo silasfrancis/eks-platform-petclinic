@@ -6,6 +6,7 @@ locals {
 }
 
 data "archive_file" "processor" {
+  count       = var.enable_rds_ltr_backup ? 1 : 0
   type        = "zip"
   output_path = "${path.module}/build/processor.zip"
 
@@ -24,6 +25,7 @@ data "archive_file" "processor" {
 }
 
 data "archive_file" "dlq_inspector" {
+  count       = var.enable_rds_ltr_backup ? 1 : 0
   type        = "zip"
   output_path = "${path.module}/build/dlq_inspector.zip"
 
@@ -42,6 +44,7 @@ data "archive_file" "dlq_inspector" {
 }
 
 data "archive_file" "summary" {
+  count       = var.enable_rds_ltr_backup ? 1 : 0
   type        = "zip"
   output_path = "${path.module}/build/summary.zip"
 
@@ -60,21 +63,22 @@ data "archive_file" "summary" {
 }
 
 resource "aws_lambda_function" "processor" {
+  count            = var.enable_rds_ltr_backup ? 1 : 0
   function_name    = "${var.app}-${var.env}-rds-export-processor"
-  role             = aws_iam_policy.lambda_rds_backup.arn
-  filename         = data.archive_file.processor.output_path
-  source_code_hash = data.archive_file.processor.output_base64sha256
+  role             = aws_iam_role.lambda_rds_backup[0].arn
+  filename         = data.archive_file.processor[0].output_path
+  source_code_hash = data.archive_file.processor[0].output_base64sha256
   handler          = "handler.handler"
   runtime          = "python3.11"
   timeout          = 60
 
   environment {
     variables = {
-      S3_BUCKET        = var.rds_backup_bucket
-      IAMROLE_ARN      = aws_iam_role.rds_export_role.arn
-      KMS_KEY_ARN      = var.data_storage_kms_key_arn
-      DB_IDENTIFIER    = var.db_instance_identifier
-      ENV              = var.env
+      S3_BUCKET     = var.rds_backup_bucket
+      IAMROLE_ARN   = aws_iam_role.rds_export_role[0].arn
+      KMS_KEY_ARN   = var.data_storage_kms_key_arn
+      DB_IDENTIFIER = var.db_instance_identifier
+      ENV           = var.env
     }
   }
 
@@ -84,10 +88,11 @@ resource "aws_lambda_function" "processor" {
 }
 
 resource "aws_lambda_function" "dlq_inspector" {
+  count            = var.enable_rds_ltr_backup ? 1 : 0
   function_name    = "${var.app}-${var.env}-rds-dlq-inspector"
-  role             = aws_iam_policy.lambda_rds_backup.arn
-  filename         = data.archive_file.dlq_inspector.output_path
-  source_code_hash = data.archive_file.dlq_inspector.output_base64sha256
+  role             = aws_iam_role.lambda_rds_backup[0].arn
+  filename         = data.archive_file.dlq_inspector[0].output_path
+  source_code_hash = data.archive_file.dlq_inspector[0].output_base64sha256
   handler          = "handler.handler"
   runtime          = "python3.11"
   timeout          = 60
@@ -95,7 +100,7 @@ resource "aws_lambda_function" "dlq_inspector" {
   environment {
     variables = {
       SLACK_WEBHOOK = var.slack_webhook
-      DLQ_URL       = aws_sqs_queue.dlq.id
+      DLQ_URL       = aws_sqs_queue.dlq[0].id
     }
   }
 
@@ -105,10 +110,11 @@ resource "aws_lambda_function" "dlq_inspector" {
 }
 
 resource "aws_lambda_function" "summary" {
+  count            = var.enable_rds_ltr_backup ? 1 : 0
   function_name    = "${var.app}-${var.env}-rds-backup-summary"
-  role             = aws_iam_policy.lambda_rds_backup.arn
-  filename         = data.archive_file.summary.output_path
-  source_code_hash = data.archive_file.summary.output_base64sha256
+  role             = aws_iam_role.lambda_rds_backup[0].arn
+  filename         = data.archive_file.summary[0].output_path
+  source_code_hash = data.archive_file.summary[0].output_base64sha256
   handler          = "handler.handler"
   runtime          = "python3.11"
   timeout          = 60
@@ -116,7 +122,7 @@ resource "aws_lambda_function" "summary" {
   environment {
     variables = {
       SLACK_WEBHOOK = var.slack_webhook
-      DLQ_URL       = aws_sqs_queue.dlq.id
+      DLQ_URL       = aws_sqs_queue.dlq[0].id
     }
   }
 
@@ -126,22 +132,25 @@ resource "aws_lambda_function" "summary" {
 }
 
 resource "aws_lambda_event_source_mapping" "sqs_trigger" {
-  event_source_arn = aws_sqs_queue.main.arn
-  function_name    = aws_lambda_function.processor.arn
+  count            = var.enable_rds_ltr_backup ? 1 : 0
+  event_source_arn = aws_sqs_queue.main[0].arn
+  function_name    = aws_lambda_function.processor[0].arn
 }
 
 resource "aws_lambda_permission" "allow_sns" {
+  count         = var.enable_rds_ltr_backup ? 1 : 0
   statement_id  = "AllowExecutionFromSNS"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.dlq_inspector.function_name
+  function_name = aws_lambda_function.dlq_inspector[0].function_name
   principal     = "sns.amazonaws.com"
-  source_arn    = aws_sns_topic.alerts.arn
+  source_arn    = aws_sns_topic.alerts[0].arn
 }
 
 resource "aws_lambda_permission" "allow_eventbridge" {
+  count         = var.enable_rds_ltr_backup ? 1 : 0
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.summary.function_name
+  function_name = aws_lambda_function.summary[0].function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.daily_summary.arn
+  source_arn    = aws_cloudwatch_event_rule.daily_summary[0].arn
 }

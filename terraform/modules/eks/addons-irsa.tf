@@ -182,7 +182,9 @@ resource "aws_iam_role_policy_attachment" "managed" {
 }
 
 resource "aws_iam_role_policy_attachment" "custom" {
-  for_each   = aws_iam_policy.custom_irsa
+  for_each = { for k, v in local.irsa_roles : k => v 
+    if length(v.policy.actions) > 0 || can(v.extra_statements) 
+  }
   role       = aws_iam_role.irsa[each.key].name
-  policy_arn = each.value.arn
+  policy_arn = aws_iam_policy.custom_irsa[each.key].arn
 }

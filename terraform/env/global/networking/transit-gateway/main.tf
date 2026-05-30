@@ -33,7 +33,7 @@ data "terraform_remote_state" "dev_state" {
 
 # Transit Gateway
 module "transit_gateway" {
-  source = "../../../modules/transit-gateway"
+  source = "../../../../modules/transit-gateway"
 
   wireguard_public_route_table_ids = data.terraform_remote_state.wireguard_server.outputs.public_route_table_ids
   dev_private_route_table_ids = data.terraform_remote_state.dev_state.outputs.private_route_table_ids
@@ -45,5 +45,5 @@ module "transit_gateway" {
   dev_private_subnet_ids = data.terraform_remote_state.dev_state.outputs.private_subnet_ids
   prod_private_subnet_ids = data.terraform_remote_state.prod_state.outputs.private_subnet_ids
   dev_vpc_cidr = data.terraform_remote_state.dev_state.outputs.vpc_cidr_block
-  prod_vpc_cidr = data.terraform_remote_state.prod_state.outputs.vpc_cidr
+  prod_vpc_cidr = data.terraform_remote_state.prod_state.outputs.vpc_cidr_block
 }

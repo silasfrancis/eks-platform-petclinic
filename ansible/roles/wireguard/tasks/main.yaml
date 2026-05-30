@@ -22,6 +22,7 @@
   dnf:
     name:
       - wireguard-tools
+      - iptables-nft
     state: present
     update_cache: yes
 

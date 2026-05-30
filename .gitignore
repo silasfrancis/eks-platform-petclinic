@@ -7,7 +7,6 @@
 *terraform.tfstate*
 *secrets.auto.tfvars
 *state.conf
-*state.tfvars
 *ansible/logs/ansible.log
 *errored.tfstate
 *.tfstate*

@@ -80,8 +80,8 @@ module "vpc" {
   public_subnet_count       = 1
   private_subnet_count      = 2
   data_subnet_count         = 2
-  nat_gateway_count         = 2
-  enable_flow_logs          = true
+  nat_gateway_count         = 1
+  enable_flow_logs          = false
   infra_common_kms_key_arn = module.kms.kms_key_arn["infra_common"]
   extended_tags = local.extended_tags
 }

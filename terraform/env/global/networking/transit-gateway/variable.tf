@@ -3,9 +3,9 @@ variable "aws_region" {
   default = "us-east-2"
 }
 
-variable "wireguard_server_remote_state_bucket" {
+variable "global_remote_state_bucket" {
   type        = string
-  description = "The name of the wireguard server S3 state bucket"
+  description = "The name of the global S3 state bucket"
 }
 
 variable "wireguard_server_remote_state_key" {

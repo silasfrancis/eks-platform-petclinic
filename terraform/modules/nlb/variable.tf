@@ -10,7 +10,7 @@ variable "vpc_id" {
   type = string
 }
 
-variable "wireguard_sg_id" {
+variable "wireguard_vpc_cidr" {
   type = string
 }
 

@@ -7,9 +7,9 @@ variable "app" {
 }
 
 variable "cluster_version" {
-    type = string
-    default = "1.35"
-  
+  type    = string
+  default = "1.35"
+
 }
 
 variable "vpc_id" {
@@ -21,14 +21,14 @@ variable "private_subnets" {
 }
 
 variable "nlb_external_sg_id" {
-    type = string
+  type = string
 }
 
 variable "nlb_internal_sg_id" {
-    type = string
+  type = string
 }
 
-variable "wireguard_sg_id" {
+variable "wireguard_vpc_cidr" {
   type = string
 }
 

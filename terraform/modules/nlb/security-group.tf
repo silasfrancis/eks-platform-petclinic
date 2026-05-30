@@ -8,8 +8,8 @@ locals {
     }
     internal = {
       description   = "Security group for internal NLB"
-      cidr          = null
-      referenced_sg = var.wireguard_sg_id
+      cidr          = var.wireguard_vpc_cidr
+      referenced_sg = null
     }
   }
 

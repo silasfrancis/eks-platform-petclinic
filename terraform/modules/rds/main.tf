@@ -35,7 +35,7 @@ resource "aws_db_parameter_group" "mysql" {
 }
 
 locals {
-  is_prod = var.env == "prod"
+  is_prod = var.env == "production"
 
   # Backup retention — 7 days prod, 1 day dev
   backup_retention = local.is_prod ? 7 : 1
@@ -89,9 +89,9 @@ resource "aws_db_instance" "main" {
   enabled_cloudwatch_logs_exports = ["error", "slowquery"]
 
   # Performance Insights — free at 7 days, enable in both environments
-  performance_insights_enabled          = true
-  performance_insights_kms_key_id       = var.data_storage_kms_key_arn
-  performance_insights_retention_period = local.pi_retention
+  performance_insights_enabled          = local.is_prod 
+  performance_insights_kms_key_id       = local.is_prod ? var.data_storage_kms_key_arn : null
+  performance_insights_retention_period = local.is_prod ? local.pi_retention : 0
 
   deletion_protection = local.is_prod
 

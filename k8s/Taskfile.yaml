@@ -2,7 +2,7 @@ version: "3"
 
 vars:
   ENV: '{{.ENV | default "dev"}}'
-  CLUSTER_NAME: '{{.CLUSTER_NAME | default "dev-petclinic-cluster"}}'
+  CLUSTER_NAME: '{{.CLUSTER_NAME | default "petclinic-dev-cluster"}}'
 
 env:
   CILIUM_VERSION: "1.19.3"
@@ -18,7 +18,7 @@ tasks:
       - helm repo add cilium https://helm.cilium.io --force-update
       - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
       - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
-      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable --force-update
+      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable  --force-update
       - helm repo add external-secrets https://charts.external-secrets.io --force-update
       - helm repo add argo https://argoproj.github.io/argo-helm --force-update
       - helm repo update
@@ -29,7 +29,7 @@ tasks:
     cmds:
       - |
         helm upgrade --install cilium cilium/cilium \
-          --version $CILIUM_VERSION \
+          --version {{.CILIUM_VERSION}} \
           -n kube-system \
           --set cluster.name={{ .CLUSTER_NAME }} \
           --set hubble.enabled=true \
@@ -42,7 +42,7 @@ tasks:
     cmds:
       - |
         helm upgrade --install metrics-server metrics-server/metrics-server \
-          --version $METRICS_SERVER_VERSION \
+          --version {{.METRICS_SERVER_VERSION}} \
           -n kube-system \
           --values bootstrap/metrics-server/values.yaml
 

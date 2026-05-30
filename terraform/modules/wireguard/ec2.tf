@@ -8,7 +8,6 @@ resource "aws_instance" "wireguard_server" {
   subnet_id = var.public_subnet_id
   vpc_security_group_ids  = [aws_security_group.wireguard_server.id]
   iam_instance_profile = aws_iam_instance_profile.wireguard_server_profile.name 
-  associate_public_ip_address = false
   source_dest_check = false
 
   metadata_options {
@@ -30,6 +29,5 @@ resource "aws_instance" "wireguard_server" {
 
   lifecycle {
     # prevent_destroy = true
-    ignore_changes = [user_data, associate_public_ip_address] 
   }
 }

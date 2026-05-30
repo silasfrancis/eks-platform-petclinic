@@ -1,2 +1,2 @@
-environment = "networking"
+environment = "wireguard"
 aws_region  = "us-east-2"

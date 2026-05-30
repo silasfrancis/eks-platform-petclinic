@@ -18,7 +18,7 @@ module "vpc" {
 }
 
 # Wireguard sever (EC2 instance) in prod VPC
-module "wireguard" {
+module "wireguard_server" {
   source = "../../../../modules/wireguard"
   
   vpc_id = module.vpc.vpc_id

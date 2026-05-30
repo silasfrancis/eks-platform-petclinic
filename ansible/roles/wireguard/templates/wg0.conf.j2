@@ -20,58 +20,66 @@
 #   WireGuard → Prod  : allowed
 #   Dev ↔ Prod        : blocked
 #
+# Route table requirements (no NAT — routed model):
+#
+#   WireGuard VPC RT  : 10.2.0.0/16 → local (covered by VPC CIDR)
+#   Dev VPC RT        : 10.2.0.0/16 → TGW attachment (covered by 10.0.0.0/8 supernet route)
+#   Prod VPC RT       : 10.2.0.0/16 → TGW attachment (covered by 10.0.0.0/8 supernet route)
+#   TGW prod/dev RT   : 10.2.0.0/16 → WireGuard attachment (propagated automatically)
+#
+# Client subnet 10.2.1.0/24 sits inside the WireGuard VPC CIDR (10.2.0.0/16)
+# so it is covered by propagated TGW routes with no static routes required.
+#
 
 [Interface]
 
 # Internal VPN subnet used for connected clients.
-Address = 10.8.0.1/24
+# Sits inside wireguard VPC CIDR (10.2.0.0/16) — covered by TGW propagation.
+Address = 10.2.2.1/24
 
 # UDP port exposed publicly by the WireGuard EC2 security group.
 ListenPort = 51820
+
+# Prevent wg-quick from overwriting this templated config on shutdown.
+SaveConfig = false
 
 # Server private key generated during provisioning.
 PrivateKey = {{ server_private_key_raw.content | b64decode }}
 
 # PostUp Rules
 #
-# 1. Allow forwarding into the VPN tunnel.
-# 2. Allow forwarding out of the VPN tunnel.
-# 3. NAT VPN client traffic through the EC2 instance interface.
+# 1. FORWARD -i wg0 — accept packets from VPN clients into the forward chain.
+# 2. FORWARD -o wg0 — accept return packets forwarded back into the tunnel.
+# 3. MASQUERADE — rewrite client source IPs (10.2.2.0/24) to the EC2 ENI IP.
 #
-# VPN clients route RFC1918 platform traffic through this server:
+# MASQUERADE is required because 10.2.2.0/24 has no return route in prod/dev
+# VPCs — only the WireGuard VPC CIDR (10.2.0.0/16) is propagated via TGW.
+# Without it, reply packets from prod/dev are silently dropped.
 #
-#   10.0.0.0/8
-#
-# Which includes:
-#   prod       → 10.0.0.0/16
-#   dev        → 10.1.0.0/16
-#   wireguard  → 10.2.0.0/16
+# Trade-off: prod/dev see all VPN traffic as originating from the EC2 IP,
+# so per-client source IP visibility in SGs and flow logs is lost.
 #
 
-PostUp = iptables -A FORWARD -i %i -j ACCEPT
-PostUp = iptables -A FORWARD -o %i -j ACCEPT
-PostUp = iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
-
-# Cleanup rules when the interface stops.
+PostUp   = iptables -A FORWARD -i %i -j ACCEPT
+PostUp   = iptables -A FORWARD -o %i -j ACCEPT
+PostUp   = iptables -t nat -A POSTROUTING -s 10.2.2.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
 
 PostDown = iptables -D FORWARD -i %i -j ACCEPT
 PostDown = iptables -D FORWARD -o %i -j ACCEPT
-PostDown = iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -s 10.2.2.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
 
 # VPN Clients
 #
 # Each client receives:
 #   - a unique key pair
-#   - a static VPN IP
+#   - a static VPN IP in 10.2.1.0/24
 #   - routed access into platform RFC1918 networks
 
 {% for client in clients %}
 [Peer]
 
-# Client public key
-PublicKey = {{ client_public_keys_raw.results[loop.index0].content | b64decode }}
-
-# Static VPN IP for this client
+# {{ client }}
+PublicKey  = {{ client_public_keys_raw.results[loop.index0].content | b64decode }}
 AllowedIPs = {{ client_ip_map[client] }}/32
 
 {% endfor %}

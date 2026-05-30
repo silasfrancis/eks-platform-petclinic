@@ -9,4 +9,4 @@ all:
     wireguard:
       hosts:
         instance:
-          ansible_host: i-0a085d357943193df
+          ansible_host: i-00e88f3227ec7d6e7

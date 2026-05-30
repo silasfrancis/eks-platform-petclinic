@@ -23,6 +23,13 @@ resource "aws_vpc_security_group_ingress_rule" "wireguard_ingress_rule" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "wireguard_from_platform" {
+  description       = "Allow return traffic from platform VPCs to VPN clients"
+  security_group_id = aws_security_group.wireguard_server.id
+  ip_protocol       = "-1"
+  cidr_ipv4         = "10.0.0.0/8"
+}
+
 resource "aws_vpc_security_group_egress_rule" "wireguard_egress_all" {
 
   description       = "Allow all outbound traffic for VPN clients"

@@ -162,6 +162,8 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "spokes_learn_self" {
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spokes[each.key].id
 }
 
+
+
 # Explicit Black-Hole Routes
 # Makes dev <-> prod isolation explicit rather than relying on the absence of a propagated route.
 

@@ -1,4 +1,4 @@
 clients:
   - silasfrancis
 client_ip_map:
-  silasfrancis: 10.8.0.2
+  silasfrancis: 10.2.2.2

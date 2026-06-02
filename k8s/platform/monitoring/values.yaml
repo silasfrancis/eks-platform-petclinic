@@ -8,7 +8,7 @@
 #   prometheus-cloudwatch-exporter: RDS metrics from CloudWatch
 
 kube-prometheus-stack:
-  fullnameOverride: "platform-monitoring"
+  fullnameOverride: "monitoring"
 
   crds:
     upgradeJob:
@@ -398,8 +398,8 @@ alloy:
             source_labels = ["__meta_kubernetes_pod_container_name"]
             target_label  = "container"
           }
-          # Only collect logs from these namespaces — reduces Loki ingest volume
-          # Add namespaces as needed
+          // Only collect logs from these namespaces — reduces Loki ingest volume
+          // Add namespaces as needed
           rule {
             source_labels = ["__meta_kubernetes_namespace"]
             regex         = "petclinic|monitoring|istio-ingress"
@@ -412,7 +412,7 @@ alloy:
           forward_to = [loki.process.parse.receiver]
         }
 
-        # Parse JSON log lines and extract level label for filtering in Grafana
+        // Parse JSON log lines and extract level label for filtering in Grafana
         loki.process "parse" {
           stage.json {
             expressions = {
@@ -520,11 +520,11 @@ ingress:
     stacks:
       - name: grafana
         host: grafana.lefrancis.org
-        serviceName: kube-prometheus-stack-grafana
+        serviceName: monitoring-grafana
         port: 80
       - name: prometheus
         host: prometheus.lefrancis.org
-        serviceName: kube-prometheus-stack-prometheus
+        serviceName: monitoring-prometheus
         port: 9090
       - name: loki
         host: loki.lefrancis.org

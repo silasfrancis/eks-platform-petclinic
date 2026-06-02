@@ -31,13 +31,16 @@ clusterIssuer:
 # SecretStore — ESO store reference for secrets used in this chart
 secretStore:
   enabled: true
+  name: ""
   kind: SecretStore
   awsRegion: us-east-2
 
 # ExternalSecret — pulls security-related secrets from AWS Secrets Manager
 externalSecret:
   enabled: true
+  name: ""
   refreshInterval: 1h
+  targetSecret: platform-security-secrets
   creationPolicy: Owner
   data: []
     # Slack webhook for Falcosidekick security alerts
@@ -174,17 +177,35 @@ trivy-operator:
 # Falco — eBPF-based runtime threat detection
 # Monitors syscalls for suspicious behaviour: shell spawns, unexpected network
 # connections, privilege escalation, sensitive file access etc.
-# modern_ebpf driver: no kernel module required
+# Falco platform security configuration
+# Leverages modern ebpf to support tracking on kernels 6.x and above.
+
 falco:
+# Falco platform security configuration
+# Hardened layout for modern_ebpf on Amazon Linux 2023 / Kernel 6.x
+
   fullnameOverride: "falco"
+  tty: true
+
+  # Modern Driver Configuration
   driver:
     enabled: true
     kind: modern_ebpf
+    modernEbpf:
+      leastPrivileged: false
+      bufSizePreset: 4
+      sysfsMount: true
     loader:
-      enabled: false    # not needed for modern_ebpf
+      enabled: false # Not needed for modern_ebpf
 
-  # tty: true flushes logs immediately — useful for seeing alerts in real time
-  tty: true
+  # Keep resources sensible for your nodes
+  resources:
+    requests:
+      cpu: 50m       
+      memory: 128Mi   
+    limits:
+      cpu: 1000m      
+      memory: 512Mi   
 
   # Falco runs as a DaemonSet — must tolerate all node taints
   # including SPOT nodes to monitor all workloads in the cluster
@@ -202,12 +223,8 @@ falco:
       value: "true"
       effect: NoSchedule
 
-  collectors:
-    enabled: true
-    # kubernetes collector enriches Falco alerts with pod name, namespace,
-    # labels and other Kubernetes metadata — makes alerts actionable
-    kubernetes:
-      enabled: true
+  nodeSelector: {}
+  affinity: {}
 
   metrics:
     enabled: true
@@ -219,6 +236,12 @@ falco:
     libbpfStatsEnabled: true
     service:
       create: true
+
+  plugins:
+    # Enable the default container metadata plugin
+    - name: container
+      library_path: libcontainer.so
+  load_plugins: [container]
 
   falco:
     # json_output required for Falcosidekick to parse and route alerts
@@ -239,14 +262,6 @@ falco:
     # syslog disabled as it is noisy - alerts are sent via falcosidekick
     syslog_output:
       enabled: false
-
-  resources:
-    requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1024Mi
 
   serviceMonitor:
     create: true
@@ -269,6 +284,10 @@ falco:
     enabled: true
     webui:
       enabled: true
+      redis:
+        storageEnabled: true
+        storageSize: 1Gi
+        storageClass: "gp3"
     fullfqdn: false
     config:
       # Slack webhook URL pulled from ESO-created secret
@@ -312,7 +331,68 @@ falco:
   # the file is mounted via .Files.Get from the chart's falco-rules/ directory
   customRules:
     petclinic-rules.yaml: |
-      {{ .Files.Get "falco-rules/petclinic-rules.yaml" | indent 4 }}
+      - list: petclinic_allowed_binaries
+        items: [java, tini, sh, bash, ps, ls, cat, grep]
+
+      - list: petclinic_allowed_outbound_ports
+        items: [8080, 8081, 8082, 8083, 3306, 9090, 3100]
+
+      - macro: is_petclinic
+        condition: k8s.ns.name = "petclinic" and container.id != "host"
+
+      - macro: petclinic_java_process
+        condition: proc.name = "java"
+
+      - rule: Shell spawned in petclinic container
+        desc: Detects when a shell (bash/sh) is started inside the petclinic namespace.
+        condition: spawned_process and is_petclinic and shell_procs
+        output: >
+          Alert: Shell spawned in petclinic
+          (user=%user.name pod=%k8s.pod.name ns=%k8s.ns.name shell=%proc.name parent=%proc.pname cmdline=%proc.cmdline)
+        priority: CRITICAL
+        tags: [petclinic, shell]
+
+      - rule: Unexpected outbound connection from petclinic
+        desc: Alerts if petclinic containers talk to external IPs on unusual ports.
+        condition: >
+          outbound and is_petclinic
+          and not (fd.sport in (petclinic_allowed_outbound_ports))
+          and not fd.sip.name in (rfc_1918_addresses)
+        output: >
+          Alert: Unexpected outbound connection
+          (pod=%k8s.pod.name ns=%k8s.ns.name connection=%fd.name cmdline=%proc.cmdline)
+        priority: WARNING
+        tags: [petclinic, network]
+
+      - rule: Sensitive file read in petclinic
+        desc: Alerts if any process in the petclinic namespace tries to read sensitive system files.
+        condition: open_read and is_petclinic and fd.name in (sensitive_files)
+        output: >
+          Alert: Sensitive file access
+          (user=%user.name pod=%k8s.pod.name file=%fd.name cmdline=%proc.cmdline)
+        priority: ERROR
+        tags: [petclinic, file]
+
+      - rule: Unexpected process in petclinic container
+        desc: Alerts if any binary runs that isn't on our approved "petclinic_allowed_binaries" list.
+        condition: spawned_process and is_petclinic and not proc.name in (petclinic_allowed_binaries)
+        output: >
+          Alert: Process Drift Detected
+          (proc=%proc.name parent=%proc.pname pod=%k8s.pod.name cmdline=%proc.cmdline)
+        priority: WARNING
+        tags: [petclinic, drift]
+
+      - rule: Database credential file accessed in petclinic
+        desc: Alerts if something other than the Java app touches the mounted K8s secrets.
+        condition: >
+          open_read and is_petclinic
+          and fd.name startswith "/var/run/secrets"
+          and not petclinic_java_process
+        output: >
+          Alert: Possible Secret Theft Attempt
+          (proc=%proc.name pod=%k8s.pod.name file=%fd.name user=%user.name)
+        priority: ERROR
+        tags: [petclinic, credentials]
 
 # cert-manager — TLS certificate lifecycle management
 # Issues and renews the wildcard certificate for *.lefrancis.org
@@ -320,7 +400,7 @@ falco:
 cert-manager:
   crds:
     # Install CRDs as part of Helm install — keeps CRDs in sync with chart version
-    enabled: true
+    enabled: false
     # keep: true prevents accidental CRD deletion if chart is uninstalled
     # deleting CRDs would delete ALL certificates in the cluster
     keep: true
@@ -398,3 +478,16 @@ cert-manager:
   # Delete certificate Secret when Certificate resource is deleted
   # prevents orphaned TLS secrets accumulating in the cluster
   enableCertificateOwnerRef: true
+
+# Virtual service config for platform security dashboards
+ingress:
+  enabled: true
+  gateway: istio-ingress/internal-istio-ingressgateway
+
+  security:
+    stacks:
+      - name: falcosidekick-ui
+        host: falcosidekick.lefrancis.org
+        serviceName: security-falcosidekick-ui 
+        port: 2802
+ 

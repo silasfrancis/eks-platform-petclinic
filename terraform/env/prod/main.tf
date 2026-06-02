@@ -165,7 +165,7 @@ module "rds" {
   vpc_id                             = module.vpc.vpc_id
   data_subnet_ids                    = module.vpc.data_subnet_ids
   mysql_version                      = "8.0"
-  db_instance_class                  = "db.t3.medium"
+  db_instance_class                  = "db.t3.micro"
   allocated_storage                  = 20
   db_name                            = module.secret_manager.db_credentials["database"]
   db_username                        = module.secret_manager.db_credentials["username"]

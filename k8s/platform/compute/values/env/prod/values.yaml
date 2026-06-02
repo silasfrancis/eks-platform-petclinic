@@ -1,17 +1,20 @@
 cluster:
-  name: "prod-petclinic-cluster"
+  name: "petclinic-prod-cluster"
   env: "prod"
   app: "petclinic"
-  nodeRoleName: "prod-petclinic-node-role"
-  kmsKeyArn: "arn:aws:kms:us-east-2:509194952955:key/87f2dcf9-4687-49f0-83ae-0e929cd13fde"
+  nodeRoleName: "petclinic-prod-node-role"
+  kmsKeyArn: "arn:aws:kms:us-east-2:509194952955:key/f76399c1-a973-41a7-a1da-90373b6583c3"
+  clusterDNS:
+    - "10.100.0.10"
 
 karpenter:
   serviceAccount:
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-karpenter-irsa"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-karpenter-irsa"
   settings:
-    clusterName: "prod-petclinic-cluster"
-    interruptionQueue: "prod-petclinic-cluster-karpenter-interruption"
+    clusterName: "petclinic-prod-cluster"
+    clusterEndpoint: "https://8C0491674BC91150DE734F11E91F2A1D.gr7.us-east-2.eks.amazonaws.com"
+    interruptionQueue: "petclinic-prod-cluster-karpenter-interruption"
 
 nodePools:
   on-demand:

@@ -46,4 +46,6 @@ module "transit_gateway" {
   prod_private_subnet_ids = data.terraform_remote_state.prod_state.outputs.private_subnet_ids
   dev_vpc_cidr = data.terraform_remote_state.dev_state.outputs.vpc_cidr_block
   prod_vpc_cidr = data.terraform_remote_state.prod_state.outputs.vpc_cidr_block
+  wireguard_vpc_cidr = data.terraform_remote_state.wireguard_server.outputs.vpc_cidr_block
+  wireguard_client_cidr = "10.2.2.0/24"
 }

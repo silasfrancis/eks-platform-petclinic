@@ -1,4 +1,4 @@
-kube-prometheus-stack:  
+kube-prometheus-stack:
   grafana:
     admin:
       existingSecret: "platform-monitoring-secrets"
@@ -12,9 +12,9 @@ kube-prometheus-stack:
     config:
       global:
         resolve_timeout: 5m
-        smtp_smarthost: 'smtp.zoho.com:587'
-        smtp_from: 'alerts@lefrancis.org'
-        smtp_auth_username: 'silas@lefrancis.org'
+        smtp_smarthost: "smtp.zoho.com:587"
+        smtp_from: "alerts@lefrancis.org"
+        smtp_auth_username: "silas@lefrancis.org"
         smtp_auth_password_file: /etc/alertmanager/secrets/platform-monitoring-secrets/email-password
         smtp_require_tls: true
 
@@ -23,20 +23,20 @@ prometheus-cloudwatch-exporter:
     create: true
     name: cloudwatch-exporter
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-cloudwatchExporter-irsa"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-cloud-watch-exporter-irsa"
 
 loki:
   loki:
     storage:
       bucketNames:
-        chunks: "prod-petclinic-loki-logs20260420124634552800000001"
-        ruler: "prod-petclinic-loki-logs20260420124634552800000001"
-        admin: "prod-petclinic-loki-logs20260420124634552800000001"
+        chunks: "prod-loki-logs-509194952955-us-east-2"
+        ruler: "prod-loki-logs-509194952955-us-east-2"
+        admin: "prod-loki-logs-509194952955-us-east-2"
   serviceAccount:
     create: true
     name: loki
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-loki-irsa"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-loki-irsa"
 
 secretStore:
   enabled: true
@@ -50,7 +50,7 @@ externalSecret:
   target:
     name: platform-monitoring-secrets
     creationPolicy: Owner
-  data: 
+  data:
     - secretKey: admin-user
       remoteRef:
         key: prod/platform-monitoring
@@ -68,12 +68,11 @@ externalSecret:
         key: prod/platform-monitoring
         property: email-password
 
-
 serviceAccount:
   create: true
-  name: "platform-monitoring-sa"        
-  annotations: 
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-platformMonitoringSecrets-irsa"
+  name: "platform-monitoring-sa"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-platform-monitoring-secrets-irsa"
 
 ingress:
   enabled: true

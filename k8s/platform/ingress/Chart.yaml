@@ -15,3 +15,12 @@ dependencies:
     version: 1.20.0
     repository: https://kubernetes-sigs.github.io/external-dns/
     alias: external-dns-route53
+
+  - name: gateway
+    version: 1.29.1
+    repository: https://istio-release.storage.googleapis.com/charts
+    alias: public-gateway
+  - name: gateway
+    version: 1.29.1
+    repository: https://istio-release.storage.googleapis.com/charts
+    alias: internal-gateway

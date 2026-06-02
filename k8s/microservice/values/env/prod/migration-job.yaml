@@ -9,7 +9,7 @@ image:
   tag: "c62caca0"
   digest: "sha256:dfc4bd54fc1d0ba9949e2d066abc02ce85263acce20b89292adeab4f69e07183"
   pullPolicy: IfNotPresent
-  
+
 controller:
   type: job
 
@@ -23,7 +23,7 @@ configServer:
 
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-appSecrets-irsa"
 
 secretStore:
   enabled: true
@@ -51,4 +51,3 @@ externalSecret:
   env:
     plain:
       FLYWAY_URL: "jdbc:mysql://$(MYSQL_HOST):3306/$(MYSQL_DATABASE)"
-

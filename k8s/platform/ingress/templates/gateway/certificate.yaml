@@ -1,20 +1,19 @@
-{{- range $name, $cfg := .Values.gateways }}
-{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
-{{- if $cfg.certificate.enabled }}
----
+{{- range $name, $config := .Values.customCertificates }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ include "gateway.certificateName" $ctx }}
-  namespace: {{ $.Release.Namespace }}
+  name: {{ include "platform-ingress.resourceName" (dict "context" $ "gwName" $name) }}
+  namespace: {{ $.Release.Namespace | quote }}
   labels:
-    {{- include "gateway.labels" $ctx | nindent 4 }}
+    {{- include "platform-ingress.labels" (dict "context" $ "gwName" $name) | nindent 4 }}
 spec:
-  secretName: {{ include "gateway.certificateSecretName" $ctx }}
-  issuerRef:
-    name: {{ $cfg.certificate.spec.issuerRef.name }}
-    kind: {{ $cfg.certificate.spec.issuerRef.kind }}
+  secretName: {{ $config.secretName }}
   dnsNames:
-    {{- include "gateway.certificateDnsNames" $ctx | nindent 4 }}
-{{- end }}
+    {{- range $config.hosts }}
+    - {{ . | quote }}
+    {{- end }}
+  issuerRef:
+    name: {{ $config.issuerRefName }}
+    kind: ClusterIssuer
+---
 {{- end }}

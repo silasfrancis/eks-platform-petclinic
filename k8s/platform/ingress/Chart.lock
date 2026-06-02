@@ -5,5 +5,11 @@ dependencies:
 - name: external-dns
   repository: https://kubernetes-sigs.github.io/external-dns/
   version: 1.20.0
-digest: sha256:d862932e761e1625b26b6e1b89d1e12647711e4ee36e97c0f8ab31435da940d2
-generated: "2026-04-21T12:58:42.136882451+01:00"
+- name: gateway
+  repository: https://istio-release.storage.googleapis.com/charts
+  version: 1.29.1
+- name: gateway
+  repository: https://istio-release.storage.googleapis.com/charts
+  version: 1.29.1
+digest: sha256:c01998ef0df7858d6598004c18cae6f98a4dcfe5db3f1516339515284d8562af
+generated: "2026-06-02T03:09:55.470822041+01:00"

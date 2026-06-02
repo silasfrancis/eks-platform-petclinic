@@ -2,17 +2,17 @@
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: {{ .Release.Name }}-monitoring
+  name: {{ .Release.Name }}-falcosidekick-ui
   namespace: {{ .Release.Namespace }}
 spec:
   hosts:
-    {{- range .Values.ingress.monitoring.stacks }}
+    {{- range .Values.ingress.security.stacks }}
     - {{ .host | quote }}
     {{- end }}
   gateways:
     - {{ .Values.ingress.gateway | quote }}
   http:
-    {{- range .Values.ingress.monitoring.stacks }}
+    {{- range .Values.ingress.security.stacks }}
     - name: {{ .name | quote }}
       match:
         - headers:

@@ -5,9 +5,14 @@ clusterIssuer:
     name: "platform-security-secrets"
     key: "cloudflare-api-token"
 
+falco:
+  nodeSelector:
+    falco-enabled: "true"
+
 externalSecret:
   enabled: true
-  data: 
+  targetSecret: "platform-security-secrets"
+  data:
     - secretKey: slack-webhook-url
       remoteRef:
         key: prod/platform-monitoring
@@ -19,6 +24,6 @@ externalSecret:
 
 serviceAccount:
   create: true
-  name: "platform-security-sa"          
+  name: "platform-security-sa"
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-platformSecuritySecrets-irsa"    
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-platform-security-secrets-irsa"

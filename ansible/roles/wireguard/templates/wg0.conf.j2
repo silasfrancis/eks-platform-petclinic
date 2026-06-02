@@ -50,23 +50,16 @@ PrivateKey = {{ server_private_key_raw.content | b64decode }}
 #
 # 1. FORWARD -i wg0 — accept packets from VPN clients into the forward chain.
 # 2. FORWARD -o wg0 — accept return packets forwarded back into the tunnel.
-# 3. MASQUERADE — rewrite client source IPs (10.2.2.0/24) to the EC2 ENI IP.
 #
-# MASQUERADE is required because 10.2.2.0/24 has no return route in prod/dev
-# VPCs — only the WireGuard VPC CIDR (10.2.0.0/16) is propagated via TGW.
-# Without it, reply packets from prod/dev are silently dropped.
-#
-# Trade-off: prod/dev see all VPN traffic as originating from the EC2 IP,
-# so per-client source IP visibility in SGs and flow logs is lost.
-#
+# Return routing is handled by explicit static routes in each
+# spoke TGW route table (var.wireguard_client_cidr in the ./terraform/modules/transit-gateway module → WireGuard attachment).
+# Source IPs are preserved for flow log attribution and network policy enforcement.
 
 PostUp   = iptables -A FORWARD -i %i -j ACCEPT
 PostUp   = iptables -A FORWARD -o %i -j ACCEPT
-PostUp   = iptables -t nat -A POSTROUTING -s 10.2.2.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
 
 PostDown = iptables -D FORWARD -i %i -j ACCEPT
 PostDown = iptables -D FORWARD -o %i -j ACCEPT
-PostDown = iptables -t nat -D POSTROUTING -s 10.2.2.0/24 -o {{ default_interface.stdout }} -j MASQUERADE
 
 # VPN Clients
 #

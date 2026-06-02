@@ -4,9 +4,9 @@ dependencies:
   version: 0.20.0
 - name: falco
   repository: https://falcosecurity.github.io/charts
-  version: 4.8.0
+  version: 9.0.0
 - name: cert-manager
   repository: https://charts.jetstack.io
   version: v1.20.1
-digest: sha256:579e223663a17a54f63822c07fa8b83761365114c8b5b64112435c03e2c2ec89
-generated: "2026-04-21T16:19:04.648957879+01:00"
+digest: sha256:f1f0c90e0e47773337cbf1cf9cd2cbd35de06eecaa30ff1b4a4d57ceebf112a7
+generated: "2026-06-02T09:16:55.186442867+01:00"

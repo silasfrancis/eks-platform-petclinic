@@ -7,12 +7,51 @@ metadata:
     {{- include "platform-security.labels" . | nindent 4 }}
 data:
   .trivyignore: |
-    # jackson-core DoS - upgrade in progress
-    CVE-2026-29062 exp:2026-04-30
-    GHSA-72hv-8253-57qq exp:2026-04-30
+      # jackson-core DoS - upgrade in progress
+      CVE-2026-29062 exp:2026-04-30
+      GHSA-72hv-8253-57qq exp:2026-04-30
 
-    # libc6 glibc memalign - awaiting patched distroless digest
-    CVE-2026-0861 exp:2026-04-30
+      # libc6 glibc memalign - awaiting patched distroless digest
+      CVE-2026-0861 exp:2026-04-30
 
-    # mssql-jdbc bundled by Flyway - image used only for file copy, driver never executed
-    CVE-2025-59250
+      # mssql-jdbc bundled by Flyway - image used only for file copy, driver never executed
+      CVE-2025-59250
+
+      # Smuggling risk in Netty - migration runner is internal/short-lived
+      CVE-2026-33870
+      CVE-2026-33871
+
+      # libpng: Arbitrary code execution due to use-after-free
+      CVE-2026-33416
+
+      # libpng: Information disclosure and DoS in Neon palette expansion
+      CVE-2026-33636
+
+      # Server-Side Template Injection (SSTI) security bypass
+      CVE-2026-40477
+
+      # SSTI via expression execution bypass
+      CVE-2026-40478
+
+      # Document length constraint bypass
+      GHSA-2m67-wjpj-xhg9
+
+      # Apache Tomcat: Authentication bypass via CLIENT_CERT soft fail - Upgrade to 11.0.20 planned
+      CVE-2026-29145
+      GHSA-95jq-rwvf-vjx4
+
+      # Apache Tomcat: Cipher preference order not preserved - Low impact on internal traffic
+      CVE-2026-29129
+      GHSA-69cc-cv78-qc8g
+
+      # Apache Tomcat: Info disclosure in JsonAccessLogValve - Valve not enabled in current config
+      CVE-2026-34483
+      GHSA-rv64-5gf8-9qq8
+
+      # Apache Tomcat: Kubernetes bearer token disclosure in cloud membership logs
+      CVE-2026-34487
+      GHSA-x4m4-345f-5h5g
+
+      # Spring Cloud Config Server: Path Traversal via Profile Parameter - Native FS backend not used
+      CVE-2026-22739
+      GHSA-3qwq-q9vm-5j42

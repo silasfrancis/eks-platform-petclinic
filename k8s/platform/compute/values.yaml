@@ -39,7 +39,7 @@ cluster:
   # CoreDNS ClusterIP — default for EKS with 172.20.0.0/16 service CIDR
   # Verify: kubectl get svc kube-dns -n kube-system -o jsonpath='{.spec.clusterIP}'
   clusterDNS:
-    - "172.20.0.10"
+    - "10.100.0.10"
   # Availability zones to spread nodes across
   availabilityZones:
     - us-east-2a
@@ -270,7 +270,10 @@ karpenter:
     interruptionQueue: ""
 
   postInstallHook:
-    enabled: false
+    image:
+      repository: bitnami/kubectl
+      tag: "1.30"
+      digest: ""
 
   # Karpenter must only run on the bootstrap node group
   # Running on nodes it manages causes a circular dependency

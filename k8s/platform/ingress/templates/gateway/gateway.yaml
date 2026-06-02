@@ -1,18 +1,35 @@
-{{- range $name, $cfg := .Values.gateways }}
-{{- $ctx := dict "name" $name "gw" $cfg "root" $ }}
-{{- if $cfg.gateway.enabled }}
----
-apiVersion: networking.istio.io/v1beta1
+{{- range $name, $config := .Values.customCertificates }}
+apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
-  name: {{ include "gateway.resourceName" $ctx }}
-  namespace: {{ $.Release.Namespace }}
+  name: {{ include "platform-ingress.resourceName" (dict "context" $ "gwName" $name) }}
+  namespace: {{ $.Release.Namespace | quote }}
   labels:
-    {{- include "gateway.labels" $ctx | nindent 4 }}
+    {{- include "platform-ingress.labels" (dict "context" $ "gwName" $name) | nindent 4 }}
 spec:
   selector:
-    {{- include "gateway.selectorLabels" $ctx | nindent 4 }}
+    {{- include "platform-ingress.selectorLabels" (dict "context" $ "gwName" $name) | nindent 4 }}
   servers:
-    {{- include "gateway.servers" $ctx | nindent 4 }}
-{{- end }}
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        {{- range $config.hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      tls:
+        httpsRedirect: true
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        {{- range $config.hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      tls:
+        mode: SIMPLE
+        credentialName: {{ $config.secretName }}
+---
 {{- end }}

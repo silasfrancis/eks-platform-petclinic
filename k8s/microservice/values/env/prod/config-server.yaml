@@ -24,7 +24,7 @@ configServer:
   enabled: false
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-appSecrets-irsa"
 secretStore:
   enabled: true
 externalSecret:

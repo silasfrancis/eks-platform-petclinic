@@ -21,3 +21,11 @@ output "public_route_table_ids" {
 output "private_route_table_ids" {
   value = module.vpc.private_route_table_ids
 }
+
+output "irsa_role_arns" {
+  value = module.irsa.irsa_role_arns
+}
+
+output "alb_controller_irsa_role_arn" {
+  value = module.irsa.alb_controller_irsa_role_arn
+}

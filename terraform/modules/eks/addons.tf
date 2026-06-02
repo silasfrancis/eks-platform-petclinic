@@ -37,7 +37,7 @@ resource "aws_eks_addon" "vpc_cni" {
   resolve_conflicts_on_update = "PRESERVE"
 
   configuration_values = jsonencode({
-    enableNetworkPolicy = "false"
+    enableNetworkPolicy = "true"
     env = {
       ENABLE_PREFIX_DELEGATION = "true"
       WARM_PREFIX_TARGET       = "1"

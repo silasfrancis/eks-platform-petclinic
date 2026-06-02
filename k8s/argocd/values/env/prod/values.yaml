@@ -7,7 +7,7 @@ argo-cd:
         url: "https://github.com/silasfrancis/eks-platform-petclinic"
         name: petclinic-gitops
         type: git
- # secret.create: false — ESO creates argocd-notifications-secret from AWS Secrets Manager
+  # secret.create: false — ESO creates argocd-notifications-secret from AWS Secrets Manager
   notifications:
     enabled: true
     nodeSelector:
@@ -100,18 +100,16 @@ argo-cd:
           - on-health-degraded
           - on-sync-failed
 
-
 serviceAccount:
   create: true
   name: ""
-  annotations: 
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-argocdSecrets-irsa"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-argocdSecrets-irsa"
 
 externalSecrets:
   enabled: true
   refreshInterval: 1h
   secrets:
-  
     repo:
       target:
         name: argocd-repo-secret
@@ -140,12 +138,11 @@ externalSecrets:
             key: prod/argocd
             property: slack-token
 
-
 argocdBootstrap:
   envName: main
 
   defaults:
-    repoURL: 
+    repoURL:
     targetRevision: main
     destination:
       server: https://kubernetes.default.svc

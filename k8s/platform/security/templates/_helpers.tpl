@@ -45,15 +45,27 @@ ClusterIssuer name
 Resource names
 */}}
 {{- define "platform-security.secretStoreName" -}}
+{{- if .Values.secretStore.name -}}
+{{- .Values.secretStore.name -}}
+{{- else -}}
 {{- printf "%s-secret-store" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end }}
 
 {{- define "platform-security.externalSecretName" -}}
+{{- if .Values.externalSecret.name -}}
+{{- .Values.externalSecret.name -}}
+{{- else -}}
 {{- printf "%s-external-secrets" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
 {{- end }}
 
 {{- define "platform-security.secretName" -}}
+{{- if .Values.externalSecret.targetSecret -}}
+{{- .Values.externalSecret.targetSecret -}}
+{{- else -}}
 {{- printf "%s-secrets" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end }}
 
 {{/*

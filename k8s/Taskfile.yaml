@@ -2,40 +2,28 @@ version: "3"
 
 vars:
   ENV: '{{.ENV | default "dev"}}'
-  CLUSTER_NAME: '{{.CLUSTER_NAME | default "petclinic-dev-cluster"}}'
 
 env:
-  CILIUM_VERSION: "1.19.3"
+  AWS_REGION: "us-east-2"
   METRICS_SERVER_VERSION: "3.12.2"
   ISTIO_VERSION: "1.29.1"
   ARGOCD_VERSION: "v9.5.0"
   ARGO_ROLLOUTS_VERSION: "v2.40.5"
+  CERT_MANAGER_VERSION: "v1.12.1"
+  AWS_LB_CONTROLLER_VERSION: "3.3.0"
 
 tasks:
   setup_helm_repos:
     desc: "Add helm repos"
     cmds:
-      - helm repo add cilium https://helm.cilium.io --force-update
       - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
       - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
       - helm repo add fairwinds-stable https://charts.fairwinds.com/stable  --force-update
       - helm repo add external-secrets https://charts.external-secrets.io --force-update
       - helm repo add argo https://argoproj.github.io/argo-helm --force-update
+      - helm repo add jetstack https://charts.jetstack.io --force-update
+      - helm repo add eks https://aws.github.io/eks-charts --force-update
       - helm repo update
-
-
-  install_cilium:
-    desc: "Install Cilium with Hubble"
-    cmds:
-      - |
-        helm upgrade --install cilium cilium/cilium \
-          --version {{.CILIUM_VERSION}} \
-          -n kube-system \
-          --set cluster.name={{ .CLUSTER_NAME }} \
-          --set hubble.enabled=true \
-          --set hubble.relay.enabled=true \
-          --set hubble.ui.enabled=true \
-          --values bootstrap/cilium/values.yaml
 
   install_metrics_server:
     desc: "Install metrics-server"
@@ -46,6 +34,25 @@ tasks:
           -n kube-system \
           --values bootstrap/metrics-server/values.yaml
 
+  install_aws_lb_controller:
+    desc: "Install AWS Load Balancer Controller"
+    requires:
+      vars: [CLUSTER_NAME, ENV]
+    cmds:
+      - |
+        LBC_ROLE_ARN=$(terraform -chdir=../terraform/env/{{.ENV}} output -raw alb_controller_irsa_role_arn)
+        VPC_ID=$(terraform -chdir=../terraform/env/{{.ENV}} output -raw vpc_id)
+        
+        helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+          --version {{.AWS_LB_CONTROLLER_VERSION}} \
+          -n kube-system \
+          --set clusterName={{.CLUSTER_NAME}} \
+          --set serviceAccount.create=true \
+          --set serviceAccount.name=aws-load-balancer-controller \
+          --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$LBC_ROLE_ARN \
+          --set region={{.AWS_REGION}} \
+          --set vpcId=$VPC_ID
+
   install_external_secrets:
     desc: "Install External Secrets"
     cmds:
@@ -53,8 +60,7 @@ tasks:
         helm upgrade --install external-secrets \
           external-secrets/external-secrets \
           -n external-secrets \
-          --create-namespace \
-          --wait
+          --create-namespace 
 
   install_vpa:
     desc: "Install VPA (Recommendation mode)"
@@ -64,8 +70,7 @@ tasks:
           -n vpa \
           --create-namespace \
           --set updater.enabled=false \
-          --set admissionController.enabled=false \
-          --wait
+          --set admissionController.enabled=false 
 
   install_istio_base:
     desc: "Install Istio base"
@@ -74,7 +79,7 @@ tasks:
         helm upgrade --install istio-base istio/base \
           -n istio-system \
           --create-namespace \
-          --version $ISTIO_VERSION
+          --version {{.ISTIO_VERSION}}
 
   install_istiod:
     desc: "Install Istiod"
@@ -82,7 +87,8 @@ tasks:
       - |
         helm upgrade --install istiod istio/istiod \
           -n istio-system \
-          --version $ISTIO_VERSION
+          --create-namespace \
+          --version {{.ISTIO_VERSION}} 
 
   install_argocd:
     desc: "Install ArgoCD"
@@ -91,7 +97,7 @@ tasks:
         helm upgrade --install argocd argo/argo-cd \
           --namespace argocd \
           --create-namespace \
-          --version $ARGOCD_VERSION \
+          --version {{.ARGOCD_VERSION}} \
           --set server.extraArgs={--insecure}
 
   install_rollouts:
@@ -101,13 +107,28 @@ tasks:
         helm upgrade --install argo-rollouts argo/argo-rollouts \
           --namespace argo-rollouts \
           --create-namespace \
-          --version $ARGO_ROLLOUTS_VERSION
+          --version {{.ARGO_ROLLOUTS_VERSION}}
+
+  install_cert_manager:
+    desc: "Install cert-manager with CRDs"
+    cmds:
+      - |
+        helm upgrade --install cert-manager jetstack/cert-manager \
+          --namespace cert-manager \
+          --create-namespace \
+          --version {{.CERT_MANAGER_VERSION}} \
+          --set installCRDs=true
 
   get_argo_pwd:
     desc: "Retrieve ArgoCD initial admin password"
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
 
+  bootstrap_storage_and_namespaces:
+    desc: "Apply Namespaces and StorageClass"
+    cmds:
+      - kubectl apply -f bootstrap/namespaces.yaml
+      - kubectl apply -f bootstrap/storage-class.yaml
 
   deploy_argocd_apps:
     desc: "Deploy ArgoCD app-of-apps chart"
@@ -129,7 +150,7 @@ tasks:
       PLATFORM_CHARTS:
         - autoscaling
         - backup
-        - compute
+        - karpenter
         - ingress
         - monitoring
         - security
@@ -138,7 +159,7 @@ tasks:
       - for: { var: PLATFORM_CHARTS }
         cmd: |
           helm upgrade --install {{.ITEM}} k8s/platform/{{.ITEM}}/charts \
-            --namespace platform \
+            --namespace {{.ITEM}} \
             --create-namespace \
             --values k8s/platform/{{.ITEM}}/values.yaml \
             --values k8s/platform/{{.ITEM}}/values/env/{{.ENV}}/values.yaml
@@ -180,18 +201,22 @@ tasks:
             --values k8s/microservice/values.yaml \
             --values k8s/microservice/values/env/{{.ENV}}/{{.ITEM}}.yaml
 
-  bootstrap:
+  full_cluster_bootstrap:
     desc: "Full cluster bootstrap"
+    requires:
+      vars: [CLUSTER_NAME, ENV]
     cmds:
-      - task: setup_helm_repos
-      - task: install_cilium
+      # - task: setup_helm_repos
       - task: install_metrics_server
+      - task: install_aws_lb_controller
+        vars: { CLUSTER_NAME: "{{.CLUSTER_NAME}}", ENV: "{{.ENV}}" }
       - task: install_external_secrets
       - task: install_vpa
       - task: install_istio_base
       - task: install_istiod
       - task: install_rollouts
       - task: install_argocd
+      - task: apply_bootstrap_namespaces
       
   deploy_all:
     desc: "Deploy platform, policies, and microservices for ENV"

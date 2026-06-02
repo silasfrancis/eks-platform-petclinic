@@ -35,7 +35,7 @@ resource "aws_db_parameter_group" "mysql" {
 }
 
 locals {
-  is_prod = var.env == "prod"
+  is_prod = var.env == "prodd"
 
   # Backup retention — 7 days prod, 1 day dev
   backup_retention = local.is_prod ? 7 : 1

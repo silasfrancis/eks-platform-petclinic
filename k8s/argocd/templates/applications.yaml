@@ -18,7 +18,7 @@
 
     {{- $fullName := "" -}}
     {{- if $appCfg.isServiceGroup }}
-      {{- $fullName = printf "%s-%s" $name | trunc 63 | trimSuffix "-" }}
+      {{- $fullName = printf "%s" $name | trunc 63 | trimSuffix "-" }}
     {{- else }}
       {{- $fullName = printf "%s" $appName | trunc 63 | trimSuffix "-" }}
     {{- end }}

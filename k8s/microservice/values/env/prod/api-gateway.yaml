@@ -19,8 +19,8 @@ vpa:
   enabled: true
 virtualService:
   enabled: true
-  hosts: petclinic.internal.lefrancis.org
-  gateways: istio-ingress/public-istio-ingressgateway
+  hosts: petclinic.lefrancis.org
+  gateways: istio-ingress/ingress-public-gateway
   routes:
     - name: customers-service
       match:

@@ -6,6 +6,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "microservice.labels" . | nindent 4 }}
+  {{- $annotations := include "microservice.workloadAnnotations" . | fromYaml }}
+  {{- if $annotations }}
+  annotations:
+    {{- toYaml $annotations | nindent 4 }}
+  {{- end }}
 spec:
   {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.replicaCount | default 1 }}

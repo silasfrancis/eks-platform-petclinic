@@ -127,6 +127,16 @@ volumesConfig:
     - name: tomcat-tmp
       emptyDir: {}
 
+# Configuration overrides for the injected Istio Envoy proxy containers
+istioEnvoyOverrides:
+  enabled: true
+  requests:
+    cpu: "10m"
+    memory: "32Mi"
+  limits:
+    cpu: "100m"
+    memory: "128Mi"
+    
 # Config Server
 # Controls whether SPRING_CONFIG_IMPORT is injected.
 # Disable for config-server itself (it IS the config server).
@@ -352,7 +362,9 @@ job:
   activeDeadlineSeconds: 600
   completions: 1
   parallelism: 1
-  annotations: {}
+
+# Additional annotation to add to the metadata of resources
+annotations: {}
 
 # Analysis Template — Prometheus-based automated canary validation.
 # Argo Rollouts queries Prometheus during canary steps to validate

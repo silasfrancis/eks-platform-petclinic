@@ -20,6 +20,7 @@ dependencies:
     version: 1.29.1
     repository: https://istio-release.storage.googleapis.com/charts
     alias: public-gateway
+    
   - name: gateway
     version: 1.29.1
     repository: https://istio-release.storage.googleapis.com/charts

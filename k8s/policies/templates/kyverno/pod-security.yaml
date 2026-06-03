@@ -17,7 +17,7 @@ spec:
     background:
       enabled: false
     mode: Kubernetes
-  validationActions: [DENY]
+  validationActions: [Deny]
   failurePolicy: Fail
   matchConstraints:
     resourceRules:

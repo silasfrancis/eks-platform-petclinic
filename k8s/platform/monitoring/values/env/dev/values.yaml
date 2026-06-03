@@ -1,4 +1,4 @@
-kube-prometheus-stack:  
+kube-prometheus-stack:
   grafana:
     admin:
       existingSecret: "platform-monitoring-secrets"
@@ -12,9 +12,9 @@ kube-prometheus-stack:
     config:
       global:
         resolve_timeout: 5m
-        smtp_smarthost: 'smtp.zoho.com:587'
-        smtp_from: 'alerts@lefrancis.org'
-        smtp_auth_username: 'silas@lefrancis.org'
+        smtp_smarthost: "smtp.zoho.com:587"
+        smtp_from: "alerts@lefrancis.org"
+        smtp_auth_username: "silas@lefrancis.org"
         smtp_auth_password_file: /etc/alertmanager/secrets/platform-monitoring-secrets/email-password
         smtp_require_tls: true
 
@@ -50,7 +50,7 @@ externalSecret:
   target:
     name: platform-monitoring-secrets
     creationPolicy: Owner
-  data: 
+  data:
     - secretKey: admin-user
       remoteRef:
         key: "dev/platform-monitoring"
@@ -68,11 +68,10 @@ externalSecret:
         key: "dev/platform-monitoring"
         property: email-password
 
-
 serviceAccount:
   create: true
-  name: "platform-monitoring"        
-  annotations: 
+  name: "platform-monitoring"
+  annotations:
     eks.amazonaws.com/role-arn: ""
 
 ingress:
@@ -82,14 +81,14 @@ ingress:
   monitoring:
     stacks:
       - name: grafana
-        host: grafana-dev.lefrancis.org
+        host: grafana-dev.internal.lefrancis.org
         serviceName: kube-prometheus-stack-grafana
         port: 80
       - name: prometheus
-        host: prometheus-dev.lefrancis.org
+        host: prometheus-dev.internal.lefrancis.org
         serviceName: kube-prometheus-stack-prometheus
         port: 9090
       - name: loki
-        host: loki-dev.lefrancis.org
+        host: loki-dev.internal.lefrancis.org
         serviceName: loki-gateway
         port: 80

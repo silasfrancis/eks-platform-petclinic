@@ -38,33 +38,33 @@ app.kubernetes.io/managed-by: {{ .context.Release.Service }}
 {{ include "platform-ingress.selectorLabels" . }}
 {{- end }}
 
-{{/*external-dns custom resources*/}}
+{{/* external-dns custom resources (Namespaced to prevent dependency collisions) */}}
+
 {{/*
 SecretStore name — referenced by ExternalSecret secretStoreRef
 */}}
-{{- define "external-dns.secretStoreName" -}}
+{{- define "platform-ingress.externalDnsSecretStoreName" -}}
 {{- .Values.secretStore.name | default "external-dns-secretstore" }}
 {{- end }}
 
 {{/*
 ExternalSecret name
 */}}
-{{- define "external-dns.externalSecretName" -}}
+{{- define "platform-ingress.externalDnsExternalSecretName" -}}
 {{- .Values.externalSecret.name | default "external-dns-secrets" }}
 {{- end }}
 
 {{/*
 Secret name — created by ExternalSecret secretStoreRef.target.name
 */}}
-{{- define "external-dns.secretName" -}}
+{{- define "platform-ingress.externalDnsSecretName" -}}
 {{- .Values.externalSecret.target.name | default "external-dns-secrets" }}
 {{- end }}
 
-
 {{/*
-Service account name for external dns secret store
+Service account name for external dns secret store 
 */}}
-{{- define "external-dns.serviceAccountName" -}}
+{{- define "platform-ingress.esoServiceAccountName" -}}
 {{- if .Values.esoServiceAccount -}}
   {{- .Values.esoServiceAccount.name -}}
 {{- else -}}

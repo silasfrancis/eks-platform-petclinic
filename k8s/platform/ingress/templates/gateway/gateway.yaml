@@ -6,6 +6,10 @@ metadata:
   namespace: {{ $.Release.Namespace | quote }}
   labels:
     {{- include "platform-ingress.labels" (dict "context" $ "gwName" $name) | nindent 4 }}
+  {{- if $config.gatewayAnnotations }}
+  annotations:
+    {{- toYaml $config.gatewayAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     {{- include "platform-ingress.selectorLabels" (dict "context" $ "gwName" $name) | nindent 4 }}

@@ -1,0 +1,344 @@
+# ArgoCD Helm subchart configuration
+# Ref: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+
+global:
+  # OVERRIDE: update to match your actual ArgoCD hostname
+  domain: argocd.internal.lefrancis.org
+
+  logging:
+    format: json # json for structured logging — readable by Loki
+    level: info
+
+  # All ArgoCD components run on ON_DEMAND nodes
+  # ArgoCD is critical infrastructure — SPOT interruption would break deployments
+  nodeSelector:
+    node-type: on-demand
+
+  affinity:
+    podAntiAffinity: soft # prefer spreading pods across nodes, not required
+    nodeAffinity:
+      type: hard # hard requirement on nodeSelector above
+
+crds:
+  install: true # install ArgoCD CRDs as part of chart — keeps them in sync
+  keep: true # never delete CRDs on uninstall — would delete all Applications
+
+configs:
+  cm:
+    # How often ArgoCD checks Git for changes
+    timeout.reconciliation: 120s
+    # Jitter prevents all apps reconciling simultaneously — spreads API server load
+    timeout.reconciliation.jitter: 60s
+
+    # admin.enabled: true — local admin user for initial setup
+    # Disable after SSO is configured in production
+    admin.enabled: true
+
+    # exec.enabled: true — allows kubectl exec into pods from ArgoCD UI
+    # Useful for debugging — disable if security policy prohibits it
+    exec.enabled: true
+
+    # Ignore /status changes on all resources
+    # Controllers constantly update status — ignoring prevents constant drift detection
+    resource.customizations.ignoreResourceUpdates.all: |
+      jsonPointers:
+        - /status
+
+    # Ignore Argo Rollouts notification annotations
+    # These are updated by the notification controller on every reconcile
+    resource.customizations.ignoreResourceUpdates.argoproj.io_Rollout: |
+      jqPathExpressions:
+        - '.metadata.annotations."notified.notifications.argoproj.io"'
+
+    # Resource exclusions — high-churn objects that ArgoCD should never manage
+    # Endpoints/EndpointSlices: updated by kube-proxy constantly
+    # Lease: node heartbeats — thousands per minute
+    # Cilium/Kyverno internals: managed by their own controllers
+    resource.exclusions: |
+      - apiGroups:
+        - ''
+        - discovery.k8s.io
+        kinds:
+        - Endpoints
+        - EndpointSlice
+      - apiGroups:
+        - coordination.k8s.io
+        kinds:
+        - Lease
+      - apiGroups:
+        - cilium.io
+        kinds:
+        - CiliumIdentity
+        - CiliumEndpoint
+        - CiliumEndpointSlice
+      - apiGroups:
+        - kyverno.io
+        - reports.kyverno.io
+        kinds:
+        - PolicyReport
+        - ClusterPolicyReport
+        - EphemeralReport
+        - ClusterEphemeralReport
+        - AdmissionReport
+        - ClusterAdmissionReport
+        - BackgroundScanReport
+        - ClusterBackgroundScanReport
+
+  # Update URL to your actual repository
+  repositories:
+    petclinic-gitops:
+      url: ""
+      name: petclinic-gitops
+      type: git
+
+  rbac:
+    # Default role for unauthenticated/unknown users — read only
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, get, *, allow
+      p, role:admin, repositories, *, *, allow
+      p, role:admin, logs, get, *, allow
+      p, role:admin, exec, create, */*, allow
+      g, admin, role:admin
+    scopes: "[groups]"
+
+# ArgoCD API server — serves the UI and CLI
+server:
+  replicas: 1
+  nodeSelector:
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # ClusterIP — VirtualService routes argocd.internal.lefrancis.org → this service
+  service:
+    type: ClusterIP
+  extraArgs:
+    - --insecure
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        # OVERRIDE: must match your Prometheus release label
+        release: platform-monitoring
+    rules:
+      enabled: true
+      additionalLabels:
+        release: platform-monitoring
+      spec:
+        # Fires if any app has not synced for 12 hours
+        - alert: ArgoAppNotSynced
+          expr: argocd_app_info{sync_status!="Synced"} == 1
+          for: 12h
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} not synced for 12h"
+        # Fires within 15 minutes if any app becomes unhealthy
+        - alert: ArgoAppHealthDegraded
+          expr: argocd_app_info{health_status!="Healthy"} == 1
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} health is {{ $labels.health_status }}"
+        # Fires if ArgoCD has no applications — likely means ArgoCD itself is down
+        - alert: ArgoAppMissing
+          expr: absent(argocd_app_info) == 1
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ArgoCD has no applications — may be down"
+
+# Application controller — reconciles desired vs actual cluster state
+controller:
+  replicas: 1
+  nodeSelector:
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: platform-monitoring
+
+# Repo server — clones Git repos and renders Helm/Kustomize manifests
+repoServer:
+  replicas: 1
+  nodeSelector:
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  readinessProbe: {}
+
+  livenessProbe: {}
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: platform-monitoring
+
+# ApplicationSet controller — generates Applications from templates
+# Used if you adopt ApplicationSets in future (not currently used)
+applicationSet:
+  replicas: 1
+  nodeSelector:
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: platform-monitoring
+
+# Dex disabled — no SSO configured
+# Enable and configure OIDC if adding SSO (GitHub, Google etc)
+dex:
+  enabled: false
+
+# Redis — ArgoCD uses Redis for caching app state and diffs
+# Single node is sufficient for portfolio scale
+redis:
+  enabled: true
+  nodeSelector:
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# redis-ha disabled — HA Redis not needed for portfolio scale
+redis-ha:
+  enabled: false
+
+# Notifications controller — sends Slack alerts on deploy/health/sync events
+# secret.create: false — ESO creates argocd-notifications-secret from AWS Secrets Manager
+notifications:
+  enabled: true
+  nodeSelector:
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: platform-monitoring
+
+  # ESO creates this secret
+  # Secret contains: slack-token
+  secret:
+    create: false
+    name: argocd-notifications-secret
+
+  notifiers:
+    # Slack notifier — token sourced from ESO-created secret
+    service.slack: |
+      token: $slack-token
+
+  templates:
+    template.app-deployed: |
+      slack:
+        attachments: |
+          [{
+            "title": "✅ {{ .app.metadata.name }} deployed",
+            "title_link": "https://argocd.internal.lefrancis.org/applications/{{ .app.metadata.name }}",
+            "color": "#18be52",
+            "fields": [
+              {"title": "Sync Status", "value": "{{ .app.status.sync.status }}", "short": true},
+              {"title": "Health", "value": "{{ .app.status.health.status }}", "short": true},
+              {"title": "Revision", "value": "{{ .app.status.sync.revision }}", "short": true}
+            ]
+          }]
+
+    template.app-health-degraded: |
+      slack:
+        attachments: |
+          [{
+            "title": "❌ {{ .app.metadata.name }} degraded",
+            "title_link": "https://argocd.internal.lefrancis.org/applications/{{ .app.metadata.name }}",
+            "color": "#f4c030",
+            "fields": [
+              {"title": "Health", "value": "{{ .app.status.health.status }}", "short": true},
+              {"title": "Sync", "value": "{{ .app.status.sync.status }}", "short": true}
+            ]
+          }]
+
+    template.app-sync-failed: |
+      slack:
+        attachments: |
+          [{
+            "title": "🚨 {{ .app.metadata.name }} sync failed",
+            "title_link": "https://argocd.internal.lefrancis.org/applications/{{ .app.metadata.name }}",
+            "color": "#E96D76",
+            "fields": [
+              {"title": "Error", "value": "{{ .app.status.operationState.message }}", "short": false}
+            ]
+          }]
+
+  triggers:
+    trigger.on-deployed: |
+      - description: Application synced and healthy
+        oncePer: app.status.sync.revision
+        send:
+          - app-deployed
+        when: >
+          app.status.operationState.phase in ['Succeeded']
+          and app.status.health.status == 'Healthy'
+
+    trigger.on-health-degraded: |
+      - description: Application health degraded
+        send:
+          - app-health-degraded
+        when: app.status.health.status == 'Degraded'
+
+    trigger.on-sync-failed: |
+      - description: Sync failed
+        send:
+          - app-sync-failed
+        when: app.status.operationState.phase in ['Error', 'Failed']
+
+  subscriptions:
+    - recipients:
+        - slack:#k8-alerts
+      triggers:
+        - on-deployed
+        - on-health-degraded
+        - on-sync-failed

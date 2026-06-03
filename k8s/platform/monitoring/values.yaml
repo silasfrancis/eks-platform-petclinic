@@ -112,9 +112,9 @@ kube-prometheus-stack:
     config:
       global:
         resolve_timeout: 5m
-        smtp_smarthost: 'smtp.zoho.com:587'
-        smtp_from: 'alerts@lefrancis.org'
-        smtp_auth_username: 'silas@lefrancis.org'
+        smtp_smarthost: "smtp.zoho.com:587"
+        smtp_from: "alerts@lefrancis.org"
+        smtp_auth_username: "silas@lefrancis.org"
         # Password read from ESO-created secret
         smtp_auth_password_file: /etc/alertmanager/secrets/platform-monitoring-secrets/email-password
         smtp_require_tls: true
@@ -131,34 +131,34 @@ kube-prometheus-stack:
             - alertname
 
       route:
-        group_by: ['namespace', 'alertname', 'severity']
+        group_by: ["namespace", "alertname", "severity"]
         group_wait: 30s
         group_interval: 5m
         repeat_interval: 3h
-        receiver: 'null'
+        receiver: "null"
         routes:
           # Watchdog is a heartbeat alert that always fires — silence it
-          - receiver: 'null'
+          - receiver: "null"
             matchers:
               - alertname = "Watchdog"
           # Critical alerts go to Slack AND email
-          - receiver: 'critical-receiver'
+          - receiver: "critical-receiver"
             matchers:
               - severity = critical
             continue: false
           # Warning alerts go to Slack only
-          - receiver: 'warning-receiver'
+          - receiver: "warning-receiver"
             matchers:
               - severity = warning
             continue: false
 
       receivers:
-        - name: 'null'
+        - name: "null"
 
-        - name: 'warning-receiver'
+        - name: "warning-receiver"
           slack_configs:
             - api_url_file: /etc/alertmanager/secrets/platform-monitoring-secrets/slack-webhook-url
-              channel: '#petclinic-warnings'
+              channel: "#petclinic-warnings"
               send_resolved: true
               title: |-
                 [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
@@ -170,10 +170,10 @@ kube-prometheus-stack:
                 *Runbook:* {{ .Annotations.runbook_url }}
                 {{ end }}
 
-        - name: 'critical-receiver'
+        - name: "critical-receiver"
           slack_configs:
             - api_url_file: /etc/alertmanager/secrets/platform-monitoring-secrets/slack-webhook-url
-              channel: '#petclinic-critical'
+              channel: "#petclinic-critical"
               send_resolved: true
               title: |-
                 [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
@@ -185,13 +185,13 @@ kube-prometheus-stack:
                 *Runbook:* {{ .Annotations.runbook_url }}
                 {{ end }}
           email_configs:
-            - to: 'silas@lefrancis.org'
+            - to: "silas@lefrancis.org"
               send_resolved: true
               headers:
-                Subject: '[CRITICAL] {{ .CommonLabels.alertname }} - {{ .CommonLabels.namespace }}'
+                Subject: "[CRITICAL] {{ .CommonLabels.alertname }} - {{ .CommonLabels.namespace }}"
 
       templates:
-        - '/etc/alertmanager/config/*.tmpl'
+        - "/etc/alertmanager/config/*.tmpl"
 
 # CloudWatch exporter — bridges AWS RDS metrics into Prometheus
 # Requires IRSA for CloudWatch:GetMetricStatistics permission
@@ -308,7 +308,7 @@ loki:
       max_query_parallelism: 32
       max_entries_limit_per_query: 5000
       max_query_lookback: 2160h
-      retention_period: 744h    # 31 days default retention
+      retention_period: 744h # 31 days default retention
       retention_stream:
         # Monitoring namespace logs retained for 7 days only — high volume
         - selector: '{namespace="monitoring"}'
@@ -317,7 +317,7 @@ loki:
 
     commonConfig:
       path_prefix: /var/loki
-      replication_factor: 1    # SingleBinary — no replication needed
+      replication_factor: 1 # SingleBinary — no replication needed
 
   serviceAccount:
     create: true
@@ -331,7 +331,7 @@ loki:
     persistence:
       enabled: true
       storageClass: gp3
-      size: 10Gi    # WAL storage — logs themselves go to S3
+      size: 10Gi # WAL storage — logs themselves go to S3
 
   # Disable all read/write/backend replicas — SingleBinary handles everything
   read:
@@ -446,7 +446,7 @@ alloy:
         memory: 256Mi
 
   controller:
-    type: 'daemonset'
+    type: "daemonset"
     tolerations:
       # Run on ALL nodes — must collect logs from SPOT nodes too
       - effect: NoSchedule
@@ -501,7 +501,6 @@ externalSecret:
     #     key: "dev/platform-monitoring"
     #     property: email-password
 
-
 # Service Account
 # IRSA annotations go here for services that need AWS API access.
 # Example:
@@ -509,24 +508,24 @@ externalSecret:
 #     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
 serviceAccount:
   create: true
-  name: ""          # defaults to Chart.Name via _helpers.tpl
+  name: "" # defaults to Chart.Name via _helpers.tpl
   annotations: {}
 
 ingress:
   enabled: true
-  gateway: istio-ingress/internal-istio-ingressgateway
+  gateway: istio-ingress/ingress-internal-gateway
 
   monitoring:
     stacks:
       - name: grafana
-        host: grafana.lefrancis.org
+        host: grafana.internal.lefrancis.org
         serviceName: monitoring-grafana
         port: 80
       - name: prometheus
-        host: prometheus.lefrancis.org
+        host: prometheus.internal.lefrancis.org
         serviceName: monitoring-prometheus
         port: 9090
       - name: loki
-        host: loki.lefrancis.org
+        host: loki.internal.lefrancis.org
         serviceName: loki-gateway
         port: 80

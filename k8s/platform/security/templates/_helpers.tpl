@@ -44,9 +44,9 @@ ClusterIssuer name
 {{/*
 Resource names
 */}}
-{{- define "platform-security.secretStoreName" -}}
-{{- if .Values.secretStore.name -}}
-{{- .Values.secretStore.name -}}
+{{- define "platform-security.ClusterSecretStoreName" -}}
+{{- if .Values.ClusterSecretStore.name -}}
+{{- .Values.ClusterSecretStore.name -}}
 {{- else -}}
 {{- printf "%s-secret-store" .Release.Name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
@@ -81,6 +81,6 @@ acme:
     - dns01:
         cloudflare:
           apiTokenSecretRef:
-            name: {{ include "platform-security.secretName" . }}
+            name: {{ .Values.clusterIssuer.existingSecret.name | default "cloudflare-dns-token" }}
             key: {{ .Values.clusterIssuer.existingSecret.key | default "cloudflare-api-token" }}
 {{- end -}}

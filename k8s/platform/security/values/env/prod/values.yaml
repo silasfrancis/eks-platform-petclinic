@@ -2,7 +2,7 @@ clusterIssuer:
   enabled: true
   email: "silas@lefrancis.org"
   existingSecret:
-    name: "platform-security-secrets"
+    name: "cloudflare-dns-token"
     key: "cloudflare-api-token"
 
 falco:
@@ -17,10 +17,6 @@ externalSecret:
       remoteRef:
         key: prod/platform-monitoring
         property: slack-webhook-url
-    - secretKey: cloudflare-api-token
-      remoteRef:
-        key: prod/platform-dns
-        property: cloudflare-api-token
 
 serviceAccount:
   create: true

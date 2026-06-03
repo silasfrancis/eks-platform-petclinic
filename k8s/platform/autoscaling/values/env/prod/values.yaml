@@ -1,10 +1,9 @@
 ingress:
   enabled: true
-  gateway: istio-ingress/internal-istio-ingressgateway
-
+  gateway: istio-ingress/ingress-internal-gateway
   autoscaling:
     stacks:
       - name: goldilocks
-        host: goldilocks.lefrancis.org
+        host: goldilocks.internal.lefrancis.org
         serviceName: goldilocks-dashboard
         port: 80

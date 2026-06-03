@@ -10,7 +10,6 @@
 # Secrets managed via ESO:
 #   falcosidekick-secrets: Slack webhook URL for security alerts
 
-
 # ClusterIssuer for cert-manager — used by ingress chart certificate
 # Defined here since cert-manager lives in the security chart
 # OVERRIDE: update email
@@ -28,11 +27,11 @@ clusterIssuer:
     name: "" # defaults to the platform secrets created by ESO
     key: "cloudflare-api-token"
 
-# SecretStore — ESO store reference for secrets used in this chart
-secretStore:
+# ClusterSecretStore — ESO store reference for secrets used in this chart
+ClusterSecretStore:
   enabled: true
   name: ""
-  kind: SecretStore
+  kind: ClusterSecretStore
   awsRegion: us-east-2
 
 # ExternalSecret — pulls security-related secrets from AWS Secrets Manager
@@ -61,7 +60,7 @@ externalSecret:
 #     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
 serviceAccount:
   create: true
-  name: ""          # defaults to Chart.Name via _helpers.tpl
+  name: "" # defaults to Chart.Name via _helpers.tpl
   annotations: {}
 
 # Trivy Operator — continuous vulnerability scanning
@@ -153,7 +152,7 @@ trivy-operator:
 
   # EKS CIS benchmark is most relevant compliance check for this cluster
   compliance:
-    cron: "0 */6 * * *"    # run every 6 hours
+    cron: "0 */6 * * *" # run every 6 hours
     reportType: summary
     specs:
       - eks-cis-1.4
@@ -181,8 +180,8 @@ trivy-operator:
 # Leverages modern ebpf to support tracking on kernels 6.x and above.
 
 falco:
-# Falco platform security configuration
-# Hardened layout for modern_ebpf on Amazon Linux 2023 / Kernel 6.x
+  # Falco platform security configuration
+  # Hardened layout for modern_ebpf on Amazon Linux 2023 / Kernel 6.x
 
   fullnameOverride: "falco"
   tty: true
@@ -201,11 +200,11 @@ falco:
   # Keep resources sensible for your nodes
   resources:
     requests:
-      cpu: 50m       
-      memory: 128Mi   
+      cpu: 50m
+      memory: 128Mi
     limits:
-      cpu: 1000m      
-      memory: 512Mi   
+      cpu: 1000m
+      memory: 512Mi
 
   # Falco runs as a DaemonSet — must tolerate all node taints
   # including SPOT nodes to monitor all workloads in the cluster
@@ -395,7 +394,7 @@ falco:
         tags: [petclinic, credentials]
 
 # cert-manager — TLS certificate lifecycle management
-# Issues and renews the wildcard certificate for *.lefrancis.org
+# Issues and renews the wildcard certificate for *.internal.lefrancis.org
 # Uses DNS-01 challenge via Cloudflare — required for wildcard certificates
 cert-manager:
   crds:
@@ -473,7 +472,7 @@ cert-manager:
   # Use Cloudflare DNS resolvers for DNS-01 self-check
   # ensures cert-manager can verify its own challenge records
   dns01RecursiveNameservers: "1.1.1.1:53,8.8.8.8:53"
-  dns01RecursiveNameserversOnly: false
+  dns01RecursiveNameserversOnly: true
 
   # Delete certificate Secret when Certificate resource is deleted
   # prevents orphaned TLS secrets accumulating in the cluster
@@ -482,12 +481,11 @@ cert-manager:
 # Virtual service config for platform security dashboards
 ingress:
   enabled: true
-  gateway: istio-ingress/internal-istio-ingressgateway
+  gateway: istio-ingress/ingress-internal-gateway
 
   security:
     stacks:
       - name: falcosidekick-ui
-        host: falcosidekick.lefrancis.org
-        serviceName: security-falcosidekick-ui 
+        host: falcosidekick.internal.lefrancis.org
+        serviceName: security-falcosidekick-ui
         port: 2802
- 

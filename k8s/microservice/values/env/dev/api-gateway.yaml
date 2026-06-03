@@ -26,31 +26,31 @@ vpa:
 
 virtualService:
   enabled: true
-  hosts: petclinic-dev.lefrancis.org
+  hosts: petclinic-dev.internal.lefrancis.org
   gateways: istio-ingress/public-istio-ingressgateway
   routes:
     - name: customers-service
       match:
-          - uri:
-              prefix: /api/customer/
+        - uri:
+            prefix: /api/customer/
       rewrite:
-          uri: /
+        uri: /
       route:
-          - destination: 
-              host: customers-service-svc.petclinic.svc.cluster.local
-              port:
-                number: 8081
+        - destination:
+            host: customers-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8081
     - name: visits-route
       match:
-          - uri:
-              prefix: /api/visit/
+        - uri:
+            prefix: /api/visit/
       rewrite:
-          uri: /
+        uri: /
       route:
-          - destination:
-              host: visits-service-svc.petclinic.svc.cluster.local
-              port:
-                number: 8082
+        - destination:
+            host: visits-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8082
     - name: vets-route
       match:
         - uri:

@@ -10,6 +10,7 @@ env:
   ARGOCD_VERSION: "v9.5.0"
   ARGO_ROLLOUTS_VERSION: "v2.40.5"
   CERT_MANAGER_VERSION: "v1.12.1"
+  KYVERNO_VERSION: "3.7.1"
   AWS_LB_CONTROLLER_VERSION: "3.3.0"
 
 tasks:
@@ -22,6 +23,7 @@ tasks:
       - helm repo add external-secrets https://charts.external-secrets.io --force-update
       - helm repo add argo https://argoproj.github.io/argo-helm --force-update
       - helm repo add jetstack https://charts.jetstack.io --force-update
+      - helm repo add kyverno https://kyverno.github.io/kyverno --force-update
       - helm repo add eks https://aws.github.io/eks-charts --force-update
       - helm repo update
 
@@ -91,14 +93,25 @@ tasks:
           --version {{.ISTIO_VERSION}} 
 
   install_argocd:
-    desc: "Install ArgoCD"
+    desc: "Install core ArgoCD platform engine via upstream chart"
     cmds:
       - |
         helm upgrade --install argocd argo/argo-cd \
           --namespace argocd \
           --create-namespace \
           --version {{.ARGOCD_VERSION}} \
-          --set server.extraArgs={--insecure}
+          --values bootstrap/argocd/values.yaml \
+          --values bootstrap/argocd/env/{{.ENV}}/values.yaml
+
+  install_kyverno:
+    desc: "Install Kyverno policy engine via upstream chart"
+    cmds:
+      - |
+        helm upgrade --install kyverno kyverno/kyverno \
+          --namespace kyverno \
+          --create-namespace \
+          --version {{.KYVERNO_VERSION}} \
+          --values bootstrap/kyverno/values.yaml
 
   install_rollouts:
     desc: "Install Argo Rollouts"
@@ -130,57 +143,43 @@ tasks:
       - kubectl apply -f bootstrap/namespaces.yaml
       - kubectl apply -f bootstrap/storage-class.yaml
 
-  deploy_argocd_apps:
-    desc: "Deploy ArgoCD app-of-apps chart"
-    cmds:
-      - |
-        helm upgrade --install argocd-apps k8s/argocd \
-          --namespace argocd \
-          --create-namespace \
-          --values k8s/argocd/values.yaml \
-          --values k8s/argocd/values/env/{{.ENV}}/values.yaml
-
   deploy_platform:
     desc: "Deploy all platform charts"
-
     requires:
       vars: [ENV]
-
     vars:
       PLATFORM_CHARTS:
-        - autoscaling
-        - backup
-        - karpenter
-        - ingress
-        - monitoring
-        - security
-
+        - { name: "autoscaling", ns: "autoscaling" }
+        - { name: "backup",      ns: "velero" }
+        - { name: "compute",   ns: "karpenter" }
+        - { name: "ingress",     ns: "istio-ingress" }
+        - { name: "monitoring",  ns: "monitoring" }
+        - { name: "security",    ns: "security" }
     cmds:
       - for: { var: PLATFORM_CHARTS }
         cmd: |
-          helm upgrade --install {{.ITEM}} k8s/platform/{{.ITEM}}/charts \
-            --namespace {{.ITEM}} \
+          helm upgrade --install {{.ITEM.name}} platform/{{.ITEM.name}} \
+            --namespace {{.ITEM.ns}} \
             --create-namespace \
-            --values k8s/platform/{{.ITEM}}/values.yaml \
-            --values k8s/platform/{{.ITEM}}/values/env/{{.ENV}}/values.yaml
+            --values platform/{{.ITEM.name}}/values.yaml \
+            --values platform/{{.ITEM.name}}/values/env/{{.ENV}}/values.yaml
 
   deploy_policies:
-    desc: "Deploy Kyverno policies chart"
+    desc: "Deploy Policies (Kyverno, Network Policies,  Authorization Policies) chart"
     requires:
       vars: [ENV]
     cmds:
       - |
-        helm upgrade --install policies k8s/policies/charts \
-          --namespace kyverno \
-          --values k8s/policies/values.yaml \
-          --values k8s/policies/values/env/{{.ENV}}/values.yaml
+        helm upgrade --install policies policies \
+          --namespace policies \
+          --create-namespace \
+          --values policies/values.yaml \
+          --values policies/values/env/{{.ENV}}/values.yaml
 
   deploy_microservices:
     desc: "Deploy all microservices"
-
     requires:
       vars: [ENV]
-
     vars:
       SERVICES:
         - admin-server
@@ -191,22 +190,31 @@ tasks:
         - genai-service
         - vets-service
         - visits-service
-
     cmds:
       - for: { var: SERVICES }
         cmd: |
-          helm upgrade --install {{.ITEM}} k8s/microservice/charts \
+          helm upgrade --install {{.ITEM}} microservice \
             --namespace petclinic \
             --create-namespace \
-            --values k8s/microservice/values.yaml \
-            --values k8s/microservice/values/env/{{.ENV}}/{{.ITEM}}.yaml
+            --values microservice/values.yaml \
+            --values microservice/values/env/{{.ENV}}/{{.ITEM}}.yaml
+
+  deploy_argocd_apps:
+    desc: "Deploy ArgoCD app-of-apps chart"
+    cmds:
+      - |
+        helm upgrade --install argocd-apps argocd \
+          --namespace argocd \
+          --create-namespace \
+          --values argocd/values.yaml \
+          --values argocd/values/env/{{.ENV}}/values.yaml
 
   full_cluster_bootstrap:
     desc: "Full cluster bootstrap"
     requires:
       vars: [CLUSTER_NAME, ENV]
     cmds:
-      # - task: setup_helm_repos
+      - task: setup_helm_repos
       - task: install_metrics_server
       - task: install_aws_lb_controller
         vars: { CLUSTER_NAME: "{{.CLUSTER_NAME}}", ENV: "{{.ENV}}" }
@@ -216,26 +224,20 @@ tasks:
       - task: install_istiod
       - task: install_rollouts
       - task: install_argocd
-      - task: apply_bootstrap_namespaces
+        vars: { ENV: "{{.ENV}}" }
+      - task: install_kyverno
+      - task: bootstrap_storage_and_namespaces
       
   deploy_all:
     desc: "Deploy platform, policies, and microservices for ENV"
     requires:
       vars: [ENV]
-
     cmds:
       - task: deploy_platform
-        vars:
-          ENV: "{{.ENV}}"
-
+        vars: { ENV: "{{.ENV}}" }
       - task: deploy_policies
-        vars:
-          ENV: "{{.ENV}}"
-
+        vars: { ENV: "{{.ENV}}" }
       - task: deploy_microservices
-        vars:
-          ENV: "{{.ENV}}"
-
+        vars: { ENV: "{{.ENV}}" }
       - task: deploy_argocd_apps
-        vars:
-          ENV: "{{.ENV}}"
+        vars: { ENV: "{{.ENV}}" }

@@ -6,7 +6,7 @@ gateways:
         service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-093e5bfda5c0eb8f4,subnet-07756c8c6eefd19e2"
         service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-062fde7e3704e542c"
         external-dns.alpha.kubernetes.io/provider: "cloudflare"
-        external-dns.alpha.kubernetes.io/hostname: "petclinic-dev.lefrancis.org"
+        external-dns.alpha.kubernetes.io/hostname: "petclinic-dev.internal.lefrancis.org"
         external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     certificate:
       enabled: true
@@ -22,16 +22,16 @@ gateways:
         http:
           enabled: true
           hosts:
-            - "petclinic-dev.lefrancis.org"
+            - "petclinic-dev.internal.lefrancis.org"
           tls:
             httpsRedirect: true
         https:
           enabled: true
           hosts:
-            - "petclinic-dev.lefrancis.org"
+            - "petclinic-dev.internal.lefrancis.org"
           tls:
             mode: SIMPLE
-        
+
   internal:
     loadbalancer:
       annotations:
@@ -40,11 +40,11 @@ gateways:
         service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0a4755eb8a4af212e"
         external-dns.alpha.kubernetes.io/provider: "route53"
         external-dns.alpha.kubernetes.io/hostname: >
-          grafana-dev.lefrancis.org,
-          argocd-dev.lefrancis.org,
-          prometheus-dev.lefrancis.org,
-          loki-dev.lefrancis.org,
-          goldilocks-dev.lefrancis.org
+          grafana-dev.internal.lefrancis.org,
+          argocd-dev.internal.lefrancis.org,
+          prometheus-dev.internal.lefrancis.org,
+          loki-dev.internal.lefrancis.org,
+          goldilocks-dev.internal.lefrancis.org
     certificate:
       enabled: true
       spec:
@@ -59,13 +59,13 @@ gateways:
         http:
           enabled: true
           hosts:
-            - "petclinic-dev.lefrancis.org"
+            - "petclinic-dev.internal.lefrancis.org"
           tls:
             httpsRedirect: true
         https:
           enabled: true
           hosts:
-            - "petclinic-dev.lefrancis.org"
+            - "petclinic-dev.internal.lefrancis.org"
           tls:
             mode: SIMPLE
 
@@ -81,11 +81,9 @@ external-dns-cloudflare:
   txtOwnerId: "eks-cluster-01-cloudflare"
   txtPrefix: "cloudflare-"
 
-
-
 external-dns-route53:
   provider:
-    name: aws    
+    name: aws
   serviceAccount:
     create: true
     name: external-dns-route53
@@ -96,7 +94,6 @@ external-dns-route53:
   txtOwnerId: "eks-cluster-01-route53"
   txtPrefix: "route53-"
 
-
 secretStore:
   enabled: true
   name: ""
@@ -105,13 +102,13 @@ externalSecret:
   enabled: true
   name: ""
   refreshInterval: 1h
-  target: 
+  target:
     name: cloudflare-api-token
     creationPolicy: Owner
   data:
     - secretKey: cloudflare-api-token
       remoteRef:
-        key: "dev/platform-dns" 
+        key: "dev/platform-dns"
         property: cloudflare-api-token
 
 esoServiceAccount:

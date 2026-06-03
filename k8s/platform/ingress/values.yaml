@@ -1,5 +1,5 @@
 # Ingress platform configuration
-# Manages external and internal traffic into the EKS cluster using the official 
+# Manages external and internal traffic into the EKS cluster using the official
 # Istio Gateway sub-charts, ExternalDNS controllers, and cert-manager.
 #
 # Architecture:
@@ -22,20 +22,21 @@ certificate:
   dnsNames:
     - "lefrancis.org"
     - "*.lefrancis.org"
+    - "*.internal.lefrancis.org"
 
 # Public gateway sub-chart setup
 public-gateway:
   # Overrides the deployment, service, and HPA names to be completely unique
   name: "public-ingressgateway"
-  
+
   labels:
     app: public-istio-ingressgateway
     istio: ingressgateway
-  
+
   serviceAccount:
     create: true
     name: "public-ingressgateway-sa" # Overrides the service account name collision
-  
+
   containerSecurityContext:
     allowPrivilegeEscalation: false
     privileged: false
@@ -45,7 +46,7 @@ public-gateway:
     runAsNonRoot: true
     capabilities:
       drop: ["ALL"]
-  
+
   resources:
     requests:
       cpu: 100m
@@ -73,15 +74,15 @@ public-gateway:
 internal-gateway:
   # Overrides the deployment, service, and HPA names to be completely unique
   name: "internal-ingressgateway"
-  
+
   labels:
     app: internal-istio-ingressgateway
     istio: ingressgateway
-  
+
   serviceAccount:
     create: true
     name: "internal-ingressgateway-sa" # Overrides the service account name collision
-  
+
   containerSecurityContext:
     allowPrivilegeEscalation: false
     privileged: false
@@ -91,7 +92,7 @@ internal-gateway:
     runAsNonRoot: true
     capabilities:
       drop: ["ALL"]
-  
+
   resources:
     requests:
       cpu: 100m
@@ -120,19 +121,20 @@ internal-gateway:
 customCertificates:
   public:
     secretName: "petclinic-public-tls"
-    issuerRefName: "letsencrypt-cloudflare"
+    issuerRefName: "security-cluster-issuer"
     hosts:
-      - "petclinic.lefrancis.org"
+      - "*.lefrancis.org"
+    gatewayAnnotations:
+      external-dns.alpha.kubernetes.io/provider: "cloudflare"
+
   internal:
     secretName: "petclinic-internal-tls"
-    issuerRefName: "letsencrypt-cloudflare"
+    issuerRefName: "security-cluster-issuer"
     hosts:
-      - "grafana.lefrancis.org"
-      - "argocd.lefrancis.org"
-      - "prometheus.lefrancis.org"
-      - "loki.lefrancis.org"
-      - "goldilocks.lefrancis.org"
-      - "falcosidekick.lefrancis.org"
+      - "*.internal.lefrancis.org"
+    gatewayAnnotations:
+      external-dns.alpha.kubernetes.io/provider: "route53"
+      external-dns.alpha.kubernetes.io/hostname: "*.internal.lefrancis.org"
 
 # ExternalDNS Cloudflare instance
 # Public DNS records for internet-facing services.
@@ -188,13 +190,13 @@ external-dns-route53:
   fullnameOverride: external-dns-route53
   provider:
     name: aws
-  env: 
+  env:
     - name: AWS_REGION
       value: "us-east-2"
   extraArgs:
     aws-zone-type: private
   domainFilters:
-    - lefrancis.org
+    - internal.lefrancis.org
   policy: sync
   sources:
     - service
@@ -241,7 +243,7 @@ externalSecret:
   enabled: true
   name: ""
   refreshInterval: 1h
-  target: 
+  target:
     name: ""
     creationPolicy: Owner
   data: []

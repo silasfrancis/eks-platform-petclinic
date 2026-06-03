@@ -1,0 +1,159 @@
+# global.nodeSelector applies to all four controllers
+# Run on ON_DEMAND — policy enforcement is critical infrastructure
+# SPOT interruption could leave the cluster without admission control
+global:
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: on-demand
+
+crds:
+  # install: true keeps CRDs in sync with the chart version
+  # CRDs must exist before any Policy resources are applied
+  install: true
+
+config:
+  # resourceFilters tell Kyverno which resources to skip entirely
+  # Filtering high-churn or system resources reduces API server load
+  # and prevents Kyverno from evaluating resources it should never touch
+  # For futher details refer to => https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values&path=config.resourceFilters
+  resourceFilters:
+    - '[Event,*,*]'                    # events are ephemeral — skip
+    - '[*/*,kube-system,*]'            # Kubernetes system namespace
+    - '[*/*,kube-public,*]'            # public read-only namespace
+    - '[*/*,kube-node-lease,*]'        # node heartbeat leases
+    - '[*/*,karpenter,*]'              # Karpenter manages its own resources
+    - '[*/*,argocd,*]'                 # ArgoCD manages its own resources
+    - '[*/*,monitoring,*]'             # monitoring stack — not application workloads
+    - '[Node,*,*]'                     # nodes are infrastructure — not policy targets
+    - '[Node/?*,*,*]'
+    - '[APIService,*,*]'               # API server internals
+    - '[TokenReview,*,*]'              # auth internals
+    - '[SubjectAccessReview,*,*]'      # auth internals
+    - '[SelfSubjectAccessReview,*,*]'  # auth internals
+    - '[Binding,*,*]'                  # pod scheduling internals
+    - '[ReplicaSet,*,*]'               # managed by Deployment/Rollout — skip
+    - '[EphemeralReport,*,*]'          # Kyverno internal reporting objects
+    - '[ClusterEphemeralReport,*,*]'   # Kyverno internal reporting objects
+
+  webhooks:
+    # Exclude namespaces from webhook enforcement
+    # kube-system: core Kubernetes components must always be able to start
+    # karpenter: node provisioner must not be blocked by policy webhooks
+    # argocd: GitOps engine must not be blocked during bootstrap
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - karpenter
+            - argocd
+
+  # generateSuccessEvents: false reduces Event noise in the cluster
+  # Only failures are reported — success is assumed unless flagged
+  generateSuccessEvents: false
+
+# admissionController — enforces policies at admission time
+# This is the critical path — every pod/resource creation goes through it
+admissionController:
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: on-demand
+  container:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 384Mi    # no CPU limit — admission must never be throttled
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+    interval: 30s
+    scrapeTimeout: 25s
+
+# backgroundController — processes generate and mutateExisting policies
+# Runs outside the admission path — handles async policy application
+backgroundController:
+  enabled: true
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+
+# cleanupController — enforces TTL cleanup policies
+# Removes resources that have exceeded their configured lifetime
+# e.g. cleaning up completed Jobs, old reports
+cleanupController:
+  enabled: true
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+
+# reportsController — generates PolicyReport and ClusterPolicyReport resources
+# These are consumed by Grafana dashboard and CLI tooling
+reportsController:
+  enabled: true
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: on-demand
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+
+# Grafana dashboard — pushed to monitoring namespace
+# Discovered by Grafana sidecar via grafana_dashboard label
+grafana:
+  enabled: true
+  namespace: monitoring # must match Grafana namespace
+  labels:
+    grafana_dashboard: "1" # must match Grafana dashboard label selector
+
+features:
+  # backgroundScan rescans all existing resources periodically
+  # catches resources that existed before a policy was applied
+  backgroundScan:
+    enabled: true
+    backgroundScanInterval: 1h
+    backgroundScanWorkers: 2
+
+  # policyExceptions: false — no resources are exempt from policies
+  # Enable and restrict to a specific namespace if exceptions are needed
+  policyExceptions:
+    enabled: false
+
+  # autoUpdateWebhooks keeps webhook configurations in sync
+  # when policies are added or removed — prevents stale webhook rules
+  autoUpdateWebhooks:
+    enabled: true

@@ -25,10 +25,10 @@ springProfile: ""
 
 # Image
 image:
-  registry: ""      # ECR registry path e.g. <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com
-  repository: ""    # ECR repository e.g. <PROJECT>/<SERVICE_NAME>
-  tag: ""           # image tag — set by CI pipeline from git SHA, for immutability pin image digest
-  digest: ""        # image digest — set by CI pipeline
+  registry: "" # ECR registry path e.g. <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com
+  repository: "" # ECR repository e.g. <PROJECT>/<SERVICE_NAME>
+  tag: "" # image tag — set by CI pipeline from git SHA, for immutability pin image digest
+  digest: "" # image digest — set by CI pipeline
   pullPolicy: IfNotPresent
 
 # Controller
@@ -98,7 +98,7 @@ podSpec:
 probes:
   startup:
     path: /actuator/health
-    failureThreshold: 30    # 30 * 10s = 5 minutes max startup time
+    failureThreshold: 30 # 30 * 10s = 5 minutes max startup time
     periodSeconds: 10
   readiness:
     path: /actuator/health
@@ -107,14 +107,14 @@ probes:
     failureThreshold: 3
   liveness:
     path: /actuator/health
-    initialDelaySeconds: 60    # give Spring Boot time to fully initialise
+    initialDelaySeconds: 60 # give Spring Boot time to fully initialise
     periodSeconds: 15
     failureThreshold: 3
 
 # Environment Variables
 env:
-  plain: {}   # non-sensitive env vars — committed to Git
-  secret: {}  # sensitive env vars — populated via ExternalSecret
+  plain: {} # non-sensitive env vars — committed to Git
+  secret: {} # sensitive env vars — populated via ExternalSecret
 
 # Config Server
 # Controls whether SPRING_CONFIG_IMPORT is injected.
@@ -132,7 +132,7 @@ spot:
   enabled: false
 
 nodeSelector:
-  node-type: on-demand    # overridden to spot when spot.enabled=true
+  node-type: on-demand # overridden to spot when spot.enabled=true
 
 tolerations: []
 
@@ -151,12 +151,12 @@ deployment:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 0    # zero downtime — always have full capacity during rollout
+      maxUnavailable: 0 # zero downtime — always have full capacity during rollout
 
 # Argo Rollout Strategy
 # Only used when controller.type = rollout
 # Canary steps gradually shift traffic and pause for validation.
-# Argo Rollouts manages VirtualService weights 
+# Argo Rollouts manages VirtualService weights
 # ArgoCD is configured to ignore VirtualService weight diffs to prevent revert conflicts.
 rollout:
   strategy:
@@ -164,16 +164,16 @@ rollout:
       trafficRouting:
         istio:
           virtualService:
-            name: ""          # set per service — must match VS resource name
+            name: "" # set per service — must match VS resource name
             routes:
-              - primary       # must match the named route in VirtualService
+              - primary # must match the named route in VirtualService
           destinationRule:
-            name: ""          # set per service — must match DR resource name
+            name: "" # set per service — must match DR resource name
             stableSubsetName: stable
             canarySubsetName: canary
-    # Define traffic increments below (from 1-99). 
-    # The _helpers.tpl automatically runs a health analysis at every step and 
-    # promotes the service to 100% once your last step is finished.
+      # Define traffic increments below (from 1-99).
+      # The _helpers.tpl automatically runs a health analysis at every step and
+      # promotes the service to 100% once your last step is finished.
       steps:
         - weight: 10
           pause: 60s
@@ -185,8 +185,8 @@ rollout:
 # Service
 service:
   enabled: true
-  port: ""        # service port — usually same as containerPort
-  targetPort: ""  # container port to forward to — usually same as port
+  port: "" # service port — usually same as containerPort
+  targetPort: "" # container port to forward to — usually same as port
   portName: "http"
   protocol: TCP
 
@@ -204,13 +204,15 @@ service:
 # Istio evaluates routes top-to-bottom — specific matches must come first.
 virtualService:
   enabled: false
-  host: ""        # external hostname e.g. petclinic.lefrancis.org
-                  # leave empty for mesh-only services
-  gateway: ""     # e.g. istio-ingress/public-istio-ingressgateway
-                  # leave empty for mesh-only (uses 'mesh' gateway)
-  prefix: /       # URI prefix for the primary catch-all route
-  rewriteUri: /   # rewrite URI before forwarding to destination
-  routes: []      # additional routes — see api-gateway values for example
+  host:
+    "" # external hostname e.g. petclinic.internal.lefrancis.org
+    # leave empty for mesh-only services
+  gateway:
+    "" # e.g. istio-ingress/public-istio-ingressgateway
+    # leave empty for mesh-only (uses 'mesh' gateway)
+  prefix: / # URI prefix for the primary catch-all route
+  rewriteUri: / # rewrite URI before forwarding to destination
+  routes: [] # additional routes — see api-gateway values for example
 # - name: example
 #   route:
 #     - destination:
@@ -222,7 +224,7 @@ virtualService:
 
 destinationRule:
   enabled: false
-  
+
 # Service Account
 # IRSA annotations go here for services that need AWS API access.
 # Example:
@@ -230,7 +232,7 @@ destinationRule:
 #     eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<service-name>
 serviceAccount:
   create: true
-  name: ""          # defaults to appName via _helpers.tpl
+  name: "" # defaults to appName via _helpers.tpl
   annotations: {}
 
 # ServiceMonitor for Prometheus scraping
@@ -263,24 +265,24 @@ hpa:
 # Cannot be used alongside hpa — enable one or the other.
 scaleObject:
   enabled: false
-  annotations: 
+  annotations:
     argocd.argoproj.io/sync-wave: "4"
-  minReplicas: 0      # 0 = scale to zero when idle
+  minReplicas: 0 # 0 = scale to zero when idle
   maxReplicas: 5
   idleReplicaCount: 0
   pollingInterval: 30
-  cooldownPeriod: 300    # 5 minutes before scaling down
+  cooldownPeriod: 300 # 5 minutes before scaling down
   fallback: # fallback to 1 (default) replica if metrics are unavailable
     failureThreshold: 3
     replicas: 1
-  prometheusServer: http://platform-monitoring-prometheus.monitoring.svc.cluster.local:9090 # prom server for metrics
+  prometheusServer: http://monitoring-prometheus.monitoring.svc.cluster.local:9090 # prom server for metrics
   triggers: [] # additional triggers specified will be appended to the default triggers defined in _helpers.tpl
 
 # VPA used in Recommendation mode with Goldilocks
 # Recources for each controller (deployment, rollout) can be updated based on Goldilocks suggestions
 vpa:
   enabled: false
-# Default limits for Goldilocks/Recommendation mode
+  # Default limits for Goldilocks/Recommendation mode
   minAllowed:
     cpu: 200m
     memory: 512Mi
@@ -312,7 +314,7 @@ secretStore:
 externalSecret:
   enabled: false
   refreshInterval: 1h
-  target: ""    # K8s secret name — defaults to <appName>-secrets via _helpers.tpl
+  target: "" # K8s secret name — defaults to <appName>-secrets via _helpers.tpl
   data: []
   # Example:
   # - secretKey: MYSQL_PASSWORD         # key in the K8s secret
@@ -349,7 +351,7 @@ analysisTemplate:
   enabled: false
 
   # Prometheus server address — must be reachable from the petclinic namespace
-  prometheusAddress: http://platform-monitoring-prometheus.monitoring.svc.cluster.local:9090
+  prometheusAddress: http://monitoring-prometheus.monitoring.svc.cluster.local:9090
 
   # successCondition — PromQL expression result must satisfy this condition
   # result >= 0.99 means at least 99% of requests to the canary are successful

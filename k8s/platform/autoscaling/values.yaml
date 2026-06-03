@@ -44,7 +44,7 @@ keda:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: platform-monitoring   # must match Prometheus serviceMonitorSelector label
+          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
 
     # Expose KEDA metrics server metrics for Prometheus scraping
     metricServer:
@@ -140,12 +140,11 @@ goldilocks:
 # Virtual service config for autoscaling dashboards
 ingress:
   enabled: true
-  gateway: istio-ingress/internal-istio-ingressgateway
+  gateway: istio-ingress/ingress-internal-gateway
 
   autoscaling:
     stacks:
       - name: goldilocks
-        host: goldilocks.lefrancis.org
-        serviceName: autoscaling-goldilocks-dashboard 
+        host: goldilocks.internal.lefrancis.org
+        serviceName: autoscaling-goldilocks-dashboard
         port: 80
- 

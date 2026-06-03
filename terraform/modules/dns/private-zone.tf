@@ -1,5 +1,5 @@
 resource "aws_route53_zone" "private" {
-  name = "lefrancis.org" 
+  name = "internal.lefrancis.org" 
 
   vpc {
     vpc_id = var.vpc_id

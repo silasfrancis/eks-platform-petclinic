@@ -49,11 +49,9 @@ app.kubernetes.io/name: {{ include "microservice.name" . }}
 {{- define "microservice.workloadAnnotations" -}}
 {{- /* Default Job Hooks */ -}}
 {{- if eq .Values.controller.type "job" }}
-helm.sh/hook: pre-install,pre-upgrade
-helm.sh/hook-weight: "-5"
-helm.sh/hook-delete-policy: before-hook-creation
-argocd.argoproj.io/hook: PreSync
-argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+# helm.sh/hook: pre-install,pre-upgrade
+# helm.sh/hook-weight: "-5"
+# helm.sh/hook-delete-policy: before-hook-creation,hook-failed
 {{- end }}
 
 {{- /* Additional manual annotations from values.yaml */ -}}
@@ -258,7 +256,7 @@ canary:
       virtualService:
         name: {{ include "microservice.vsName" . }}
         routes:
-          - {{ .Values.rollout.strategy.canary.trafficRouting.istio.virtualService.routes }}
+          {{- toYaml .Values.rollout.strategy.canary.trafficRouting.istio.virtualService.routes | nindent 10 }}
       destinationRule:
         name: {{ include "microservice.drName" . }}          
         stableSubsetName: {{ .Values.rollout.strategy.canary.trafficRouting.istio.destinationRule.stableSubsetName }}

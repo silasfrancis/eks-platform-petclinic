@@ -144,7 +144,7 @@ argocdBootstrap:
           kind: ValidatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
 
-    compute:
+    karpenter:
       path: k8s/platform/compute
       namespace: karpenter
       project: platform

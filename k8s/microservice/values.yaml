@@ -313,7 +313,7 @@ secretStore:
 # The created secret is mounted as environment variables via envFrom.
 externalSecret:
   enabled: false
-  refreshInterval: 1h
+  refreshInterval: 10m
   target: "" # K8s secret name — defaults to <appName>-secrets via _helpers.tpl
   data: []
   # Example:

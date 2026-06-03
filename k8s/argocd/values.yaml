@@ -46,7 +46,7 @@ externalSecrets:
           labels:
             argocd.argoproj.io/secret-type: repository
         data:
-          url: "git@github.com:silasfrancis/.git"
+          url: "git@github.com:silasfrancis/eks-platform-petclinic.git"
           sshPrivateKey: "{{ .sshPrivateKey }}"
           type: git
       data:

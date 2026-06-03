@@ -49,3 +49,14 @@ vpa:
   enabled: true
 analysisTemplate:
   enabled: true
+destinationRule:
+  enabled: true
+
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}

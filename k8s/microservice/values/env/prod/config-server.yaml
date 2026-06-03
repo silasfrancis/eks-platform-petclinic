@@ -49,5 +49,15 @@ externalSecret:
 env:
   plain:
     CONFIG_DIR: /config
+
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}
+
 vpa:
   enabled: true

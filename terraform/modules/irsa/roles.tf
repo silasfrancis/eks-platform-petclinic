@@ -3,12 +3,12 @@ locals {
     app-secrets = {
       namespace = "petclinic"
       sas       = [
-        "config-server", 
-        "customers-service", 
-        "visits-service", 
-        "vets-service", 
-        "genai-service", 
-        "db-migration"
+        "config-server-sa", 
+        "customers-service-sa", 
+        "visits-service-sa", 
+        "vets-service-sa", 
+        "genai-service-sa", 
+        "db-migration-sa"
       ]
       policy    = {
         actions   = [

@@ -19,8 +19,8 @@ vpa:
   enabled: true
 virtualService:
   enabled: true
-  hosts: petclinic.lefrancis.org
-  gateways: istio-ingress/ingress-public-gateway
+  host: petclinic.lefrancis.org
+  gateway: istio-ingress/ingress-public-gateway
   routes:
     - name: customers-service
       match:
@@ -68,3 +68,14 @@ virtualService:
               number: 8084
 analysisTemplate:
   enabled: true
+destinationRule:
+  enabled: true
+
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}

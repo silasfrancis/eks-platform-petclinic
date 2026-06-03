@@ -75,5 +75,13 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           {{- end }}
-          {{- include "microservice.probes" . | nindent 10 }} 
+          {{- include "microservice.probes" . | nindent 10 }}
+          {{- if and .Values.volumesConfig .Values.volumesConfig.enabled }}
+          volumeMounts:
+            {{- toYaml .Values.volumesConfig.volumeMounts | nindent 12 }}
+          {{- end }}
+      {{- if and .Values.volumesConfig .Values.volumesConfig.enabled }}
+      volumes:
+        {{- toYaml .Values.volumesConfig.volumes | nindent 8 }}
+      {{- end }} 
 {{- end }}

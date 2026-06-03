@@ -20,3 +20,12 @@ probes:
     path: /
   liveness:
     path: /
+
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}

@@ -1,0 +1,55 @@
+{{- $boot     := .Values.argocdBootstrap | default dict -}}
+{{- $defaults := $boot.defaults | default dict -}}
+
+{{- /* Resolve Repo URL safely */ -}}
+{{- $repoURL := $defaults.repoURL | default "git@github.com:silasfrancis/eks-platform-petclinic.git" -}}
+
+{{- /* Resolve Destination Server safely */ -}}
+{{- $server := "https://kubernetes.default.svc" -}}
+{{- if and $defaults.destination $defaults.destination.server }}
+  {{- $server = $defaults.destination.server }}
+{{- end }}
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Project for core cluster infrastructure and platform tooling"
+  destinations:
+    - namespace: '*'
+      server: {{ $server | quote }}
+  sourceRepos:
+    - {{ $repoURL | quote }}
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Project for business microservices and application groups"
+  destinations:
+    - namespace: '*'
+      server: {{ $server | quote }}
+  sourceRepos:
+    - {{ $repoURL | quote }}
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

@@ -21,6 +21,11 @@ spec:
   minReplicas: {{ .Values.hpa.minReplicas | default 1 }}
   maxReplicas: {{ .Values.hpa.maxReplicas | default 3 }}
 
+  {{- if .Values.hpa.behavior }}
+  behavior:
+    {{- toYaml .Values.hpa.behavior | nindent 4 }}
+  {{- end }}
+
   metrics:
     {{- if .Values.hpa.targetCPUUtilizationPercentage }}
     - type: Resource
@@ -30,7 +35,6 @@ spec:
           type: Utilization
           averageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
     {{- end }}
-
     {{- if .Values.hpa.targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
@@ -39,5 +43,4 @@ spec:
           type: Utilization
           averageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
     {{- end }}
-
 {{- end }}

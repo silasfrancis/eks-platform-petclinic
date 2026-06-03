@@ -132,7 +132,7 @@ volumesConfig:
 # Disable for config-server itself (it IS the config server).
 configServer:
   enabled: true
-  url: "http://config-server-svc.petclinic.svc.cluster.local:8888"
+  url: "http://config-server.petclinic.svc.cluster.local:8888"
 
 # Node Scheduling
 # spot.enabled adds SPOT node toleration and nodeSelector automatically.
@@ -263,9 +263,16 @@ serviceMonitor:
 hpa:
   enabled: false
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 1
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
 
 # KEDA ScaledObject
 # Event-driven autoscaling for services that can scale to zero.

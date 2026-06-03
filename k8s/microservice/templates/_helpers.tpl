@@ -87,7 +87,7 @@ Resource names
 {{- end }}
 
 {{- define "microservice.serviceName" -}}
-{{- printf "%s-svc" .Values.appName }}
+{{- printf "%s" .Values.appName }}
 {{- end }}
 
 {{- define "microservice.hpaName" -}}
@@ -150,7 +150,7 @@ Injected into every container
 {{/* Only inject config server URL for services that are NOT the config server */}}
 {{- if .Values.configServer.enabled }}
 - name: CONFIG_SERVER_URL
-  value: {{ .Values.configServer.url | default "http://config-server-svc.petclinic.svc.cluster.local:8888" | quote }}
+  value: {{ .Values.configServer.url | default "http://config-server.petclinic.svc.cluster.local:8888" | quote }}
 {{- end }}
 {{- end }}
 

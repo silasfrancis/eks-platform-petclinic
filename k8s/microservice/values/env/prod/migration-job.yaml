@@ -6,8 +6,8 @@ databaseMigration:
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/migrations
-  tag: "c62caca0"
-  digest: "sha256:dfc4bd54fc1d0ba9949e2d066abc02ce85263acce20b89292adeab4f69e07183"
+  tag: "6e2d22fa"
+  digest: "sha256:6fcebf4b22f9b745d4430149640ea2257b70e9b65d1e3e6db036cd3a6a7edc07"
   pullPolicy: IfNotPresent
 
 controller:

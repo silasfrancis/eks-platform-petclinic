@@ -182,9 +182,10 @@ tasks:
       vars: [ENV]
     vars:
       SERVICES:
+        - migration-job
+        - config-server
         - admin-server
         - api-gateway
-        - config-server
         - customers-service
         - discovery-server
         - genai-service

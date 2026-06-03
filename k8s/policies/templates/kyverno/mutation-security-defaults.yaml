@@ -38,17 +38,16 @@ spec:
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-
-          variables.mainContainerName == "unknown"
-          ? Object{}
-          : Object{
-              metadata: Object{
-                labels: object.metadata.labels + {
-                  "app.kubernetes.io/name": variables.mainContainerName,
-                  "app": variables.mainContainerName,
-                  "environment": "{{ $.Values.clusterPolicy.kyverno.github.branch }}"
-                }
-              }
+          variables.mainContainerName == "unknown" ? Object{} : Object{
+            metadata: Object{
+              labels: (has(object.metadata.labels) ? object.metadata.labels : {}).merge({
+                "app.kubernetes.io/name": variables.mainContainerName,
+                "app": variables.mainContainerName,
+                "environment": "{{ $.Values.clusterPolicy.kyverno.github.branch }}"
+              })
             }
+          }
+
     - patchType: ApplyConfiguration
       applyConfiguration:
         expression: >-

@@ -115,7 +115,7 @@ clusterPolicy:
     github:
       # OVERRIDE: replace with your GitHub organisation and repository
       org: "silasfrancis"
-      repo: ""
+      repo: "" #repo name
       # OVERRIDE: changes per environment
       # dev cluster validates images signed by dev branch workflows
       # main cluster validates images signed by main branch workflows

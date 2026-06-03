@@ -16,7 +16,7 @@
       {{- $name = $relName }}
     {{- end }}
 
-    {{- $fullName := printf "%s-%s" $appName $name | trunc 63 | trimSuffix "-" }}
+    {{- $fullName := printf "%s" $appName | trunc 63 | trimSuffix "-" }}
 
     {{- $repoURL        := $relCfg.repoURL        | default $appCfg.repoURL        | default $boot.defaults.repoURL }}
     {{- $targetRevision := $relCfg.targetRevision | default $appCfg.targetRevision | default $boot.defaults.targetRevision }}

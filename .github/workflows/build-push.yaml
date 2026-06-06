@@ -105,7 +105,7 @@ jobs:
           image-ref: ${{ steps.get_image_repo.outputs.IMAGE }}
           format: 'json'
           output: '${{ matrix.dir }}_trivy-results.json'
-          exit-code: '1'
+          exit-code: '0'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'

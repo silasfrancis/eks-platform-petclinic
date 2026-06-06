@@ -46,3 +46,6 @@ GHSA-x4m4-345f-5h5g
 # Spring Cloud Config Server: Path Traversal via Profile Parameter - Native FS backend not used
 CVE-2026-22739
 GHSA-3qwq-q9vm-5j42
+
+# Little CMS: Integer overflow in CubeSize - Awaiting upstream/base image patch
+CVE-2026-41254

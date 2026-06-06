@@ -4,8 +4,8 @@ springProfile: native
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/config-server
-  tag: "a85214b1"
-  digest: "sha256:23c8a226485b168d222fc1fe3a46c3bb3906a7fc46bda617267887c77d68b57d"
+  tag: "28114d47"
+  digest: "sha256:ec23bb808b89c6ee2f51a58f28ae830c0f6844ba17743fe30b64c54d64e0fea9"
   pullPolicy: IfNotPresent
 controller:
   type: deployment
@@ -51,7 +51,6 @@ externalSecret:
 env:
   plain:
     CONFIG_DIR: /config
-
 volumesConfig:
   enabled: true
   volumeMounts:
@@ -60,6 +59,5 @@ volumesConfig:
   volumes:
     - name: tomcat-tmp
       emptyDir: {}
-
 vpa:
   enabled: true

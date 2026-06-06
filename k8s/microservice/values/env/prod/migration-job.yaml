@@ -20,6 +20,9 @@ service:
 
 configServer:
   enabled: false
+  
+discoveryServer:
+  enabled: false
 
 serviceAccount:
   annotations:

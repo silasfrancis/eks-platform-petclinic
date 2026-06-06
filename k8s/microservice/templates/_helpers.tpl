@@ -164,6 +164,10 @@ Injected into every container
 - name: CONFIG_SERVER_URL
   value: {{ .Values.configServer.url | default "http://config-server.petclinic.svc.cluster.local:8888" | quote }}
 {{- end }}
+{{- if .Values.discoveryServer.enabled }}
+- name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+  value: {{ .Values.discoveryServer.url | default "http://discovery-server.petclinic.svc.cluster.local:8761" | quote }}
+{{- end }}
 {{- end }}
 
 {{/* Pod metadata */}}

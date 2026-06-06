@@ -144,6 +144,12 @@ configServer:
   enabled: true
   url: "http://config-server.petclinic.svc.cluster.local:8888"
 
+#Discovery server
+# Contols where EUREKA_CLIENT_SERVICEURL_DEFAULTZONE is set for services
+discoveryServer:
+  enabled: true
+  url: "http://discovery-server.petclinic.svc.cluster.local:8761"
+
 # Node Scheduling
 # spot.enabled adds SPOT node toleration and nodeSelector automatically.
 # SPOT nodes are cheaper but interruptible — use for workloads that can afford to be interrupted

@@ -87,7 +87,7 @@ jobs:
           id: get_tag
           run: |
             git fetch --tags
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "${{ env.SHORT_SHA }}")
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
             echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
 
         - name: Update Helm Values

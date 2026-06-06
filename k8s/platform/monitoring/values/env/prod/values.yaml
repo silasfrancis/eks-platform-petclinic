@@ -82,11 +82,11 @@ ingress:
     stacks:
       - name: grafana
         host: grafana.internal.lefrancis.org
-        serviceName: kube-prometheus-stack-grafana
+        serviceName: monitoring-grafana
         port: 80
       - name: prometheus
         host: prometheus.internal.lefrancis.org
-        serviceName: kube-prometheus-stack-prometheus
+        serviceName: monitoring-prometheus
         port: 9090
       - name: loki
         host: loki.internal.lefrancis.org

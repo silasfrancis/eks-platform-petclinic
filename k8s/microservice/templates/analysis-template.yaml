@@ -32,6 +32,7 @@ spec:
               rate(istio_requests_total{
                 destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
                 destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                destination_workload_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}",
                 response_code!~"5.*",
                 reporter="destination"
               }[2m])
@@ -41,6 +42,7 @@ spec:
               rate(istio_requests_total{
                 destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
                 destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                destination_workload_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}",
                 reporter="destination"
               }[2m])
             ) or vector(0.99)
@@ -61,10 +63,11 @@ spec:
                 rate(istio_request_duration_milliseconds_bucket{
                   destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
                   destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                  destination_workload_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}",
                   reporter="destination"
                 }[2m])
               )
-            ) / 1000
+            ) / 1000 or vector(0)
 
     - name: error-count
       interval: {{ .Values.analysisTemplate.interval | default "30s" }}
@@ -79,6 +82,7 @@ spec:
               increase(istio_requests_total{
                 destination_service_name="{{ "{{" }}args.service-name{{ "}}" }}",
                 destination_service_namespace="{{ "{{" }}args.namespace{{ "}}" }}",
+                destination_workload_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}",
                 response_code=~"5.*",
                 reporter="destination"
               }[2m])

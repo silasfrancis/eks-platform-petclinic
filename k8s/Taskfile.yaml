@@ -182,7 +182,7 @@ tasks:
       vars: [ENV]
     vars:
       SERVICES:
-        - migration-job
+        # - migration-job
         - config-server
         - admin-server
         - api-gateway

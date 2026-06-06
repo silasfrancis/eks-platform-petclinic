@@ -48,6 +48,9 @@ config:
             - kube-system
             - karpenter
             - argocd
+            - monitoring
+            - istio-ingress 
+            - kyverno
 
   # generateSuccessEvents: false reduces Event noise in the cluster
   # Only failures are reported — success is assumed unless flagged

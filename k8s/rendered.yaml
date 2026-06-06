@@ -1,0 +1,1090 @@
+---
+# Source: policies/templates/network-policies/allow-dns.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/allow-istio-controlplane.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-istio-controlplane
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+          podSelector:
+            matchLabels:
+              app: istiod
+      ports:
+        - port: 15012
+          protocol: TCP
+        - port: 15014
+          protocol: TCP
+        - port: 15017
+          protocol: TCP
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - port: 15090
+          protocol: TCP
+        - port: 15020
+          protocol: TCP
+        - port: 15021
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: admin-server-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: admin-server
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-ingress
+          podSelector:
+            matchLabels:
+              app: public-istio-ingressgateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: customers-service
+      ports:
+        - port: 8081
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: visits-service
+      ports:
+        - port: 8082
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: vets-service
+      ports:
+        - port: 8083
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: genai-service
+      ports:
+        - port: 8084
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: config-server-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: config-server
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: customers-service-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: customers-service
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: api-gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: admin-server
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.0.22.0/24
+      ports:
+        - port: 3306
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: discovery-server-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: discovery-server
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: genai-service-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: genai-service
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: api-gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: admin-server
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vets-service-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: vets-service
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: api-gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: admin-server
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.0.22.0/24
+      ports:
+        - port: 3306
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+---
+# Source: policies/templates/network-policies/service-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: visits-service-policy
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: visits-service
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: api-gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: petclinic
+          podSelector:
+            matchLabels:
+              app: admin-server
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 8080
+          protocol: TCP
+
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.0.22.0/24
+      ports:
+        - port: 3306
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: discovery-server
+      ports:
+        - port: 8761
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: config-server
+      ports:
+        - port: 8888
+          protocol: TCP
+---
+# Source: policies/templates/istio/allow-prometheus-scraping.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/monitoring/sa/monitoring-prometheus"]
+      to:
+        - operation:
+            paths: ["/actuator/prometheus"]
+            methods: ["GET"]
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: admin-server-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: admin-server
+      app.kubernetes.io/name: admin-server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/config-server-sa
+              - cluster.local/ns/petclinic/sa/customers-service-sa
+              - cluster.local/ns/petclinic/sa/discovery-server-sa
+              - cluster.local/ns/petclinic/sa/genai-service-sa
+              - cluster.local/ns/petclinic/sa/vets-service-sa
+              - cluster.local/ns/petclinic/sa/visits-service-sa
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: api-gateway-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+      app.kubernetes.io/name: api-gateway
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-ingress/sa/public-istio-ingressgateway
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: config-server-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: config-server
+      app.kubernetes.io/name: config-server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/config-server-sa
+              - cluster.local/ns/petclinic/sa/customers-service-sa
+              - cluster.local/ns/petclinic/sa/discovery-server-sa
+              - cluster.local/ns/petclinic/sa/genai-service-sa
+              - cluster.local/ns/petclinic/sa/vets-service-sa
+              - cluster.local/ns/petclinic/sa/visits-service-sa
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: customers-service-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: customers-service
+      app.kubernetes.io/name: customers-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: discovery-server-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: discovery-server
+      app.kubernetes.io/name: discovery-server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/config-server-sa
+              - cluster.local/ns/petclinic/sa/customers-service-sa
+              - cluster.local/ns/petclinic/sa/discovery-server-sa
+              - cluster.local/ns/petclinic/sa/genai-service-sa
+              - cluster.local/ns/petclinic/sa/vets-service-sa
+              - cluster.local/ns/petclinic/sa/visits-service-sa
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: genai-service-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: genai-service
+      app.kubernetes.io/name: genai-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: vets-service-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: vets-service
+      app.kubernetes.io/name: vets-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+---
+# Source: policies/templates/istio/service-authorization-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: visits-service-authz
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  selector:
+    matchLabels:
+      app: visits-service
+      app.kubernetes.io/name: visits-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/petclinic/sa/api-gateway-sa
+              - cluster.local/ns/petclinic/sa/admin-server-sa
+---
+# Source: policies/templates/kyverno/verify-image-provenance.yaml
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedImageValidatingPolicy
+metadata:
+  name: verify-image-provenance
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: platform-policies
+    policy.kyverno.io/version: v1
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    admission:
+      enabled: true
+    background:
+      enabled: false
+    mode: Kubernetes
+  validationActions: [Deny]
+  failurePolicy: Fail
+  validationConfigurations:
+    mutateDigest: true
+    required: true
+    verifyDigest: true
+  matchConstraints:                          
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']                  
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+  credentials:
+    allowInsecureRegistry: false
+    providers:
+      - amazon
+  matchImageReferences:
+    - glob: "509194952955.dkr.ecr.us-east-2.amazonaws.com/petclinic/*"
+  
+  attestors:
+    
+    - name: attestor-0
+      cosign:
+        keyless:
+          identities:
+            - subject: "https://github.com/silasfrancis/eks-platform-petclinic/.github/workflows/build-push.yaml@refs/heads/main"
+              issuer: "https://token.actions.githubusercontent.com"
+        ctlog:
+          url: 'https://rekor.sigstore.dev'
+    - name: attestor-1
+      cosign:
+        keyless:
+          identities:
+            - subject: "https://github.com/silasfrancis/eks-platform-petclinic/.github/workflows/build-migrations.yaml@refs/heads/main"
+              issuer: "https://token.actions.githubusercontent.com"
+        ctlog:
+          url: 'https://rekor.sigstore.dev'
+
+  attestations:
+    - name: vulnScan
+      intoto:
+        type: cosign.sigstore.dev/attestation/vuln/v1
+
+  validations:
+    - message: 'Container Images must be signed by an authorized GitHub workflow'
+      expression: >-
+        images.containers.map(image,
+          verifyImageSignatures(image, [attestors['attestor-0']]) > 0 || verifyImageSignatures(image, [attestors['attestor-1']]) > 0
+        ).all(e, e)
+
+    - message: 'Init container image must be signed by an authorized GitHub workflow'
+      expression: >-
+        !has(object.spec.initContainers) ||
+        images.initContainers.map(image,
+          verifyImageSignatures(image, [attestors['attestor-0']]) > 0 || verifyImageSignatures(image, [attestors['attestor-1']]) > 0
+        ).all(e, e)
+
+    - message: "Container Images must have a verified vulnerability scan attestation from an authorized GitHub workflow."
+      expression: >-
+        images.containers.map(image,
+          verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-0']]) > 0 || verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-1']]) > 0
+        ).all(e, e)
+
+    - message: "Init container image must have a verified vulnerability scan attestation from an authorized GitHub workflow."
+      expression: >-
+        !has(object.spec.initContainers) ||
+        images.initContainers.map(image,
+          verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-0']]) > 0 || verifyAttestationSignatures(image, attestations.vulnScan, [attestors['attestor-1']]) > 0
+        ).all(e, e)
+---
+# Source: policies/templates/kyverno/mutation-security-defaults.yaml
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedMutatingPolicy
+metadata:
+  name: security-and-label-mutation
+  namespace: petclinic
+spec:
+  evaluation:
+    admission:
+      enabled: true
+
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+
+  variables:
+    - name: mainContainerName
+      expression: >-
+        object.spec.containers.filter(c, 
+          c.name != 'istio-proxy' && 
+          c.name != 'istio-init' && 
+          c.name != 'queue-proxy'
+        ).size() > 0
+        ? object.spec.containers.filter(c, 
+            c.name != 'istio-proxy' && 
+            c.name != 'istio-init' && 
+            c.name != 'queue-proxy'
+          )[0].name
+        : "unknown"
+
+  mutations:
+
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          variables.mainContainerName == "unknown" ? Object{} : Object{
+            metadata: Object{
+              labels: (has(object.metadata.labels) ? object.metadata.labels : {}).merge({
+                "app.kubernetes.io/name": variables.mainContainerName,
+                "app": variables.mainContainerName,
+                "environment": "main"
+              })
+            }
+          }
+
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object{
+              containers: object.spec.containers.map(c,
+                c.name == 'istio-proxy' || c.name == 'istio-init' || c.name == 'queue-proxy'
+                ? c
+                : Object{
+                    name: c.name,
+                    securityContext: (has(c.securityContext) ? c.securityContext : {}) + {
+                      "runAsNonRoot": true,
+                      "privileged": false,
+                      "allowPrivilegeEscalation": false,
+                      "readOnlyRootFilesystem": true,
+                      "capabilities": {
+                        "drop": ["ALL"]
+                      },
+                      "seccompProfile": {
+                        "type": "RuntimeDefault"
+                      }
+                    }
+                  }
+              )
+            }
+          }
+
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object{
+              hostNetwork: false,
+              hostPID: false,
+              hostIPC: false,
+              securityContext: (has(object.spec.securityContext) ? object.spec.securityContext : {}) + {
+                "runAsNonRoot": true,
+                "seccompProfile": {
+                  "type": "RuntimeDefault"
+                }
+              }
+            }
+          }
+---
+# Source: policies/templates/kyverno/network-policy-governance.yaml
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: network-policy-governance
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: platform-policies
+    policy.kyverno.io/version: v1
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['networking.k8s.io']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE', 'DELETE']
+        resources: ['networkpolicies']
+  
+  validations:
+    - message: 'NetworkPolicies must have a "protected" label set to "true" or "false"'
+      expression: >-
+        request.operation == 'DELETE' || (
+          has(object.metadata.labels) &&
+          has(object.metadata.labels.protected) &&
+          (object.metadata.labels.protected == "true" || object.metadata.labels.protected == "false")
+        )
+
+    - message: 'This NetworkPolicy is protected and cannot be deleted, set policy label.protected=false to delete'
+      expression: >-
+        request.operation != 'DELETE' || !(
+          has(object.metadata.labels) &&
+          has(object.metadata.labels.protected) &&
+          object.metadata.labels.protected == "true"
+        )
+---
+# Source: policies/templates/kyverno/pod-security.yaml
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: pod-security
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: platform-policies
+    policy.kyverno.io/version: v1
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    admission:
+      enabled: true
+    background:
+      enabled: false
+    mode: Kubernetes
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+
+  variables:
+    - name: appContainers
+      expression: >-
+        object.spec.containers.filter(c,
+          !c.image.contains('istio-proxy') &&
+          !c.image.contains('istio-pilot')
+        )
+
+  validations:
+    - message: 'Privileged containers or host access (Network/PID/IPC) not allowed'
+      expression: >-
+        variables.appContainers.all(c, 
+          !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false
+        ) &&
+        (!has(object.spec.hostNetwork) || object.spec.hostNetwork == false) &&
+        (!has(object.spec.hostPID) || object.spec.hostPID == false) &&
+        (!has(object.spec.hostIPC) || object.spec.hostIPC == false)
+
+    - message: 'Containers must run as non-root (check Pod or Container level)'
+      expression: >-
+        variables.appContainers.all(c,
+          (has(c.securityContext) && c.securityContext.runAsNonRoot == true) ||
+          (has(object.spec.securityContext) && object.spec.securityContext.runAsNonRoot == true)
+        )
+
+    - message: 'hostPath volumes and default service accounts are forbidden'
+      expression: >-
+        (!has(object.spec.volumes) || object.spec.volumes.all(v, !has(v.hostPath))) &&
+        (has(object.spec.serviceAccountName) && object.spec.serviceAccountName != "default")
+
+    - message: 'Resources: Memory limits and CPU/Memory requests are required'
+      expression: >-
+        variables.appContainers.all(c,
+          has(c.resources.requests.memory) &&
+          has(c.resources.requests.cpu) &&
+          has(c.resources.limits.memory)
+        )
+
+    - message: 'Security: Privilege escalation forbidden and ALL capabilities must be dropped'
+      expression: >-
+        variables.appContainers.all(c,
+          (!has(c.securityContext.allowPrivilegeEscalation) || c.securityContext.allowPrivilegeEscalation == false) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(d, d == "ALL") &&
+          !has(c.securityContext.capabilities.add)
+        )
+---
+# Source: policies/templates/kyverno/registry-allowlist.yaml
+apiVersion: policies.kyverno.io/v1
+kind: NamespacedValidatingPolicy
+metadata:
+  name: restrict-image-registries
+  namespace: petclinic
+  labels:
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: platform-policies
+    policy.kyverno.io/version: v1
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    admission: { enabled: true }
+  validationActions: [Deny]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+
+  variables:
+    - name: allowedRegistries
+      expression: >-
+        [
+          "509194952955.dkr.ecr.us-east-2.amazonaws.com/petclinic/", 
+          "docker.io/istio/",
+          "gcr.io/istio-release/",
+          "quay.io/kiwigrid/"
+        ]
+
+  validations:
+    - message: 'Image must be from an approved registry'
+      expression: >-
+        object.spec.containers.all(c,
+          variables.allowedRegistries.exists(r, c.image.startsWith(r))
+        )
+---
+# Source: policies/templates/istio/peer-authentication.yaml
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: petclinic-strict-mtls
+  namespace: petclinic
+  labels:
+    protected: "true"
+    app.kubernetes.io/managed-by: helm
+    app.kubernetes.io/part-of: petclinic-network
+    protected: "true"
+spec:
+  mtls:
+    mode: STRICT

@@ -18,8 +18,8 @@ spec:
     background:
       enabled: false
     mode: Kubernetes
-  validationActions: [Audit]
-  failurePolicy: Ignore
+  validationActions: [Deny]
+  failurePolicy: Fail
   validationConfigurations:
     mutateDigest: true
     required: true

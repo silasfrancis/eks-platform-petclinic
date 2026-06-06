@@ -11,7 +11,7 @@ metadata:
     {{- include "policies.kyverno.labels" $ | nindent 4 }}
 spec:
   webhookConfiguration:
-    timeoutSeconds: 15
+    timeoutSeconds: 3
   evaluation:
     admission: { enabled: true }
   validationActions: [Deny]

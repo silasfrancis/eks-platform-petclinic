@@ -73,15 +73,33 @@ jobs:
             aws s3 cp s3://${{ env.CICD_BUCKET }}/$MANIFEST_KEY build-manifest.json
             echo "MANIFEST_FOUND=true" >> $GITHUB_OUTPUT
 
+        - name: Set Chart Environment
+          id: set_chart_env
+          run: |
+                if [ "${{ env.BRANCH_NAME }}" == "main" ]; then
+                  echo "VALUE_ENVIRONMENT=prod" >> $GITHUB_OUTPUT
+                elif [ "${{ env.BRANCH_NAME }}" == "dev" ]; then
+                  echo "VALUE_ENVIRONMENT=dev" >> $GITHUB_OUTPUT
+                else
+                  echo "VALUE_ENVIRONMENT=unknown" >> $GITHUB_OUTPUT
+                fi
+        - name: Get latest tag
+          id: get_tag
+          run: |
+            git fetch --tags
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "${{ env.SHORT_SHA }}")
+            echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+
         - name: Update Helm Values
           id: update_image_value
           if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'
           run: |
-            VALUE_ENVIRONMENT=${{ env.BRANCH_NAME }}
+            VALUE_ENVIRONMENT=${{ steps.set_chart_env.outputs.VALUE_ENVIRONMENT }}
             SERVICE=${{ matrix.dir }}
             TARGET_DIR="k8s/microservice/values/env/$VALUE_ENVIRONMENT"
             VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
             TARGET_FILE="build-manifest.json"
+            CHART_FILE="k8s/microservice/Chart.yaml"
 
             echo "Processing service: $SERVICE"
             echo "Values file: $VALUES_FILE"
@@ -118,14 +136,13 @@ jobs:
             echo "Contents after update:"
             yq '.image' "$VALUES_FILE"
 
-            CHART_FILE="k8s/microservice/Chart.yaml"
             CURRENT_VERSION=$(yq '.version' "$CHART_FILE")
             IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
             PATCH=$((PATCH + 1))
             NEW_VERSION="$MAJOR.$MINOR.$PATCH"
             
             yq -i ".version = \"$NEW_VERSION\"" "$CHART_FILE"
-            yq -i ".appVersion = \"${{ env.SHORT_SHA }}\"" "$CHART_FILE"
+            yq -i ".appVersion = \"${{ steps.get_tag.outputs.LATEST_TAG }}\"" "$CHART_FILE"
 
         - name: Create Pull Request
           if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'

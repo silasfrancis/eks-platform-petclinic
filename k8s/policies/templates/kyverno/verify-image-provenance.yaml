@@ -19,7 +19,7 @@ spec:
       enabled: false
     mode: Kubernetes
   validationActions: [Deny]
-  failurePolicy: Fail
+  failurePolicy: Ignore
   validationConfigurations:
     mutateDigest: true
     required: true

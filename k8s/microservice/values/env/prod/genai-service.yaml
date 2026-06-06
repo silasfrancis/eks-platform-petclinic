@@ -4,8 +4,8 @@ springProfile: docker,mysql
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/genai-service
-  tag: "a85214b1"
-  digest: "sha256:02fbad657d41cf1416b4321955a32ee173962c4756a2622d4d753bd57fd2fba1"
+  tag: "28114d47"
+  digest: "sha256:6c4634c0bb692131e0711db3149494d32630c5ca4170629fdcbe6aba8e93c52b"
   pullPolicy: IfNotPresent
 controller:
   type: rollout
@@ -41,7 +41,6 @@ analysisTemplate:
   enabled: true
 destinationRule:
   enabled: true
-
 volumesConfig:
   enabled: true
   volumeMounts:

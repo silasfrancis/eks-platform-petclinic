@@ -4,8 +4,8 @@ springProfile: docker
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/admin-server
-  tag: "a85214b1"
-  digest: "sha256:5f13a5b95f1a2b0758a29ea19e5e370b6c544e1ee8b2f09794fe7c081dbff5ce"
+  tag: "28114d47"
+  digest: "sha256:7473836ed95c758b13d770b40d902dcca8096670a32bb5cfd8ad42da9f548bf3"
   pullPolicy: IfNotPresent
 controller:
   type: deployment
@@ -20,7 +20,6 @@ probes:
     path: /
   liveness:
     path: /
-
 volumesConfig:
   enabled: true
   volumeMounts:

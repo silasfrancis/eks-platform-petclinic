@@ -146,6 +146,7 @@ clusterPolicy:
   services:
     adminServer:
       label: admin-server
+      serviceAccount: admin-server-sa
       port: 9090
       # Admin server receives traffic from all internal services for health dashboards
       ingressFromAll: true

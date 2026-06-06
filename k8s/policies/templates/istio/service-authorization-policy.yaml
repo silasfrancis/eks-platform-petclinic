@@ -29,12 +29,12 @@ spec:
 
               {{- range $clientKey := $svcSpec.ingressFrom }}
               {{- $clientSvc := index $root.Values.clusterPolicy.services $clientKey }}
-              - cluster.local/ns/{{ $nsName }}/sa/{{ $clientSvc.label }}
+              - cluster.local/ns/{{ $nsName }}/sa/{{ $clientSvc.serviceAccount }}
               {{- end }}
 
               {{- if $svcSpec.ingressFromAll }}
               {{- range $allKey, $allSpec := $root.Values.clusterPolicy.services }}
-              - cluster.local/ns/{{ $nsName }}/sa/{{ $allSpec.label }}
+              - cluster.local/ns/{{ $nsName }}/sa/{{ $allSpec.serviceAccount }}
               {{- end }}
               {{- end }}
 {{- end }}

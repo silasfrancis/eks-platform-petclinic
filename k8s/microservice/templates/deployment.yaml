@@ -6,11 +6,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "microservice.labels" . | nindent 4 }}
-  {{- $annotations := include "microservice.workloadAnnotations" . | fromYaml }}
-  {{- if $annotations }}
-  annotations:
-    {{- toYaml $annotations | nindent 4 }}
-  {{- end }}
 spec:
   {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.replicaCount | default 1 }}
@@ -26,6 +21,11 @@ spec:
     metadata:
       labels:
         {{- include "microservice.selectorLabels" . | nindent 8 }}
+      {{- $annotations := include "microservice.workloadAnnotations" . | fromYaml }}
+      {{- if $annotations }}
+      annotations:
+        {{- toYaml $annotations | nindent 8 }}
+      {{- end }}
     spec:
       {{- with .Values.podSpec }}
       {{- if hasKey . "hostPID" }}

@@ -131,11 +131,11 @@ volumesConfig:
 istioEnvoyOverrides:
   enabled: true
   requests:
-    cpu: "10m"
-    memory: "32Mi"
+    cpu: "25m"
+    memory: "64Mi"
   limits:
     cpu: "100m"
-    memory: "128Mi"
+    memory: "256Mi"
     
 # Config Server
 # Controls whether SPRING_CONFIG_IMPORT is injected.
@@ -312,8 +312,8 @@ vpa:
   enabled: false
   # Default limits for Goldilocks/Recommendation mode
   minAllowed:
-    cpu: 200m
-    memory: 512Mi
+    cpu: 100m
+    memory: 256Mi
   maxAllowed:
     cpu: 700m
     memory: 1Gi

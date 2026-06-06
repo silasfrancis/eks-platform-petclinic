@@ -50,16 +50,16 @@ app.kubernetes.io/name: {{ include "microservice.name" . }}
 
 {{- /* 1. Handle Job Hooks (Only for Jobs) */ -}}
 {{- if eq .Values.controller.type "job" }}
-helm.sh/hook: pre-install,pre-upgrade
-helm.sh/hook-weight: "-5"
-helm.sh/hook-delete-policy: before-hook-creation,hook-failed
+# helm.sh/hook: pre-install,pre-upgrade
+# helm.sh/hook-weight: "-5"
+# helm.sh/hook-delete-policy: before-hook-creation,hook-failed
 {{- end }}
 
 {{- /* 2. Apply Istio Envoy Resource Overrides (For Deployments and Rollouts) */ -}}
 {{- if or (eq .Values.controller.type "deployment") (eq .Values.controller.type "rollout") }}
 {{- if .Values.istioEnvoyOverrides.enabled }}
-sidecar.istio.io/proxyCPURequest: {{ .Values.istioEnvoyOverrides.requests.cpu | quote }}
-sidecar.istio.io/proxyMemoryRequest: {{ .Values.istioEnvoyOverrides.requests.memory | quote }}
+sidecar.istio.io/proxyCPU: {{ .Values.istioEnvoyOverrides.requests.cpu | quote }}
+sidecar.istio.io/proxyMemory: {{ .Values.istioEnvoyOverrides.requests.memory | quote }}
 sidecar.istio.io/proxyCPULimit: {{ .Values.istioEnvoyOverrides.limits.cpu | quote }}
 sidecar.istio.io/proxyMemoryLimit: {{ .Values.istioEnvoyOverrides.limits.memory | quote }}
 {{- end }}

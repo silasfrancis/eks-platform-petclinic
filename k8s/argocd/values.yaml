@@ -215,6 +215,13 @@ argocdBootstrap:
       project: platform
       syncWave: "2"
       repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
+      ignoreDifferences:
+        - group: batch
+          kind: Job
+          name: backup-velero-upgrade-crds
+          namespace: velero
+          jsonPointers:
+          - /spec/template/metadata/name
 
     # Wave 3 — Application workloads
     microservices:

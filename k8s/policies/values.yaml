@@ -155,6 +155,7 @@ clusterPolicy:
 
     apiGateway:
       label: api-gateway
+      serviceAccount: api-gateway-sa
       port: 8080
       # External traffic enters via Istio ingress gateway
       istioIngress: true
@@ -170,6 +171,7 @@ clusterPolicy:
 
     configServer:
       label: config-server
+      serviceAccount: config-server-sa
       port: 8888
       # All services pull config from configServer at startup
       # ingressFromAll covers this without listing every service
@@ -178,6 +180,7 @@ clusterPolicy:
 
     discoveryServer:
       label: discovery-server
+      serviceAccount: discovery-server-sa
       port: 8761
       # All services register with Eureka
       ingressFromAll: true
@@ -187,6 +190,7 @@ clusterPolicy:
 
     customersService:
       label: customers-service
+      serviceAccount: customers-service-sa
       port: 8081
       ingressFrom:
         - apiGateway
@@ -198,6 +202,7 @@ clusterPolicy:
 
     visitsService:
       label: visits-service
+      serviceAccount: visits-service-sa
       port: 8082
       ingressFrom:
         - apiGateway
@@ -209,6 +214,7 @@ clusterPolicy:
 
     vetsService:
       label: vets-service
+      serviceAccount: vets-service-sa
       port: 8083
       ingressFrom:
         - apiGateway
@@ -220,6 +226,7 @@ clusterPolicy:
 
     genaiService:
       label: genai-service
+      serviceAccount: genai-service-sa
       port: 8084
       ingressFrom:
         - apiGateway

@@ -67,8 +67,8 @@ kube-prometheus-stack:
     admin:
       # Set existingSecret to ESO-created secret name for grafana admin credentials
       existingSecret: "platform-monitoring-secrets"
-      userKey: "" # grafana admin user name
-      passwordKey: "" # grafana admin password
+      userKey: "" # secret key for grafana admin user name
+      passwordKey: "" # secret key grafana admin password
 
     persistence:
       enabled: true

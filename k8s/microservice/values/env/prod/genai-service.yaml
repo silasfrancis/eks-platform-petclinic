@@ -1,6 +1,6 @@
 appName: genai-service
 containerPort: 8084
-springProfile: docker,mysql
+springProfile: docker
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/genai-service

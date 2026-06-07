@@ -22,6 +22,13 @@ resource "aws_vpc_security_group_ingress_rule" "eks_from_wireguard_server" {
   cidr_ipv4         = var.wireguard_vpc_cidr
 }
 
+resource "aws_vpc_security_group_ingress_rule" "nodes_to_cluster_sg_all" {
+  description                  = "Allow worker nodes to reach kube-system pods on cluster SG nodes"
+  security_group_id            = aws_eks_cluster.main_cluster.vpc_config[0].cluster_security_group_id
+  ip_protocol                  = "-1"
+  referenced_security_group_id = aws_security_group.eks_node.id
+}
+
 resource "aws_vpc_security_group_ingress_rule" "control_plane_to_nodes" {
   description                  = "Allow Cluster Control Plane to communicate with pods"
   security_group_id            = aws_security_group.eks_node.id

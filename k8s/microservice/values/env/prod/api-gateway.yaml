@@ -30,7 +30,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: customers-service-svc.petclinic.svc.cluster.local
+            host: customers-service.petclinic.svc.cluster.local
             port:
               number: 8081
     - name: visits-route
@@ -41,7 +41,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: visits-service-svc.petclinic.svc.cluster.local
+            host: visits-service.petclinic.svc.cluster.local
             port:
               number: 8082
     - name: vets-route
@@ -52,7 +52,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: vets-service-svc.petclinic.svc.cluster.local
+            host: vets-service.petclinic.svc.cluster.local
             port:
               number: 8083
     - name: genai-route
@@ -63,7 +63,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: genai-service-svc.petclinic.svc.cluster.local
+            host: genai-service.petclinic.svc.cluster.local
             port:
               number: 8084
 analysisTemplate:

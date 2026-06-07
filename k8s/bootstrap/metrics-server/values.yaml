@@ -60,6 +60,6 @@ securityContext:
 serviceMonitor:
   enabled: true
   additionalLabels:
-    release: platform-monitoring
+    release: monitoring
   interval: 1m
   scrapeTimeout: 10s

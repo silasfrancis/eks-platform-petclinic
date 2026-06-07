@@ -116,7 +116,6 @@ env:
   plain: {} # non-sensitive env vars — committed to Git
   secret: {} # sensitive env vars — populated via ExternalSecret
 
-
 # Container and Pod Spec Volumes Configuration
 volumesConfig:
   enabled: false
@@ -136,7 +135,7 @@ istioEnvoyOverrides:
   limits:
     cpu: "100m"
     memory: "256Mi"
-    
+
 # Config Server
 # Controls whether SPRING_CONFIG_IMPORT is injected.
 # Disable for config-server itself (it IS the config server).
@@ -267,7 +266,7 @@ serviceMonitor:
   enabled: false
   selectorLabels:
     # This must match Prometheus serviceMonitorSelector label on the monitoring chart
-    release: platform-monitoring
+    release: monitoring
   portName: http # For services with ServiceMonitor enabled this most match the portName of that service
   endpoint: /actuator/prometheus
 
@@ -286,9 +285,9 @@ hpa:
     scaleDown:
       stabilizationWindowSeconds: 60
       policies:
-      - type: Percent
-        value: 100
-        periodSeconds: 15
+        - type: Percent
+          value: 100
+          periodSeconds: 15
 
 # KEDA ScaledObject
 # Event-driven autoscaling for services that can scale to zero.

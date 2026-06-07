@@ -17,23 +17,23 @@ config:
   # and prevents Kyverno from evaluating resources it should never touch
   # For futher details refer to => https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values&path=config.resourceFilters
   resourceFilters:
-    - '[Event,*,*]'                    # events are ephemeral — skip
-    - '[*/*,kube-system,*]'            # Kubernetes system namespace
-    - '[*/*,kube-public,*]'            # public read-only namespace
-    - '[*/*,kube-node-lease,*]'        # node heartbeat leases
-    - '[*/*,karpenter,*]'              # Karpenter manages its own resources
-    - '[*/*,argocd,*]'                 # ArgoCD manages its own resources
-    - '[*/*,monitoring,*]'             # monitoring stack — not application workloads
-    - '[Node,*,*]'                     # nodes are infrastructure — not policy targets
-    - '[Node/?*,*,*]'
-    - '[APIService,*,*]'               # API server internals
-    - '[TokenReview,*,*]'              # auth internals
-    - '[SubjectAccessReview,*,*]'      # auth internals
-    - '[SelfSubjectAccessReview,*,*]'  # auth internals
-    - '[Binding,*,*]'                  # pod scheduling internals
-    - '[ReplicaSet,*,*]'               # managed by Deployment/Rollout — skip
-    - '[EphemeralReport,*,*]'          # Kyverno internal reporting objects
-    - '[ClusterEphemeralReport,*,*]'   # Kyverno internal reporting objects
+    - "[Event,*,*]" # events are ephemeral — skip
+    - "[*/*,kube-system,*]" # Kubernetes system namespace
+    - "[*/*,kube-public,*]" # public read-only namespace
+    - "[*/*,kube-node-lease,*]" # node heartbeat leases
+    - "[*/*,karpenter,*]" # Karpenter manages its own resources
+    - "[*/*,argocd,*]" # ArgoCD manages its own resources
+    - "[*/*,monitoring,*]" # monitoring stack — not application workloads
+    - "[Node,*,*]" # nodes are infrastructure — not policy targets
+    - "[Node/?*,*,*]"
+    - "[APIService,*,*]" # API server internals
+    - "[TokenReview,*,*]" # auth internals
+    - "[SubjectAccessReview,*,*]" # auth internals
+    - "[SelfSubjectAccessReview,*,*]" # auth internals
+    - "[Binding,*,*]" # pod scheduling internals
+    - "[ReplicaSet,*,*]" # managed by Deployment/Rollout — skip
+    - "[EphemeralReport,*,*]" # Kyverno internal reporting objects
+    - "[ClusterEphemeralReport,*,*]" # Kyverno internal reporting objects
 
   webhooks:
     # Exclude namespaces from webhook enforcement
@@ -49,7 +49,7 @@ config:
             - karpenter
             - argocd
             - monitoring
-            - istio-ingress 
+            - istio-ingress
             - kyverno
 
   # generateSuccessEvents: false reduces Event noise in the cluster
@@ -69,11 +69,11 @@ admissionController:
         cpu: 100m
         memory: 128Mi
       limits:
-        memory: 384Mi    # no CPU limit — admission must never be throttled
+        memory: 384Mi # no CPU limit — admission must never be throttled
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: monitoring # must match Prometheus serviceMonitorSelector label
     interval: 30s
     scrapeTimeout: 25s
 
@@ -94,7 +94,7 @@ backgroundController:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: monitoring # must match Prometheus serviceMonitorSelector label
 
 # cleanupController — enforces TTL cleanup policies
 # Removes resources that have exceeded their configured lifetime
@@ -114,7 +114,7 @@ cleanupController:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: monitoring # must match Prometheus serviceMonitorSelector label
 
 # reportsController — generates PolicyReport and ClusterPolicyReport resources
 # These are consumed by Grafana dashboard and CLI tooling
@@ -133,7 +133,7 @@ reportsController:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: monitoring # must match Prometheus serviceMonitorSelector label
 
 # Grafana dashboard — pushed to monitoring namespace
 # Discovered by Grafana sidecar via grafana_dashboard label

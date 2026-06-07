@@ -91,7 +91,7 @@ velero:
     uploaderType: kopia
 
     # Default TTL for backups not covered by schedule-specific TTLs
-    defaultBackupTTL: 720h    # 30 days
+    defaultBackupTTL: 720h # 30 days
 
     backupStorageLocation:
       - name: petclinic-s3-backup
@@ -105,7 +105,7 @@ velero:
         config:
           # OVERRIDE: update if deploying to a different region
           region: us-east-2
-          kmsKeyId: ""    # kms key id for  S3 encryption
+          kmsKeyId: "" # kms key id for  S3 encryption
 
     volumeSnapshotLocation:
       - name: petclinic-ebs-backup
@@ -126,10 +126,10 @@ velero:
     # Retains 30 days of history
     daily-cluster-backup:
       disabled: false
-      schedule: "0 2 * * *"    # 2 AM daily
+      schedule: "0 2 * * *" # 2 AM daily
       useOwnerReferencesInBackup: false
       template:
-        ttl: "720h"             # 30 days
+        ttl: "720h" # 30 days
         storageLocation: petclinic-s3-backup
         volumeSnapshotLocations:
           - petclinic-ebs-backup
@@ -148,10 +148,10 @@ velero:
     # Protects against accidental deletion of application resources
     hourly-petclinic-backup:
       disabled: false
-      schedule: "0 * * * *"    # every hour
+      schedule: "0 * * * *" # every hour
       useOwnerReferencesInBackup: false
       template:
-        ttl: "168h"             # 7 days
+        ttl: "168h" # 7 days
         storageLocation: petclinic-s3-backup
         includedNamespaces:
           - petclinic
@@ -174,7 +174,7 @@ velero:
         includedNamespaces:
           - monitoring
         snapshotVolumes: true
-        defaultVolumesToFsBackup: true    # filesystem backup for Prometheus/Grafana PVCs
+        defaultVolumesToFsBackup: true # filesystem backup for Prometheus/Grafana PVCs
         labels:
           schedule: daily-monitoring-backup
           type: monitoring
@@ -188,20 +188,20 @@ velero:
       enabled: true
       autodetect: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
 
     # PodMonitor for node-agent DaemonSet — separate from Velero server ServiceMonitor
     nodeAgentPodMonitor:
       enabled: true
       autodetect: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
 
     prometheusRule:
       enabled: true
       autodetect: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
       spec:
         # Fires if the last backup attempt did not complete successfully
         - alert: VeleroBackupFailed

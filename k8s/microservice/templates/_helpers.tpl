@@ -293,6 +293,9 @@ canary:
             value: {{ include "microservice.serviceName" $root }}
           - name: namespace
             value: {{ $root.Release.Namespace }}
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
     {{- end }}
     - setWeight: 100
 

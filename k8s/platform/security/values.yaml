@@ -163,7 +163,7 @@ trivy-operator:
     enabled: true
     namespace: trivy-system
     labels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: monitoring # must match Prometheus serviceMonitorSelector label
 
   resources:
     requests:
@@ -265,7 +265,7 @@ falco:
   serviceMonitor:
     create: true
     labels:
-      release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+      release: monitoring # must match Prometheus serviceMonitorSelector label
     interval: 15s
 
   # Falco Grafana dashboard — pushed to monitoring namespace
@@ -323,7 +323,7 @@ falco:
     serviceMonitor:
       enabled: true
       labels:
-        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+        release: monitoring # must match Prometheus serviceMonitorSelector label
 
   # Custom petclinic rules loaded from a separate file
   # keeping rules in a separate file makes them easier to manage and review
@@ -432,7 +432,7 @@ cert-manager:
       interval: 60s
       scrapeTimeout: 30s
       labels:
-        release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+        release: monitoring # must match Prometheus serviceMonitorSelector label
 
   webhook:
     replicaCount: 1

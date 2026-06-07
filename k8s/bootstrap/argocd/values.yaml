@@ -126,11 +126,11 @@ server:
       enabled: true
       additionalLabels:
         # OVERRIDE: must match your Prometheus release label
-        release: platform-monitoring
+        release: monitoring
     rules:
       enabled: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
       spec:
         # Fires if any app has not synced for 12 hours
         - alert: ArgoAppNotSynced
@@ -174,7 +174,7 @@ controller:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
 
 # Repo server — clones Git repos and renders Helm/Kustomize manifests
 repoServer:
@@ -197,7 +197,7 @@ repoServer:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
 
 # ApplicationSet controller — generates Applications from templates
 # Used if you adopt ApplicationSets in future (not currently used)
@@ -217,7 +217,7 @@ applicationSet:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
 
 # Dex disabled — no SSO configured
 # Enable and configure OIDC if adding SSO (GitHub, Google etc)
@@ -260,7 +260,7 @@ notifications:
     serviceMonitor:
       enabled: true
       additionalLabels:
-        release: platform-monitoring
+        release: monitoring
 
   # ESO creates this secret
   # Secret contains: slack-token

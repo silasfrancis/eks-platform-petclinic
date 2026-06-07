@@ -178,7 +178,7 @@ external-dns-cloudflare:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring
+      release: monitoring
 
 # ExternalDNS Route53 instance
 # Private DNS records in Route53 private hosted zone.
@@ -226,7 +226,7 @@ external-dns-route53:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring
+      release: monitoring
 
 # ESO SecretStore — connects to AWS Secrets Manager
 # Used to pull the Cloudflare API token for ExternalDNS and cert-manager

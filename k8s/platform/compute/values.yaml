@@ -126,7 +126,6 @@ karpenterNamespace: karpenter
 #   expireAfter          node TTL — forces rotation (Never for on-demand, 24h for spot)
 #   terminationGracePeriod how long Karpenter waits for pods to drain
 nodePools:
-
   # ON_DEMAND pool — critical services that cannot tolerate interruption
   # config-server, discovery-server, api-gateway, admin-server
   # OVERRIDE: limits per environment
@@ -156,7 +155,7 @@ nodePools:
       # instanceFamily:
       #   - t4g
       # instanceGeneration: "2"
-      instanceSize: 
+      instanceSize:
         - small
         - medium
         - large
@@ -225,7 +224,7 @@ nodePools:
       #   - r6g
       #   - r7g
       # instanceGeneration: "2"
-      instanceSize: 
+      instanceSize:
         - small
         - medium
         - large
@@ -290,7 +289,7 @@ karpenter:
   # serviceMonitor:
   #   enabled: true
   #   additionalLabels:
-  #     release: platform-monitoring
+  #     release: monitoring
 
   controller:
     resources:

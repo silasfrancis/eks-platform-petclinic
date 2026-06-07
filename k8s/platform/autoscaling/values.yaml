@@ -44,7 +44,7 @@ keda:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: platform-monitoring # must match Prometheus serviceMonitorSelector label
+          release: monitoring # must match Prometheus serviceMonitorSelector label
 
     # Expose KEDA metrics server metrics for Prometheus scraping
     metricServer:
@@ -53,7 +53,7 @@ keda:
       serviceMonitor:
         enabled: true
         additionalLabels:
-          release: platform-monitoring
+          release: monitoring
 
     webhooks:
       enabled: true

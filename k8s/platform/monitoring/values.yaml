@@ -31,10 +31,10 @@ kube-prometheus-stack:
       # serviceMonitorSelectorNilUsesHelmValues: false removes the default
       # restriction to only monitor resources in the same namespace as Prometheus
       serviceMonitorSelectorNilUsesHelmValues: false
-      # Monitor every ServiceMonitor that has the label release: platform-monitoring
+      # Monitor every ServiceMonitor that has the label release: monitoring
       serviceMonitorSelector:
         matchLabels:
-          release: platform-monitoring
+          release: monitoring
       serviceMonitorNamespaceSelector: {}
 
       podMonitorSelectorNilUsesHelmValues: false
@@ -253,7 +253,7 @@ prometheus-cloudwatch-exporter:
     namespace: monitoring
     interval: 60s
     labels:
-      release: platform-monitoring
+      release: monitoring
 
   securityContext:
     runAsUser: 65534
@@ -357,7 +357,7 @@ loki:
     serviceMonitor:
       enabled: true
       labels:
-        release: platform-monitoring
+        release: monitoring
     dashboards:
       enabled: true
       labels:
@@ -460,10 +460,10 @@ alloy:
   serviceMonitor:
     enabled: true
     additionalLabels:
-      release: platform-monitoring # this is the release label for the monitoring stack
+      release: monitoring # this is the release label for the monitoring stack
 
 monitoring:
-  releaseLabel: platform-monitoring # this is the release label for the monitoring stack
+  releaseLabel: monitoring # this is the release label for the monitoring stack
   # The application namespaces to be alerted on
   managedNamespaces: # list of namespaces that are being monitored
     - petclinic

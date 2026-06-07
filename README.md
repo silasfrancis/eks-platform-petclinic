@@ -1,6 +1,6 @@
 # PetClinic Platform
 
-Production-style Kubernetes platform on AWS EKS built around the Spring PetClinic microservices application.
+A Kubernetes platform on AWS EKS built around the Spring PetClinic microservices application.
 
 The repository combines infrastructure provisioning, GitOps delivery, cluster networking, autoscaling, observability, runtime security, and operational tooling across isolated production and development environments.
 
@@ -421,11 +421,11 @@ See `docs/RUNBOOK.md` for operational access instructions.
 
 | Document | Description |
 |---|---|
-| `docs/ARCHITECTURE.md` | Infrastructure layout and traffic flows |
-| `docs/SECURITY.md` | Policies, runtime security, and supply chain controls |
-| `docs/RUNBOOK.md` | Operational procedures and troubleshooting |
-| `docs/TESTING.md` | Validation and deployment checks |
-| `docs/CONTRIBUTING.md` | Development workflow and conventions |
+| `docs/ARCHITECTURE.md` (docs/ARCHITECTURE.md) | Infrastructure layout and traffic flows |
+| `docs/SECURITY.md` (docs/SECURITY.md) | Policies, runtime security, and supply chain controls |
+| `docs/RUNBOOK.md` (docs/RUNBOOK.md) | Operational procedures and troubleshooting |
+| `docs/TESTING.md` (docs/TESTING.md) | Validation and deployment checks |
+| `docs/CONTRIBUTING.md` (docs/CONTRIBUTING.md) | Development workflow and conventions |
 
 ---
 

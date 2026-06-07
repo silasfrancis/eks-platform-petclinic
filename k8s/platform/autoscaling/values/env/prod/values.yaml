@@ -5,5 +5,5 @@ ingress:
     stacks:
       - name: goldilocks
         host: goldilocks.internal.lefrancis.org
-        serviceName: goldilocks-dashboard
+        serviceName: autoscaling-goldilocks-dashboard
         port: 80

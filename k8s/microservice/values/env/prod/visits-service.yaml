@@ -4,8 +4,8 @@ springProfile: docker,mysql
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/visits-service
-  tag: "28114d47"
-  digest: "sha256:61ec62fc29ec693260045743928e8ec8960153c13b71db7fc3e76d8d97137315"
+  tag: "255d2a65"
+  digest: "sha256:0f691e8ac71fe2018c65a1866d4b7e44ec9dc5331090b9c292e735e0c5100c12"
   pullPolicy: IfNotPresent
 controller:
   type: rollout

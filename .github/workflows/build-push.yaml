@@ -103,7 +103,7 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           image-ref: ${{ steps.get_image_repo.outputs.IMAGE }}
-          format: 'json'
+          format: 'cosign-vuln'
           output: '${{ matrix.dir }}_trivy-results.json'
           exit-code: '0'
           ignore-unfixed: true
@@ -153,7 +153,7 @@ jobs:
 
       - name: Attest scan results with Cosign
         run: |
-              cosign attest \
+              cosign attest --yes \
               --predicate '${{ matrix.dir }}_trivy-results.json' \
               --type vuln \
               "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}"

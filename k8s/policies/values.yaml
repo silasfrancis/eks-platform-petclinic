@@ -84,7 +84,8 @@ clusterPolicy:
 
     istioIngress:
       # The Istio ingress gateway — only api-gateway needs ingressFrom this
-      label: public-istio-ingressgateway
+      label:  public-istio-ingressgateway
+      serviceAccount: public-ingressgateway-sa
       namespace: istio-ingress
 
     rds:
@@ -100,6 +101,7 @@ clusterPolicy:
     # Prometheus scraping — allow monitoring namespace to scrape all services
     prometheus:
       label: prometheus
+      serviceAccount: monitoring-prometheus
       namespace: monitoring
       # Spring Boot Actuator metrics port — must match containerPort in service values
       port: 8080

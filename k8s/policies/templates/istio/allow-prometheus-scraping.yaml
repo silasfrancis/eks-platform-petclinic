@@ -14,7 +14,7 @@ spec:
   rules:
     - from:
         - source:
-            principals: ["cluster.local/ns/{{ $net.prometheus.namespace }}/sa/monitoring-prometheus"]
+            principals: ["cluster.local/ns/{{ $net.prometheus.namespace }}/sa/{{ $net.prometheus.serviceAccount }}"]
       to:
         - operation:
             paths: ["/actuator/prometheus"]

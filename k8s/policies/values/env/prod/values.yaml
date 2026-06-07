@@ -2,6 +2,7 @@ clusterPolicy:
   network:
     istioIngress:
       label: public-istio-ingressgateway
+      serviceAccount: public-ingressgateway-sa
       namespace: istio-ingress
 
     rds:

@@ -24,7 +24,7 @@ spec:
         - source:
             principals:
               {{- if $svcSpec.istioIngress }}
-              - cluster.local/ns/{{ $net.istioIngress.namespace }}/sa/{{ $net.istioIngress.label }}
+              - cluster.local/ns/{{ $net.istioIngress.namespace }}/sa/{{ $net.istioIngress.serviceAccount }}
               {{- end }}
 
               {{- range $clientKey := $svcSpec.ingressFrom }}

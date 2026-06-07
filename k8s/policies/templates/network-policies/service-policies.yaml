@@ -62,8 +62,10 @@ spec:
   egress:
     {{- if $spec.allowRds }}
     - to:
+        {{- range $net.rds.cidr }}
         - ipBlock:
-            cidr: {{ $net.rds.cidr | default "0.0.0.0/0" }}
+            cidr: {{ .ipBlock.cidr | default "0.0.0.0/0" }}
+        {{- end }}
       ports:
         - port: {{ $net.rds.port }}
           protocol: TCP

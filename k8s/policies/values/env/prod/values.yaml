@@ -5,7 +5,11 @@ clusterPolicy:
       namespace: istio-ingress
 
     rds:
-      cidr: "10.0.22.0/24"
+      cidr: 
+        - ipBlock:
+            cidr: 10.0.21.0/24
+        - ipBlock:
+            cidr: 10.0.22.0/24
       port: 3306
 
     prometheus:

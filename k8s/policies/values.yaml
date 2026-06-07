@@ -90,7 +90,11 @@ clusterPolicy:
     rds:
       # Replace with actual RDS private IP per environment
       # dev RDS and prod RDS will have different IPs
-      cidr: ""
+      cidr: {}
+        # - ipBlock:
+        #     cidr: 10.0.21.0/24
+        # - ipBlock:
+        #     cidr: 10.0.22.0/24
       port: 3306
 
     # Prometheus scraping — allow monitoring namespace to scrape all services

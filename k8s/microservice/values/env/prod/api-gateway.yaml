@@ -4,8 +4,8 @@ springProfile: docker
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/api-gateway
-  tag: "47beaa21"
-  digest: "sha256:c56f02e09e12901c3dc70a1347c334ec08a20369e83dd4a04ff8a152816d0d85"
+  tag: "255d2a65"
+  digest: "sha256:44a7590f83b2512f251086e554b264fe42ebab1e2b68860a10a973bde442f6e0"
   pullPolicy: IfNotPresent
 controller:
   type: rollout

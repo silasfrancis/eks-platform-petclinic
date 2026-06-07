@@ -69,12 +69,6 @@ kube-prometheus-stack:
       existingSecret: "platform-monitoring-secrets"
       userKey: "" # grafana admin user name
       passwordKey: "" # grafana admin password
-    grafana.ini:
-      server:
-        # This matches the host you used in your VirtualService
-        domain: grafana.internal.lefrancis.org
-        root_url: https://grafana.internal.lefrancis.org/
-        serve_from_sub_path: true
 
     persistence:
       enabled: true

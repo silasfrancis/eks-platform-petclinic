@@ -13,8 +13,6 @@ spec:
     - name: namespace
       value: {{ .Release.Namespace }}
     - name: canary-hash
-      valueFrom:
-        podTemplateHashValue: Latest
 
   metrics:
     - name: success-rate

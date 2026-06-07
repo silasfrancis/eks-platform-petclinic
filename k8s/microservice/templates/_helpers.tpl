@@ -267,6 +267,9 @@ canary:
         value: {{ include "microservice.serviceName" . }}
       - name: namespace
         value: {{ .Release.Namespace }} 
+      - name: canary-hash
+        valueFrom:
+          podTemplateHashValue: Latest
   trafficRouting:
     istio:
       virtualService:

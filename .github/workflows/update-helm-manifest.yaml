@@ -42,6 +42,8 @@ jobs:
     steps:
         - name: Checkout code
           uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+          with:
+            fetch-depth: 0
 
         - name: Configure AWS credentials
           uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
@@ -87,7 +89,7 @@ jobs:
           id: get_tag
           run: |
             git fetch --tags
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0" )
             echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
 
         - name: Update Helm Values

@@ -525,7 +525,3 @@ ingress:
         host: prometheus.internal.lefrancis.org
         serviceName: monitoring-prometheus
         port: 9090
-      - name: loki
-        host: loki.internal.lefrancis.org
-        serviceName: loki-gateway
-        port: 80

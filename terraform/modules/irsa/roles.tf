@@ -23,7 +23,7 @@ locals {
 
     loki = {
       namespace = "monitoring"
-      sas       = ["loki-sa"]
+      sas       = ["loki"]
       policy    = {
         actions   = [
           "s3:ListBucket", 

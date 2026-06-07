@@ -16,7 +16,7 @@ internal-gateway:
       service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-044992ee95201b5c1,subnet-0ecc34f4b08bff593"
       service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0dc41a3456b836fa6"
       external-dns.alpha.kubernetes.io/provider: "route53"
-      external-dns.alpha.kubernetes.io/hostname: "grafana.internal.lefrancis.org,argocd.internal.lefrancis.org,prometheus.internal.lefrancis.org,loki.internal.lefrancis.org,goldilocks.internal.lefrancis.org,falcosidekick.internal.lefrancis.org"
+      external-dns.alpha.kubernetes.io/hostname: "grafana.internal.lefrancis.org,argocd.internal.lefrancis.org,prometheus.internal.lefrancis.org,goldilocks.internal.lefrancis.org,falcosidekick.internal.lefrancis.org"
       external-dns.alpha.kubernetes.io/ttl: "120"
 
 customCertificates:

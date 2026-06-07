@@ -3,11 +3,13 @@
 
 eureka:
   instance:
-    hostname: localhost
-  # standalone mode
+    # Use ENV var if provided, otherwise default to 'discovery-server' 
+    # (works for both local Docker and K8s internal DNS)
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:discovery-server}
+  
+  # Standalone mode
   client:
     registerWithEureka: false
     fetchRegistry: false
     serviceUrl:
-      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
-
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://${eureka.instance.hostname}:${server.port}}/eureka/

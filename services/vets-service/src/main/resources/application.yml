@@ -7,7 +7,6 @@ spring:
     cache-names: vets
   profiles:
     active: production
-
 ---
 spring:
   config:

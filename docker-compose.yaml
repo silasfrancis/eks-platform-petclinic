@@ -50,6 +50,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761
 
   discovery-server:
     build:

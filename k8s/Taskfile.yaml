@@ -150,7 +150,7 @@ tasks:
     vars:
       PLATFORM_CHARTS:
         # - { name: "autoscaling", ns: "autoscaling" }
-        - { name: "backup",      ns: "velero" }
+        # - { name: "backup",      ns: "velero" }
         # - { name: "compute",   ns: "karpenter" }
         # - { name: "ingress",     ns: "istio-ingress" }
         - { name: "monitoring",  ns: "monitoring" }

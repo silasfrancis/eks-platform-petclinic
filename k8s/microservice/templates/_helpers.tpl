@@ -309,21 +309,25 @@ rollingUpdate:
 
 {{/*
 Default Prometheus triggers for KEDA ScaledObject.
-Scales based on HTTP request rate only.
-Uses Istio metrics for request rate — requires Istio sidecar injection.
-or vector(0) prevents KEDA errors when no metrics exist yet (e.g. cold start).
+- Scales based on HTTP request volume recorded by Istio.
+- Uses 'increase()' instead of 'rate()' to count raw requests over the window.
+- Includes 200 (Success) and 503 (No Healthy Upstream) codes to allow
+  scale-from-zero (the 503s indicate traffic hitting the gateway while pods are at 0).
+- "or vector(0)" ensures the query returns 0 instead of 'no data', 
+  preventing KEDA from entering an error state during cold starts.
 */}}
 {{- define "microservice.scaleObjectBaseTriggers" -}}
 - type: prometheus
   metadata:
-    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" }}
+    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://monitoring-prometheus.monitoring.svc.cluster.local:9090" }}
     metricName: http_requests_total
     threshold: "10"
+    activationThreshold: "1"
     query: |
-      sum(rate(istio_requests_total{
+      sum(increase(istio_requests_total{
         destination_service_name="{{ include "microservice.serviceName" . }}",
         destination_service_namespace="{{ .Release.Namespace }}",
-        reporter="source"
+        response_code=~"200|503"
       }[2m])) or vector(0)
 {{- end }}
 

@@ -309,7 +309,7 @@ rollingUpdate:
 
 {{/*
 Default Prometheus triggers for KEDA ScaledObject.
-Scales based on HTTP request rate, CPU and memory utilisation.
+Scales based on HTTP request rate only.
 Uses Istio metrics for request rate — requires Istio sidecar injection.
 or vector(0) prevents KEDA errors when no metrics exist yet (e.g. cold start).
 */}}
@@ -323,46 +323,8 @@ or vector(0) prevents KEDA errors when no metrics exist yet (e.g. cold start).
       sum(rate(istio_requests_total{
         destination_service_name="{{ include "microservice.serviceName" . }}",
         destination_service_namespace="{{ .Release.Namespace }}",
-        reporter="destination"
+        reporter="source"
       }[2m])) or vector(0)
-- type: prometheus
-  metadata:
-    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" }}
-    metricName: cpu_utilization
-    threshold: "70"
-    query: |
-      (
-        avg(rate(container_cpu_usage_seconds_total{
-          namespace="{{ .Release.Namespace }}",
-          pod=~"{{ .Values.appName }}-.*",
-          container="{{ .Values.appName }}"
-        }[2m]))
-        /
-        avg(kube_pod_container_resource_requests{
-          namespace="{{ .Release.Namespace }}",
-          pod=~"{{ .Values.appName }}-.*",
-          resource="cpu"
-        })
-      ) * 100 or vector(0)
-- type: prometheus
-  metadata:
-    serverAddress: {{ .Values.scaleObject.prometheusServer | default "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" }}
-    metricName: memory_utilization
-    threshold: "80"
-    query: |
-      (
-        avg(container_memory_working_set_bytes{
-          namespace="{{ .Release.Namespace }}",
-          pod=~"{{ .Values.appName }}-.*",
-          container="{{ .Values.appName }}"
-        })
-        /
-        avg(kube_pod_container_resource_requests{
-          namespace="{{ .Release.Namespace }}",
-          pod=~"{{ .Values.appName }}-.*",
-          resource="memory"
-        })
-      ) * 100 or vector(0)
 {{- end }}
 
 {{/*

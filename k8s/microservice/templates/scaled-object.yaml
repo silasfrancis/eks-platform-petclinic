@@ -29,5 +29,5 @@ spec:
     {{- toYaml .Values.scaleObject.fallback | nindent 4 }}
   {{- end }}
   triggers:
-    {{- include "microservice.scaleObjectTriggers" . | nindent 4 }}
+    {{- include "microservice.scaleObjectBaseTriggers" . | nindent 4 }}
 {{- end }}

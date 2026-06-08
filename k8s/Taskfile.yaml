@@ -186,11 +186,11 @@ tasks:
         # - config-server
         # - admin-server
         # - discovery-server
-        - api-gateway
-        - customers-service
+        # - api-gateway
+        # - customers-service
         - genai-service
-        - vets-service
-        - visits-service
+        # - vets-service
+        # - visits-service
     cmds:
       - for: { var: SERVICES }
         cmd: |

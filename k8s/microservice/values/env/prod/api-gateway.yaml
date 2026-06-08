@@ -70,8 +70,6 @@ analysisTemplate:
   enabled: true
 destinationRule:
   enabled: true
-discoveryServer:
-  enabled: false
 volumesConfig:
   enabled: true
   volumeMounts:

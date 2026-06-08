@@ -145,8 +145,9 @@ configServer:
 
 #Discovery server
 # Contols where EUREKA_CLIENT_SERVICEURL_DEFAULTZONE is set for services
+# Setting to false defaults to server url already set in the discovery server application code base (# Recommended)
 discoveryServer:
-  enabled: true
+  enabled: false
   url: "http://discovery-server.petclinic.svc.cluster.local:8761"
 
 # Node Scheduling

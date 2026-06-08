@@ -22,6 +22,8 @@ probes:
     path: /
 configServer:
   enabled: false
+discoveryServer:
+  enabled: true
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-app-secrets-irsa"

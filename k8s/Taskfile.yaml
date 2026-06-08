@@ -183,14 +183,14 @@ tasks:
     vars:
       SERVICES:
         # - migration-job
-        # - config-server
-        # - admin-server
-        # - discovery-server
+        - config-server
+        - admin-server
+        - discovery-server
         - api-gateway
-        # - customers-service
-        # - genai-service
-        # - vets-service
-        # - visits-service
+        - customers-service
+        - genai-service
+        - vets-service
+        - visits-service
     cmds:
       - for: { var: SERVICES }
         cmd: |

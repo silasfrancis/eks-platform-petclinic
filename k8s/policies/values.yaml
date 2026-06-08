@@ -199,6 +199,7 @@ clusterPolicy:
       label: customers-service
       serviceAccount: customers-service-sa
       port: 8081
+      istioIngress: true
       ingressFrom:
         - apiGateway
         - adminServer
@@ -211,6 +212,7 @@ clusterPolicy:
       label: visits-service
       serviceAccount: visits-service-sa
       port: 8082
+      istioIngress: true
       ingressFrom:
         - apiGateway
         - adminServer
@@ -223,6 +225,7 @@ clusterPolicy:
       label: vets-service
       serviceAccount: vets-service-sa
       port: 8083
+      istioIngress: true
       ingressFrom:
         - apiGateway
         - adminServer
@@ -235,6 +238,7 @@ clusterPolicy:
       label: genai-service
       serviceAccount: genai-service-sa
       port: 8084
+      istioIngress: true
       ingressFrom:
         - apiGateway
         - adminServer

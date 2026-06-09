@@ -234,7 +234,13 @@ argocdBootstrap:
         - group: "*" 
           kind: "*" 
           jsonPointers: ["/spec/compliance/type"]
-
+        - group: external-secrets.io
+          kind: "*"
+          jqPathExpressions:
+            - .spec.data[].remoteRef.conversionStrategy
+            - .spec.data[].remoteRef.decodingStrategy
+            - .spec.data[].remoteRef.metadataPolicy
+            - .spec.data[].remoteRef.nullBytePolicy
 
     autoscaling:
       path: k8s/platform/autoscaling

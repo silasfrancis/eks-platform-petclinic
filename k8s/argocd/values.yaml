@@ -126,6 +126,14 @@ argocdBootstrap:
         - group: admissionregistration.k8s.io
           kind: ValidatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+        - group: external-secrets.io
+          kind: ExternalSecret
+          jqPathExpressions:
+            - .spec.data[].remoteRef.conversionStrategy
+            - .spec.data[].remoteRef.decodingStrategy
+            - .spec.data[].remoteRef.metadataPolicy
+            - .spec.data[].remoteRef.nullBytePolicy
+
 
     # Wave 1 — Core platform (must exist before workloads)
     policies:
@@ -178,6 +186,14 @@ argocdBootstrap:
         - group: autoscaling
           kind: HorizontalPodAutoscaler
           jsonPointers: ["/spec/metrics", "/spec/behavior"]
+        - group: external-secrets.io
+          kind: ExternalSecret
+          jqPathExpressions:
+            - .spec.data[].remoteRef.conversionStrategy
+            - .spec.data[].remoteRef.decodingStrategy
+            - .spec.data[].remoteRef.metadataPolicy
+            - .spec.data[].remoteRef.nullBytePolicy
+
 
     monitoring:
       path: k8s/platform/monitoring
@@ -196,6 +212,14 @@ argocdBootstrap:
           name: monitoring-crds-upgrade
           namespace: monitoring
           jsonPointers: ["/metadata/annotations"]
+        - group: external-secrets.io
+          kind: ExternalSecret
+          jqPathExpressions:
+            - .spec.data[].remoteRef.conversionStrategy
+            - .spec.data[].remoteRef.decodingStrategy
+            - .spec.data[].remoteRef.metadataPolicy
+            - .spec.data[].remoteRef.nullBytePolicy
+
 
     # Wave 2 — Security and supporting platform
     security:
@@ -260,24 +284,31 @@ argocdBootstrap:
         - group: networking.istio.io
           kind: VirtualService
           jqPathExpressions: [".spec.http[].route[].weight"]
-
+        - group: networking.istio.io
+          kind: DestinationRule
+          jqPathExpressions:
+            - .spec.subsets[].labels["rollouts-pod-template-hash"]
         - group: apps
           kind: Deployment
           jsonPointers: ["/spec/replicas"]
-
         - group: argoproj.io
           kind: Rollout
           jsonPointers: ["/spec/replicas", "/status"]
-
         - group: autoscaling
           kind: HorizontalPodAutoscaler
           jsonPointers: ["/spec/metrics", "/spec/behavior"]
-
         - group: ""
           kind: Pod
           jqPathExpressions:
             - ".spec.containers[].resources.requests.cpu"
             - ".spec.containers[].resources.requests.memory"
+        - group: external-secrets.io
+          kind: ExternalSecret
+          jqPathExpressions:
+            - .spec.data[].remoteRef.conversionStrategy
+            - .spec.data[].remoteRef.decodingStrategy
+            - .spec.data[].remoteRef.metadataPolicy
+            - .spec.data[].remoteRef.nullBytePolicy
 
 ingress:
   enabled: true

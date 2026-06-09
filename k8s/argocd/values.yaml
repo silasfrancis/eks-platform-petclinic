@@ -191,6 +191,11 @@ argocdBootstrap:
         - group: admissionregistration.k8s.io
           kind: MutatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
+        - group: ""
+          kind: ConfigMap
+          name: monitoring-crds-upgrade
+          namespace: monitoring
+          jsonPointers: ["/metadata/annotations"]
 
     # Wave 2 — Security and supporting platform
     security:
@@ -201,6 +206,11 @@ argocdBootstrap:
       repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
       syncOptions:
         - ServerSideApply=true
+      ignoreDifferences:
+        - group: "*" 
+          kind: "*" 
+          jsonPointers: ["/spec/compliance/type"]
+
 
     autoscaling:
       path: k8s/platform/autoscaling

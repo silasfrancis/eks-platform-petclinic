@@ -244,10 +244,10 @@ argocdBootstrap:
         - group: external-secrets.io
           kind: ClusterExternalSecret
           jqPathExpressions:
-            - .spec.data[].remoteRef.conversionStrategy
-            - .spec.data[].remoteRef.decodingStrategy
-            - .spec.data[].remoteRef.metadataPolicy
-            - .spec.data[].remoteRef.nullBytePolicy
+            - .spec.externalSecretSpec.data[].remoteRef.conversionStrategy
+            - .spec.externalSecretSpec.data[].remoteRef.decodingStrategy
+            - .spec.externalSecretSpec.data[].remoteRef.metadataPolicy
+            - .spec.externalSecretSpec.data[].remoteRef.nullBytePolicy
 
     autoscaling:
       path: k8s/platform/autoscaling

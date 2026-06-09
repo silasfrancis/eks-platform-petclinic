@@ -249,6 +249,8 @@ argocdBootstrap:
       project: platform
       syncWave: "2"
       repoURL: git@github.com:silasfrancis/eks-platform-petclinic.git
+      syncOptions:
+        - ServerSideApply=false
       ignoreDifferences:
         - group: batch
           kind: Job

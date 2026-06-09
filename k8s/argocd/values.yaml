@@ -232,6 +232,10 @@ argocdBootstrap:
           namespace: velero
           jsonPointers:
           - /spec/template/metadata/name
+        - group: velero.io
+          kind: Schedule
+          jsonPointers:
+            - /spec/template/labels
 
     # Wave 3 — Application workloads
     microservices:

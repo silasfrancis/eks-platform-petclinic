@@ -1,248 +1,193 @@
-# Terraform operations for platform infrastructure.
-#
-# Backend configuration is partial — bucket, key, and region
-# are defined in state.conf files per Terraform layer.
-#
-# Usage:
-#   task tf:bootstrap
-#
-#   task tf:app-registry:init
-#   task tf:app-registry:apply
-#
-#   task tf:init ENV=dev
-#   task tf:apply ENV=prod
-#
-#   task tf:wireguard:init
-#   task tf:wireguard:apply
-#
-#   task tf:transit-gateway:init
-#   task tf:transit-gateway:apply
-
 version: "3"
-
 vars:
   ENV: '{{.ENV | default "dev"}}'
-
-env:
-  AWS_REGION: "us-east-2"
-  METRICS_SERVER_VERSION: "3.12.2"
-  ISTIO_VERSION: "1.29.1"
-  ARGOCD_VERSION: "v9.5.0"
-  ARGO_ROLLOUTS_VERSION: "v2.40.5"
-  CERT_MANAGER_VERSION: "v1.12.1"
-  AWS_LB_CONTROLLER_VERSION: "3.3.0"
+  ENV_DIR: "env/{{.ENV}}"
+  BOOTSTRAP_DIR: "env/global/bootstrap"
+  APP_REGISTRY_DIR: "env/global/app-registry"
+  WIREGUARD_DIR: "env/global/networking/wireguard"
+  TRANSIT_GATEWAY_DIR: "env/global/networking/transit-gateway"
+  TF_VARS: "terraform.tfvars"
+  TF_PLAN: "tfplan"
 
 tasks:
-  setup_helm_repos:
-    desc: "Add helm repos"
-    cmds:
-      - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
-      - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
-      - helm repo add fairwinds-stable https://charts.fairwinds.com/stable  --force-update
-      - helm repo add external-secrets https://charts.external-secrets.io --force-update
-      - helm repo add argo https://argoproj.github.io/argo-helm --force-update
-      - helm repo add jetstack https://charts.jetstack.io --force-update
-      - helm repo add eks https://aws.github.io/eks-charts --force-update
-      - helm repo update
 
-  install_metrics_server:
-    desc: "Install metrics-server"
-    cmds:
-      - |
-        helm upgrade --install metrics-server metrics-server/metrics-server \
-          --version {{.METRICS_SERVER_VERSION}} \
-          -n kube-system \
-          --values bootstrap/metrics-server/values.yaml
+  bootstrap:
+    desc: "Bootstrap Terraform backend infrastructure"
+    summary: |
+      Bootstraps the remote Terraform state backend infrastructure.
 
-  install_aws_lb_controller:
-    desc: "Install AWS Load Balancer Controller"
-    requires:
-      vars: [CLUSTER_NAME, ENV]
-    cmds:
-      - |
-        LBC_ROLE_ARN=$(terraform -chdir=../terraform/env/{{.ENV}} output -raw alb_controller_irsa_role_arn)
-        VPC_ID=$(terraform -chdir=../terraform/env/{{.ENV}} output -raw vpc_id)
-        
-        helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
-          --version {{.AWS_LB_CONTROLLER_VERSION}} \
-          -n kube-system \
-          --set clusterName={{.CLUSTER_NAME}} \
-          --set serviceAccount.create=true \
-          --set serviceAccount.name=aws-load-balancer-controller \
-          --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$LBC_ROLE_ARN \
-          --set region={{.AWS_REGION}} \
-          --set vpcId=$VPC_ID
+        IMPORTANT:
+          This stack creates the S3 backend bucket used by all other Terraform environments.
 
-  install_external_secrets:
-    desc: "Install External Secrets"
-    cmds:
-      - |
-        helm upgrade --install external-secrets \
-          external-secrets/external-secrets \
-          -n external-secrets \
-          --create-namespace 
+          Because the backend infrastructure does not yet exist during the
+          first deployment, you have two options:
 
-  install_vpa:
-    desc: "Install VPA (Recommendation mode)"
-    cmds:
-      - |
-        helm upgrade --install vpa fairwinds-stable/vpa \
-          -n vpa \
-          --create-namespace \
-          --set updater.enabled=false \
-          --set admissionController.enabled=false 
+          1. Use an already existing temporary S3 backend bucket with:
+              terraform init -backend-config="state.conf" -reconfigure
 
-  install_istio_base:
-    desc: "Install Istio base"
-    cmds:
-      - |
-        helm upgrade --install istio-base istio/base \
-          -n istio-system \
-          --create-namespace \
-          --version {{.ISTIO_VERSION}}
+          2. Temporarily remove/comment the backend configuration from:
+              global/bootstrap/providers.tf
 
-  install_istiod:
-    desc: "Install Istiod"
-    cmds:
-      - |
-        helm upgrade --install istiod istio/istiod \
-          -n istio-system \
-          --create-namespace \
-          --version {{.ISTIO_VERSION}} 
+            and also remove:
+              -backend-config="state.conf" -reconfigure 
 
-  install_argocd:
-    desc: "Install ArgoCD"
-    cmds:
-      - |
-        helm upgrade --install argocd argo/argo-cd \
-          --namespace argocd \
-          --create-namespace \
-          --version {{.ARGOCD_VERSION}} \
-          --set server.extraArgs={--insecure}
+            from this bootstrap task so Terraform uses local state.
 
-  install_rollouts:
-    desc: "Install Argo Rollouts"
-    cmds:
-      - |
-        helm upgrade --install argo-rollouts argo/argo-rollouts \
-          --namespace argo-rollouts \
-          --create-namespace \
-          --version {{.ARGO_ROLLOUTS_VERSION}}
+          After the bootstrap resources are created:
+            - restore the backend configuration
+            - re-run terraform init with the new backend
+            - migrate local state into the newly created backend
 
-  install_cert_manager:
-    desc: "Install cert-manager with CRDs"
+    dir: "{{.BOOTSTRAP_DIR}}"
     cmds:
-      - |
-        helm upgrade --install cert-manager jetstack/cert-manager \
-          --namespace cert-manager \
-          --create-namespace \
-          --version {{.CERT_MANAGER_VERSION}} \
-          --set installCRDs=true
+      - terraform init -backend-config="state.conf" -reconfigure
+      - terraform validate
+      - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
+      - terraform apply "{{.TF_PLAN }}"
 
-  get_argo_pwd:
-    desc: "Retrieve ArgoCD initial admin password"
+  init:
+    desc: "Initialise Terraform backend for {{.ENV}}"
+    dir: "{{.ENV_DIR}}"
     cmds:
-      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+      - terraform init -backend-config="state.conf" -reconfigure
 
-  bootstrap_storage_and_namespaces:
-    desc: "Apply Namespaces and StorageClass"
+  validate:
+    desc: "Validate Terraform configuration for {{.ENV}}"
+    dir: "{{.ENV_DIR}}"
     cmds:
-      - kubectl apply -f bootstrap/namespaces.yaml
-      - kubectl apply -f bootstrap/storage-class.yaml
+      - terraform validate
 
-  deploy_argocd_apps:
-    desc: "Deploy ArgoCD app-of-apps chart"
+  fmt:
+    desc: "Format all Terraform code"
     cmds:
-      - |
-        helm upgrade --install argocd-apps k8s/argocd \
-          --namespace argocd \
-          --create-namespace \
-          --values k8s/argocd/values.yaml \
-          --values k8s/argocd/values/env/{{.ENV}}/values.yaml
+      - terraform fmt -recursive
 
-  deploy_platform:
-    desc: "Deploy all platform charts"
-    requires:
-      vars: [ENV]
-    vars:
-      # Key fix: Converted array into object schemas containing explicit name and namespace mappings
-      PLATFORM_CHARTS:
-        - { name: "autoscaling", namespace: "autoscaling" }
-        - { name: "backup", namespace: "velero" }
-        - { name: "compute", namespace: "karpenter" }
-        - { name: "ingress", namespace: "istio-ingress" }
-        - { name: "monitoring", namespace: "monitoring" }
-        - { name: "security", namespace: "security" }
+  plan:
+    desc: "Create Terraform execution plan for {{.ENV}}"
+    dir: "{{.ENV_DIR}}"
     cmds:
-      - for: { var: PLATFORM_CHARTS }
-        cmd: |
-          helm upgrade --install {{.ITEM.name}} k8s/platform/{{.ITEM.name}}/charts \
-            --namespace {{.ITEM.namespace}} \
-            --create-namespace \
-            --values k8s/platform/{{.ITEM.name}}/values.yaml \
-            --values k8s/platform/{{.ITEM.name}}/values/env/{{.ENV}}/values.yaml
+      - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
 
-  deploy_policies:
-    desc: "Deploy Kyverno policies chart"
-    requires:
-      vars: [ENV]
+  apply:
+    desc: "Apply Terraform execution plan for {{.ENV}}"
+    dir: "{{.ENV_DIR}}"
+    preconditions:
+      - sh: "[ -f {{.TF_PLAN}} ]"
+        msg: "Run 'task tf:plan ENV={{.ENV}}' first"
     cmds:
-      - |
-        helm upgrade --install policies k8s/policies/charts \
-          --namespace kyverno \
-          --values k8s/policies/values.yaml \
-          --values k8s/policies/values/env/{{.ENV}}/values.yaml
+      - terraform apply "{{.TF_PLAN}}"
 
-  deploy_microservices:
-    desc: "Deploy all microservices"
-    requires:
-      vars: [ENV]
-    vars:
-      # Future Proof: Ready to accept arbitrary target namespaces per-service if architecture shifts away from mononamespace 'petclinic'
-      SERVICES:
-        - { name: "admin-server", namespace: "petclinic" }
-        - { name: "api-gateway", namespace: "petclinic" }
-        - { name: "config-server", namespace: "petclinic" }
-        - { name: "customers-service", namespace: "petclinic" }
-        - { name: "discovery-server", namespace: "petclinic" }
-        - { name: "genai-service", namespace: "petclinic" }
-        - { name: "vets-service", namespace: "petclinic" }
-        - { name: "visits-service", namespace: "petclinic" }
+  destroy:
+    desc: "Destroy Terraform infrastructure for {{.ENV}}"
+    dir: "{{.ENV_DIR}}"
+    prompt: "Are you sure you want to destroy {{.ENV}}?"
     cmds:
-      - for: { var: SERVICES }
-        cmd: |
-          helm upgrade --install {{.ITEM.name}} k8s/microservice/charts \
-            --namespace {{.ITEM.namespace}} \
-            --create-namespace \
-            --values k8s/microservice/values.yaml \
-            --values k8s/microservice/values/env/{{.ENV}}/{{.ITEM.name}}.yaml
+      - terraform destroy -var-file="{{.TF_VARS}}"
 
-  full_cluster_bootstrap:
-    desc: "Full cluster bootstrap"
-    requires:
-      vars: [CLUSTER_NAME, ENV]
+  output:
+    desc: "Show Terraform outputs for {{.ENV}}"
+    dir: "{{.ENV_DIR}}"
     cmds:
-      - task: install_metrics_server
-      - task: install_aws_lb_controller
-        vars: { CLUSTER_NAME: "{{.CLUSTER_NAME}}", ENV: "{{.ENV}}" }
-      - task: install_external_secrets
-      - task: install_vpa
-      - task: install_istio_base
-      - task: install_istiod
-      - task: install_rollouts
-      - task: install_argocd
-      - task: bootstrap_storage_and_namespaces
-      
-  deploy_all:
-    desc: "Deploy platform, policies, and microservices for ENV"
-    requires:
-      vars: [ENV]
+      - terraform output
+
+  app-registry:init:
+    desc: "Initialise App Registry Terraform"
+    dir: "{{.APP_REGISTRY_DIR}}"
     cmds:
-      - task: deploy_platform
-        vars: { ENV: "{{.ENV}}" }
-      - task: deploy_policies
-        vars: { ENV: "{{.ENV}}" }
-      - task: deploy_microservices
-        vars: { ENV: "{{.ENV}}" }
-      - task: deploy_argocd_apps
-        vars: { ENV: "{{.ENV}}" }
+      - terraform init -backend-config="state.conf" -reconfigure
+
+  app-registry:validate:
+    desc: "Validate App Registry Terraform"
+    dir: "{{.APP_REGISTRY_DIR}}"
+    cmds:
+      - terraform validate
+
+  app-registry:plan:
+    desc: "Plan App Registry infrastructure"
+    dir: "{{.APP_REGISTRY_DIR}}"
+    cmds:
+      - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
+
+  app-registry:apply:
+    desc: "Apply App Registry infrastructure"
+    dir: "{{.APP_REGISTRY_DIR}}"
+    preconditions:
+      - sh: "[ -f {{.TF_PLAN}} ]"
+        msg: "Run 'task tf:app-registry:plan' first"
+    cmds:
+      - terraform apply "{{.TF_PLAN}}"
+
+  app-registry:destroy:
+    desc: "Destroy App Registry infrastructure"
+    dir: "{{.APP_REGISTRY_DIR}}"
+    prompt: "Are you sure you want to destroy App Registry infrastructure?"
+    cmds:
+      - terraform destroy -var-file="{{.TF_VARS}}"
+
+  wireguard:init:
+    desc: "Initialise WireGuard Terraform"
+    dir: "{{.WIREGUARD_DIR}}"
+    cmds:
+      - terraform init -backend-config="state.conf" -reconfigure
+
+  wireguard:validate:
+    desc: "Validate WireGuard Terraform"
+    dir: "{{.WIREGUARD_DIR}}"
+    cmds:
+      - terraform validate
+
+  wireguard:plan:
+    desc: "Plan WireGuard infrastructure"
+    dir: "{{.WIREGUARD_DIR}}"
+    cmds:
+      - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
+
+  wireguard:apply:
+    desc: "Apply WireGuard infrastructure"
+    dir: "{{.WIREGUARD_DIR}}"
+    preconditions:
+      - sh: "[ -f {{.TF_PLAN}} ]"
+        msg: "Run 'task tf:wireguard:plan' first"
+    cmds:
+      - terraform apply "{{.TF_PLAN}}"
+
+  wireguard:destroy:
+    desc: "Destroy WireGuard infrastructure"
+    dir: "{{.WIREGUARD_DIR}}"
+    prompt: "Are you sure you want to destroy WireGuard infrastructure?"
+    cmds:
+      - terraform destroy -var-file="{{.TF_VARS}}"
+
+  transit-gateway:init:
+    desc: "Initialise Transit Gateway Terraform"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    cmds:
+      - terraform init -backend-config="state.conf" -reconfigure
+
+  transit-gateway:validate:
+    desc: "Validate Transit Gateway Terraform"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    cmds:
+      - terraform validate
+
+  transit-gateway:plan:
+    desc: "Plan Transit Gateway infrastructure"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    cmds:
+      - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
+
+  transit-gateway:apply:
+    desc: "Apply Transit Gateway infrastructure"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    preconditions:
+      - sh: "[ -f {{.TF_PLAN}} ]"
+        msg: "Run 'task tf:transit-gateway:plan' first"
+    cmds:
+      - terraform apply "{{.TF_PLAN}}"
+
+  transit-gateway:destroy:
+    desc: "Destroy Transit Gateway infrastructure"
+    dir: "{{.TRANSIT_GATEWAY_DIR}}"
+    prompt: "Are you sure you want to destroy Transit Gateway infrastructure?"
+    cmds:
+      - terraform destroy -var-file="{{.TF_VARS}}"

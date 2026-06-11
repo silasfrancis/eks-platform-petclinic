@@ -53,7 +53,7 @@ configs:
     # Resource exclusions — high-churn objects that ArgoCD should never manage
     # Endpoints/EndpointSlices: updated by kube-proxy constantly
     # Lease: node heartbeats — thousands per minute
-    # Cilium/Kyverno internals: managed by their own controllers
+    # Kyverno internals: managed by their own controllers
     resource.exclusions: |
       - apiGroups:
         - ''
@@ -65,12 +65,6 @@ configs:
         - coordination.k8s.io
         kinds:
         - Lease
-      - apiGroups:
-        - cilium.io
-        kinds:
-        - CiliumIdentity
-        - CiliumEndpoint
-        - CiliumEndpointSlice
       - apiGroups:
         - kyverno.io
         - reports.kyverno.io

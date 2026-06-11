@@ -128,11 +128,10 @@ sudo cat /etc/wireguard/clients/<client>.conf
 
 | Service | URL |
 |---|---|
-| ArgoCD | https://argocd.lefrancis.org |
-| Grafana | https://grafana.lefrancis.org |
-| Prometheus | https://prometheus.lefrancis.org |
-| Loki | https://loki.lefrancis.org |
-| Goldilocks | https://goldilocks.lefrancis.org |
+| ArgoCD | https://argocd.internal.lefrancis.org |
+| Grafana | https://grafana.internal.lefrancis.org |
+| Prometheus | https://prometheus.internal.lefrancis.org |
+| Goldilocks | https://goldilocks.internal.lefrancis.org |
 
 Retrieve credentials:
 

@@ -161,10 +161,10 @@ are handled by completely separate NLBs and Istio Gateways.
 │                                          │  │  TLS terminated · same wildcard    │
 │                                          │  │          │                         │
 │                                          │  │          ▼                         │
-│                                          │  │  grafana.lefrancis.org  → Grafana  │
-│                                          │  │  argocd.lefrancis.org   → ArgoCD   │
-│                                          │  │  prometheus.lefrancis.org→ Prom.   │
-│                                          │  │  loki.lefrancis.org     → Loki     │
+│                                          │  │  grafana.internal.lefrancis.org  → Grafana  │
+│                                          │  │  argocd.internal.lefrancis.org   → ArgoCD   │
+│                                          │  │  prometheus.internal.lefrancis.org→ Prom.   │
+│                                          │  │  goldilocks.internal.lefrancis.org→ Goldilocks     │
 └──────────────────────────────────────────┘  └────────────────────────────────────┘
               │                                                  │
               └──────────────► cert-manager ◄────────────────────┘

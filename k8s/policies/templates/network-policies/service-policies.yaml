@@ -64,7 +64,7 @@ spec:
     - to:
         {{- range $net.rds.cidr }}
         - ipBlock:
-            cidr: {{ .ipBlock.cidr | default "0.0.0.0/0" }}
+            cidr: {{ .ipBlock.cidr | default "10.0.0.0/16" }}
         {{- end }}
       ports:
         - port: {{ $net.rds.port }}

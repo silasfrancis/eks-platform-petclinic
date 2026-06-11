@@ -37,7 +37,7 @@ Production and development environments are isolated at the Transit Gateway rout
 | Area | Implementation |
 |---|---|
 | Kubernetes | AWS EKS on Graviton (ARM64) |
-| Networking | AWS VPC CNI + Cilium (CNI chaining mode) |
+| Networking | AWS VPC CNI |
 | Service Mesh | Istio with mTLS and traffic routing |
 | Ingress | Istio Gateway + ExternalDNS + cert-manager |
 | Node Scaling | Karpenter |
@@ -335,15 +335,11 @@ Examples:
 ```yaml
 grafana:
   ingress:
-    host: grafana.example.com
+    host: grafana.internal.example.com
 
 prometheus:
   ingress:
-    host: prometheus.example.com
-
-loki:
-  ingress:
-    host: loki.example.com
+    host: prometheus.internal.example.com
 ```
 
 ### Autoscaling Stack
@@ -359,7 +355,7 @@ Example:
 ```yaml
 goldilocks:
   ingress:
-    host: goldilocks.example.com
+    host: goldilocks.internal.example.com
 ```
 
 Also ensure:
@@ -446,7 +442,7 @@ See `docs/RUNBOOK.md` for operational access instructions.
 
 - AWS Transit Gateway — Central hub connecting WireGuard, dev, and prod VPCs
 - Istio — Service mesh for mTLS and traffic routing
-- Cilium — eBPF-based networking and policy enforcement
+- Kubernetes NetworkPolicy and Istio AuthorizationPolicy for traffic policy enforcement
 - AWS NLB — Public and internal load balancing
 - ExternalDNS — DNS automation for Cloudflare and Route53
 - cert-manager — Automated TLS certificate management

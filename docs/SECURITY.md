@@ -33,16 +33,17 @@ The platform implements multiple independent security controls across networking
 
 | Layer | Control | What it enforces |
 |---|---|---|
-| 1 | Cilium NetworkPolicy (default deny) | Blocks all ingress and egress traffic by default |
-| 2 | Cilium NetworkPolicy (service rules) | Explicit per-service allow rules |
+| 1 | NetworkPolicy (default deny) | Blocks all ingress and egress traffic by default |
+| 2 | NetworkPolicy (service rules) | Explicit per-service allow rules |
 | 3 | Kyverno ImageValidatingPolicy | Cosign signature and attestation verification |
-| 4 | Kyverno ValidatingPolicy | Pod security requirements |
+| 4 | Kyverno ValidatingPolicy | Pod security requirements and schema guardrails |
 | 5 | Kyverno MutatingPolicy | Automated security context defaults |
 | 6 | Istio PeerAuthentication | mTLS STRICT between all workloads |
-| 7 | External Secrets Operator | AWS Secrets Manager sync — no secrets in Git |
-| 8 | IRSA | Pod-level AWS identity without static credentials |
-| 9 | Falco | eBPF runtime syscall monitoring |
-| 10 | Trivy Operator | Continuous vulnerability and compliance scanning |
+| 7 | Istio AuthorizationPolicy | L7 RBAC using workload identity, principals, paths, and methods |
+| 8 | External Secrets Operator | AWS Secrets Manager sync — no secrets in Git |
+| 9 | IRSA | Pod-level AWS identity without static credentials |
+| 10 | Falco | eBPF runtime syscall monitoring and threat detection |
+| 11 | Trivy Operator | Continuous vulnerability, misconfiguration, and compliance scanning |
 
 ---
 
@@ -105,7 +106,7 @@ Accepted findings are documented in `.trivyignore` with justification and review
 
 ### Default Deny
 
-A namespace-wide Cilium NetworkPolicy applies default deny to all ingress and egress traffic in the `petclinic` namespace.
+A namespace-wide NetworkPolicy applies default deny to all ingress and egress traffic in the `petclinic` namespace.
 
 Every allowed communication path must be explicitly defined.
 
@@ -148,7 +149,7 @@ Prometheus             →   All services           8080
 Istio control plane    ↔   Sidecars               15012,15014,15017
 ```
 
-All other traffic is blocked by Cilium before reaching the Istio proxy.
+All other traffic is blocked by Network Policies before reaching the Istio proxy.
 
 ---
 
@@ -277,11 +278,10 @@ enforced at the TGW route table level.
 
 | Service | URL |
 |---|---|
-| ArgoCD | https://argocd.lefrancis.org |
-| Grafana | https://grafana.lefrancis.org |
-| Prometheus | https://prometheus.lefrancis.org |
-| Loki | https://loki.lefrancis.org |
-| Goldilocks | https://goldilocks.lefrancis.org |
+| ArgoCD | https://argocd.internal.example.com |
+| Grafana | https://grafana.internal.example.com |
+| Prometheus | https://prometheus.internal.example.com |
+| Goldilocks | https://goldilocks.internal.example.com |
 
 ---
 

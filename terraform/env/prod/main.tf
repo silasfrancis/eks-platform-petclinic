@@ -33,8 +33,8 @@ locals {
       env        = var.environment
       app        = var.app
       managed_by = "terraform"
-    }, {}
-    # data.terraform_remote_state.app-registry.outputs.application_tag
+    }, 
+    data.terraform_remote_state.app-registry.outputs.application_tag
   )
 }
 
@@ -94,7 +94,7 @@ module "nlb" {
   env = var.environment
   app = var.app
   vpc_id = module.vpc.vpc_id
-  wireguard_vpc_cidr = "0.0.0.0/0"
+  wireguard_vpc_cidr = data.terraform_remote_state.wireguard_server.outputs.vpc_cidr_block
   extended_tags = local.extended_tags
 }
 
@@ -110,7 +110,7 @@ module "eks" {
   private_subnets                    = module.vpc.private_subnet_ids
   nlb_external_sg_id                = module.nlb.nlb_external_sg_id
   nlb_internal_sg_id                = module.nlb.nlb_internal_sg_id
-  wireguard_vpc_cidr                 = "0.0.0.0/0"
+  wireguard_vpc_cidr                 = data.terraform_remote_state.wireguard_server.outputs.vpc_cidr_block
   eks_secrets_kms_key_arn          = module.kms.kms_key_arn["eks_secrets"]
   data_storage_kms_key_arn         = module.kms.kms_key_arn["data_storage"]
   infra_common_kms_key_arn        = module.kms.kms_key_arn["infra_common"]
@@ -171,7 +171,7 @@ module "rds" {
   db_username                        = module.secret_manager.db_credentials["username"]
   db_password                        = module.secret_manager.db_credentials["password"]
   eks_node_sg_id                     = module.eks.eks_node_sg_id
-  wireguard_vpc_cidr                 = "0.0.0.0/0"
+  wireguard_vpc_cidr                 = data.terraform_remote_state.wireguard_server.outputs.vpc_cidr_block
   data_storage_kms_key_arn           = module.kms.kms_key_arn["data_storage"]
   extended_tags = local.extended_tags
 }

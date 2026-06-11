@@ -1,0 +1,53 @@
+name: Cleanup Stale Helm PRs
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Close stale Helm update PRs and delete branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          CUTOFF_EPOCH=$(date -d '2 days ago' +%s)
+
+          gh pr list \
+            --repo "$REPO" \
+            --state open \
+            --json number,headRefName,createdAt \
+          | jq -c '.[]' \
+          | while read -r PR; do
+
+              NUMBER=$(echo "$PR" | jq -r '.number')
+              BRANCH=$(echo "$PR" | jq -r '.headRefName')
+              CREATED=$(echo "$PR" | jq -r '.createdAt')
+
+              if [[ "$BRANCH" != update-helm/* ]]; then
+                continue
+              fi
+
+              CREATED_EPOCH=$(date -d "$CREATED" +%s)
+
+              if (( CREATED_EPOCH > CUTOFF_EPOCH )); then
+                continue
+              fi
+
+              echo "Closing stale PR #$NUMBER ($BRANCH)"
+              gh pr close "$NUMBER" \
+                --repo "$REPO" \
+                --delete-branch
+
+          done
+
+          echo "=== Cleanup complete ==="
+          echo "Cutoff was: $(date -d '2 days ago' --utc)"

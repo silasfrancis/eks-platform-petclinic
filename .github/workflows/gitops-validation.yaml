@@ -1,0 +1,147 @@
+name: GitOps Validation (Helm)
+
+on:
+  pull_request:
+    branches: [ dev, main ]
+    paths:
+      - "k8s/microservice/**"
+      - "k8s/argocd/**"
+
+jobs:
+  helm-validate:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2
+        with:
+          version: "3.19.4"
+
+      - name: Install kubeconform
+        run: |
+          curl -sSLo /tmp/kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz
+          tar -xf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          echo "/tmp" >> $GITHUB_PATH
+
+      - name: Set environment
+        id: set_env
+        run: |
+          echo "VALUE_ENV=${{ github.base_ref == 'main' && 'prod' || 'dev' }}" >> $GITHUB_OUTPUT
+
+      - name: Detect changed services
+        id: detect_services
+        run: |
+          git fetch origin ${{ github.base_ref }}
+
+          git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | grep "k8s/microservice/values/" \
+            | awk -F'/' '{print $NF}' \
+            | sed 's/\.yaml$//' \
+            | sort -u > services.txt
+
+          if [ ! -s services.txt ]; then
+            echo "No service values files changed — skipping validation"
+            echo "HAS_SERVICES=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changed services:"
+            cat services.txt
+            echo "HAS_SERVICES=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Helm lint
+        if: steps.detect_services.outputs.HAS_SERVICES == 'true'
+        run: |
+          while read -r SERVICE; do
+            echo "--- Linting $SERVICE ---"
+            helm lint k8s/microservice \
+              -f k8s/microservice/values/env/${{ steps.set_env.outputs.VALUE_ENV }}/$SERVICE.yaml
+          done < services.txt
+
+      - name: Helm template render
+        if: steps.detect_services.outputs.HAS_SERVICES == 'true'
+        id: render
+        run: |
+          mkdir -p /tmp/renders
+
+          while read -r SERVICE; do
+            echo "Rendering $SERVICE"
+
+            VALUES_FILE="k8s/microservice/values/env/${{ steps.set_env.outputs.VALUE_ENV }}/$SERVICE.yaml"
+
+            if [ ! -f "$VALUES_FILE" ]; then
+              echo "Missing values file for $SERVICE: $VALUES_FILE"
+              exit 1
+            fi
+
+            helm template "$SERVICE" k8s/microservice \
+              -f "$VALUES_FILE" \
+              --namespace petclinic \
+              > /tmp/renders/$SERVICE.yaml
+
+            echo "Rendered $SERVICE OK"
+          done < services.txt
+
+      - name: Validate manifests with kubeconform
+        if: steps.detect_services.outputs.HAS_SERVICES == 'true'
+        run: |
+          while read -r SERVICE; do
+            echo "Validating $SERVICE"
+            kubeconform \
+              -strict \
+              -ignore-missing-schemas \
+              -kubernetes-version 1.35.0 \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              -summary \
+              /tmp/renders/$SERVICE.yaml
+          done < services.txt
+
+      - name: Template ArgoCD Application manifests
+        id: render_argocd
+        run: |
+          VALUES_FILE="k8s/argocd/values/env/${{ steps.set_env.outputs.VALUE_ENV }}/values.yaml"
+
+          helm template argocd k8s/argocd \
+            --show-only templates/applications.yaml \
+            -f "$VALUES_FILE" \
+            --namespace argocd \
+            > /tmp/render-argocd.yaml
+
+      - name: Validate ArgoCD manifests
+        run: |
+          kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            -kubernetes-version 1.35.0 \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -summary \
+            /tmp/render-argocd.yaml
+
+      - name: Post validation summary
+        if: always()
+        run: |
+          echo "## Helm Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** \`${{ steps.set_env.outputs.VALUE_ENV }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f services.txt ] && [ -s services.txt ]; then
+            while read -r SERVICE; do
+              if [ -f "/tmp/renders/$SERVICE.yaml" ]; then
+                echo "| $SERVICE | ✅ Rendered & Validated |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "| $SERVICE | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done < services.txt
+          else
+            echo "| — | No changed services detected |" >> $GITHUB_STEP_SUMMARY
+          fi

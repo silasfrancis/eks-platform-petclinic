@@ -7,37 +7,26 @@ on:
     types: [ completed ]
 
 jobs:
-  filter-updated-directories:
-    uses: ./.github/workflows/path-filter.yaml
-
   update-helm-values:
     runs-on: ubuntu-24.04
+    if: github.event.workflow_run.conclusion == 'success'
     environment: >-
-      ${{ (github.base_ref || github.ref_name) == 'main'
+      ${{ github.event.workflow_run.head_branch == 'main'
       && 'production'
       || 'development' }}
-    needs: filter-updated-directories
-    if: ${{ needs.filter-updated-directories.outputs.dir_changed != '[]' 
-            && needs.filter-updated-directories.outputs.dir_changed != '' 
-            && github.event.workflow_run.conclusion == 'success'
-        }} 
     permissions:
       contents: write
       checks: write
       pull-requests: write
       id-token: write
-    strategy:
-      matrix:
-        dir: ${{ fromJson(needs.filter-updated-directories.outputs.dir_changed) }}
-      fail-fast: false
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.dir }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: true
     env:
       AWS_REGION: us-east-2
       CICD_BUCKET: ${{ vars.CICD_ARTIFACT_BUCKET }}
       AWS_S3_ROLE_ARN: ${{ vars.S3GITHUBHUBACTIONSOIDCROLE }}
-      BRANCH_NAME: ${{ github.ref_name }}
+      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
 
     steps:
         - name: Checkout code
@@ -93,91 +82,126 @@ jobs:
             echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
 
         - name: Update Helm Values
-          id: update_image_value
           if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'
+          id: update_helm_values
           run: |
             VALUE_ENVIRONMENT=${{ steps.set_chart_env.outputs.VALUE_ENVIRONMENT }}
-            SERVICE=${{ matrix.dir }}
             TARGET_DIR="k8s/microservice/values/env/$VALUE_ENVIRONMENT"
-            VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
             TARGET_FILE="build-manifest.json"
             CHART_FILE="k8s/microservice/Chart.yaml"
+            UPDATED_SERVICES=""
 
-            echo "Processing service: $SERVICE"
-            echo "Values file: $VALUES_FILE"
+            while IFS= read -r IMAGE; do
 
-            echo "Extracting image for $SERVICE"
-            REGISTRY_URI=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .registry_uri' "$TARGET_FILE")
-            IMAGE_REPO=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_repo' "$TARGET_FILE")
-            NEW_IMAGE_TAG=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_tag' "$TARGET_FILE")
-            NEW_IMAGE_DIGEST=$(jq -r --arg SERVICE "$SERVICE" '.image_details[] | select(.service == $SERVICE) | .image_digest' "$TARGET_FILE")
+              SERVICE=$(echo "$IMAGE" | jq -r '.service')
+              REGISTRY_URI=$(echo "$IMAGE" | jq -r '.registry_uri')
+              IMAGE_REPO=$(echo "$IMAGE" | jq -r '.image_repo')
+              IMAGE_TAG=$(echo "$IMAGE" | jq -r '.image_tag')
+              IMAGE_DIGEST=$(echo "$IMAGE" | jq -r '.image_digest')
 
-            if [ -z "$IMAGE_REPO" ] || [ "$IMAGE_REPO" == "null" ] || [ -z "$NEW_IMAGE_TAG" ] || [ "$NEW_IMAGE_TAG" == "null" ]; then
-              echo "Error: Critical image metadata (repo or tag) is missing for $SERVICE."
-              echo "Registry: $REGISTRY_URI | Repo: $IMAGE_REPO | Tag: $NEW_IMAGE_TAG"
-              exit 0
+              VALUES_FILE="$TARGET_DIR/$SERVICE.yaml"
+
+              if [ ! -f "$VALUES_FILE" ]; then
+                echo "Skipping missing values file: $VALUES_FILE"
+                continue
+              fi
+
+              echo "Updating $SERVICE"
+
+              yq -i ".image.registry = \"$REGISTRY_URI\"" "$VALUES_FILE"
+              yq -i ".image.repository = \"$IMAGE_REPO\"" "$VALUES_FILE"
+              yq -i ".image.tag = \"$IMAGE_TAG\"" "$VALUES_FILE"
+              yq -i ".image.digest = \"$IMAGE_DIGEST\"" "$VALUES_FILE"
+              
+              UPDATED_SERVICES="${UPDATED_SERVICES}- ${SERVICE}\n"
+
+            done < <(jq -c '.image_details[]' "$TARGET_FILE")
+
+            printf "UPDATED_SERVICES<<EOF\n%b\nEOF\n" "$UPDATED_SERVICES" >> "$GITHUB_OUTPUT"
+
+            if [ -n "$UPDATED_SERVICES" ]; then
+              CURRENT_VERSION=$(yq '.version' "$CHART_FILE")
+
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+              PATCH=$((PATCH + 1))
+
+              NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+
+              yq -i ".version = \"$NEW_VERSION\"" "$CHART_FILE"
+              yq -i ".appVersion = \"${{ steps.get_tag.outputs.LATEST_TAG }}\"" "$CHART_FILE"
             fi
 
-            echo "Image Repo: $IMAGE_REPO"
-            echo "New Image Tag: $NEW_IMAGE_TAG"
-            echo "New Image Digest: $NEW_IMAGE_DIGEST"
-
-            CURRENT_REGISTRY=$(yq '.image.registry' "$VALUES_FILE")
-            CURRENT_IMAGE_REPO=$(yq '.image.repository' "$VALUES_FILE")
-            CURRENT_TAG=$(yq '.image.tag' "$VALUES_FILE")
-            CURRENT_DIGEST=$(yq '.image.digest' "$VALUES_FILE")
-
-            echo "Current $SERVICE Image: $CURRENT_REGISTRY:$CURRENT_TAG"
-            echo "Updating $SERVICE Image -> $NEW_IMAGE"
-
-            yq -i ".image.registry = \"$REGISTRY_URI\"" "$VALUES_FILE"
-            yq -i ".image.repository = \"$IMAGE_REPO\"" "$VALUES_FILE"
-            yq -i ".image.tag = \"$NEW_IMAGE_TAG\"" "$VALUES_FILE"
-            yq -i ".image.digest = \"$NEW_IMAGE_DIGEST\"" "$VALUES_FILE"
-
-            echo "Contents after update:"
-            yq '.image' "$VALUES_FILE"
-
-            CURRENT_VERSION=$(yq '.version' "$CHART_FILE")
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-            PATCH=$((PATCH + 1))
-            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-            
-            yq -i ".version = \"$NEW_VERSION\"" "$CHART_FILE"
-            yq -i ".appVersion = \"${{ steps.get_tag.outputs.LATEST_TAG }}\"" "$CHART_FILE"
+        - name: Check for changes
+          id: changes
+          run: |
+            if git diff --quiet k8s/microservice; then
+              echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+            else
+              echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
+            fi
 
         - name: Create Pull Request
-          if: steps.download_manifest.outputs.MANIFEST_FOUND == 'true'
+          id: cpr
           uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+          if: steps.changes.outputs.HAS_CHANGES == 'true'
           with:
             token: ${{ github.token }}
-            commit-message: "chore(helm): update ${{ matrix.dir }} image to ${{ env.SHORT_SHA }}"
-            branch: "update-helm/${{ matrix.dir }}-${{ env.SHORT_SHA }}"
-            base: ${{ github.ref_name }}
-            title: "[Helm] Update ${{ matrix.dir }} to ${{ env.SHORT_SHA }}"
+            branch: update-helm/auto
+            base: ${{ github.event.workflow_run.head_branch }}
+            delete-branch: true
+
+            commit-message: |
+              chore(helm): update manifests for ${{ env.SHORT_SHA }}
+
+            title: |
+              [Helm] Update manifests for ${{ env.SHORT_SHA }}
+
             body: |
               Automated Helm update triggered by successful build.
-              - **Service:** ${{ matrix.dir }}
-              - **Environment:** ${{ env.BRANCH_NAME }}
-              - **Image Tag:** ${{ env.SHORT_SHA }}
+
+              Build SHA: `${{ env.SHORT_SHA }}`
+
+              Environment: `${{ env.BRANCH_NAME }}`
+
+              Updated services:
+              ${{ steps.update_helm_values.outputs.UPDATED_SERVICES }}
+
             labels: |
               automated-pr
               helm-update
+              image-update         
 
         - name: Send Slack notification
           uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
-          if: always() # Better to use always() and handle logic inside the payload
+          if: always()
           with:
             payload: |
               {
-                "text": "${{ job.status == 'success' && '🚀 Helm Update PR Created' || '❌ Helm Update Failed' }}",
+                "text": "${{ steps.cpr.outputs.pull-request-url != '' && '🚀 Helm Update PR Created' || job.status == 'success' && '✅ Helm Update — No Changes' || '❌ Helm Update Failed' }}",
                 "attachments": [{
                   "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
                   "fields": [
-                    { "title": "Service", "value": "${{ matrix.dir }}", "short": true },
-                    { "title": "Environment", "value": "${{ github.ref_name }}", "short": true },
-                    { "title": "Pull Request", "value": "${{ steps.create-pull-request.outputs.pull-request-url || 'N/A' }}", "short": false },
-                    { "title": "Action Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                    {
+                      "title": "Build SHA",
+                      "value": "${{ env.SHORT_SHA }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Environment",
+                      "value": "${{ env.BRANCH_NAME }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Pull Request",
+                      "value": "${{ steps.cpr.outputs.pull-request-url || 'No PR Created' }}",
+                      "short": false
+                    },
+                    {
+                      "title": "Action Run",
+                      "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                      "short": false
+                    }
                   ]
                 }]
               }

@@ -49,3 +49,23 @@ GHSA-3qwq-q9vm-5j42
 
 # Little CMS: Integer overflow in CubeSize - Awaiting upstream/base image patch
 CVE-2026-41254
+
+# --- New Vulnerabilities ---
+
+# Apache Tomcat: Multiple critical/high vulnerabilities - Fix: Upgrade to 11.0.22/10.1.55/9.0.118
+CVE-2026-41293 exp:2026-07-12
+CVE-2026-43512 exp:2026-07-12
+CVE-2026-43515 exp:2026-07-12
+CVE-2026-24880 exp:2026-07-12
+CVE-2026-41284 exp:2026-07-12
+CVE-2026-42498 exp:2026-07-12
+CVE-2026-43513 exp:2026-07-12
+
+# Bouncy Castle: Private key leakage via non-constant time - Fix: Upgrade to 1.84
+CVE-2026-5598 exp:2026-07-12
+
+# Spring Boot: Security bypass (default web security) - Fix: Upgrade to 4.0.6
+CVE-2026-40976 exp:2026-07-12
+
+# Spring Boot: ACE/Session Hijacking (temp directory) - Fix: Upgrade to 4.0.6
+CVE-2026-40973 exp:2026-07-12

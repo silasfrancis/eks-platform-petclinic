@@ -1,3 +1,9 @@
+# RDS LTR Automated Backup — SNS
+#
+# Alert topic for DLQ failures, with the dlq_inspector Lambda subscribed
+# directly (SNS invokes it on each alert to post a Slack notification)
+
+
 resource "aws_sns_topic" "alerts" {
   count = var.enable_rds_ltr_backup ? 1 : 0
   name  = "${var.app}-${var.env}-rds-backup-alerts"

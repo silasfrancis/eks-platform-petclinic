@@ -1,3 +1,14 @@
+# EKS Managed Add-ons
+#
+# Installs the core EKS-managed add-ons (VPC CNI, CoreDNS, kube-proxy, Pod
+# Identity Agent, EBS CSI Driver), always pinned to the latest version
+# compatible with the cluster's Kubernetes version at apply time, but with
+# addon_version changes ignored afterward so AWS-driven version bumps don't
+# cause unwanted diffs. VPC CNI and EBS CSI use IRSA roles for AWS API access;
+# the others are pure cluster add-ons with no extra permissions.
+
+
+# Look up the latest available version of each add-on for this cluster's k8s version
 data "aws_eks_addon_version" "vpc_cni" {
   addon_name         = "vpc-cni"
   kubernetes_version = aws_eks_cluster.main_cluster.version
@@ -28,6 +39,9 @@ data "aws_eks_addon_version" "ebs_csi" {
   most_recent        = true
 }
 
+# VPC CNI — pod networking. Uses IRSA for AWS API access and enables
+# NetworkPolicy enforcement plus IP prefix delegation to increase pod density
+# per node (with SNAT for external traffic)
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name = aws_eks_cluster.main_cluster.name
   addon_name   = "vpc-cni"
@@ -56,6 +70,8 @@ resource "aws_eks_addon" "vpc_cni" {
   }
 }
 
+# CoreDNS — in-cluster DNS resolution. Requires the bootstrap node group to
+# exist since it needs a node to schedule onto
 resource "aws_eks_addon" "coredns" {
   cluster_name                = aws_eks_cluster.main_cluster.name
   addon_name                  = "coredns"
@@ -73,6 +89,7 @@ resource "aws_eks_addon" "coredns" {
   }
 }
 
+# kube-proxy — maintains network rules for Service routing on each node
 resource "aws_eks_addon" "kube_proxy" {
   cluster_name                = aws_eks_cluster.main_cluster.name
   addon_name                  = "kube-proxy"
@@ -89,6 +106,8 @@ resource "aws_eks_addon" "kube_proxy" {
   }
 }
 
+# EKS Pod Identity Agent — alternative to IRSA for assigning AWS permissions
+# to pods via pod identity associations
 resource "aws_eks_addon" "pod_identity" {
   cluster_name                = aws_eks_cluster.main_cluster.name
   addon_name                  = "eks-pod-identity-agent"
@@ -106,6 +125,8 @@ resource "aws_eks_addon" "pod_identity" {
   }
 }
 
+# EBS CSI Driver — provisions/attaches EBS volumes for PersistentVolumes.
+# Uses IRSA for the AWS API calls needed to manage volumes
 resource "aws_eks_addon" "ebs_csi" {
   cluster_name             = aws_eks_cluster.main_cluster.name
   addon_name               = "aws-ebs-csi-driver"

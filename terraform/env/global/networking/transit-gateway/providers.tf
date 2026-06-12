@@ -1,5 +1,9 @@
 terraform {
-  backend "s3" {} # partial configuration - state details are being read from a state.conf file at runtime
+  # Partial backend configuration: bucket, key, region, and other S3 backend
+  # settings are NOT defined here. Instead, they're supplied at init time via
+  # `terraform init -backend-config=state.conf` (or an equivalent per-environment
+  # config file).
+  backend "s3" {}
 
   required_providers {
     aws = {
@@ -9,6 +13,8 @@ terraform {
   }
 }
 
+# Default provider configuration
+# Applies default tags to all resources created by this provider that support tagging
 provider "aws" {
   region = var.aws_region
 

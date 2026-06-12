@@ -1,3 +1,19 @@
+# VPC Module
+#
+# Generic networking module reused across environments (prod, dev, wireguard).
+# Builds a VPC with up to three subnet tiers (public, private, data), each
+# tier sized 1-N AZs via *_subnet_count, plus NAT gateways, route tables,
+# an IGW, optional flow logs, and a locked-down default security group.
+#
+# CIDR layout: each environment gets a /16 from vpc_cidrs based on var.env
+# (falls back to prod's 10.0.0.0/16 if var.env doesn't match). Within that
+# /16, subnets are carved as /24s using the second octet as an offset:
+#   public  subnets -> .1.0/24  .. .N.0/24
+#   private subnets -> .11.0/24 .. .(10+N).0/24
+#   data    subnets -> .21.0/24 .. .(20+N).0/24
+# This keeps each tier in its own predictable range and leaves room to grow.
+
+
 locals {
   # VPC CIDR blocks for each environment
   vpc_cidrs = {

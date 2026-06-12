@@ -1,3 +1,10 @@
+# VPC Flow Logs
+#
+# Optional (var.enable_flow_logs) — logs ALL traffic for the VPC to a
+# CloudWatch Log Group encrypted with the infra common KMS key, with a
+# 3-day retention. Enabled in prod, disabled in dev to reduce cost/noise.
+
+
 resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
   count = var.enable_flow_logs ? 1 : 0
 
@@ -8,7 +15,6 @@ resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
 
   tags = var.extended_tags
 }
-
 
 resource "aws_flow_log" "vpc_flow_log" {
   count = var.enable_flow_logs ? 1 : 0

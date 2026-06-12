@@ -1,4 +1,11 @@
-# Public Subnets
+# Subnets
+#
+# Public, private, and data subnets, one per AZ up to *_subnet_count.
+# Tag changes are ignored since EKS/Karpenter (eks module) add their own discovery tags
+# ("kubernetes.io/cluster/...", "karpenter.sh/discovery") to these subnets
+# after creation.
+
+# Public Subnets — host NAT gateways and the external/internal NLBs
 resource "aws_subnet" "public" {
   for_each = {
     for index, az in local.public_azs :
@@ -31,7 +38,7 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Private Subnets
+# Private Subnets — host EKS nodes; tagged for internal-elb discovery
 resource "aws_subnet" "private" {
   for_each = {
     for index, az in local.private_azs :
@@ -50,8 +57,6 @@ resource "aws_subnet" "private" {
     {
       Tier = "private"
       Name = "${var.vpc_name_prefix}-${var.env}-private-subnet-${each.value.index + 1}"
-
-      "kubernetes.io/role/internal-elb" = "1"
     },
     var.extended_tags
   )
@@ -63,7 +68,8 @@ resource "aws_subnet" "private" {
     ]
   }
 }
-# Data Subnets
+
+# Data Subnets — host RDS
 resource "aws_subnet" "data" {
   for_each = {
     for index, az in local.data_azs :

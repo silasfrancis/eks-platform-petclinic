@@ -1,3 +1,12 @@
+# RDS LTR Automated Backup — CloudWatch
+#
+# Log groups (3-day retention, encrypted with the infra common KMS key) for
+# each Lambda in the pipeline, plus an alarm that fires the moment any
+# message lands in the DLQ — any failed processing attempt is treated as
+# noteworthy and triggers an SNS alert.
+
+
+# Logs for the snapshot-export processor Lambda
 resource "aws_cloudwatch_log_group" "rds_export_lambda_processor" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -8,6 +17,7 @@ resource "aws_cloudwatch_log_group" "rds_export_lambda_processor" {
   tags = var.extended_tags
 }
 
+# Logs for the DLQ inspector Lambda
 resource "aws_cloudwatch_log_group" "dlq_inspector" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -18,6 +28,7 @@ resource "aws_cloudwatch_log_group" "dlq_inspector" {
   tags = var.extended_tags
 }
 
+# Logs for the daily summary report Lambda
 resource "aws_cloudwatch_log_group" "summary" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -28,6 +39,8 @@ resource "aws_cloudwatch_log_group" "summary" {
   tags = var.extended_tags
 }
 
+# Fires as soon as any message appears in the DLQ (threshold = 0), indicating
+# a backup processing failure that needs attention
 resource "aws_cloudwatch_metric_alarm" "dlq_alarm" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 

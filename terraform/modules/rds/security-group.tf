@@ -13,6 +13,7 @@ resource "aws_security_group" "rds" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_nodes" {
+    description = "Allow MySQL from EKS nodes"
     security_group_id = aws_security_group.rds.id 
     from_port = 3306
     to_port = 3306
@@ -21,6 +22,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_nodes" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_from_wireguard_server" {
+    description = "Allow MySQL from Wireguard server"
     security_group_id = aws_security_group.rds.id
     from_port = 3306
     to_port = 3306
@@ -29,6 +31,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_wireguard_server" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "rds_egress_rule" {
+    description = "Allow all outbound traffic from RDS"
     security_group_id = aws_security_group.rds.id
     ip_protocol = "-1"
     cidr_ipv4 = "0.0.0.0/0"

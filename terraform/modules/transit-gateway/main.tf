@@ -15,16 +15,16 @@
 
 locals {
   spoke_environments = {
-    # dev = {
-    #   vpc_id          = var.dev_vpc_id
-    #   subnet_ids      = var.dev_private_subnet_ids
-    #   vpc_cidr        = var.dev_vpc_cidr
-    #   route_table_ids = var.dev_private_route_table_ids
-    #   blackhole_cidrs = [var.prod_vpc_cidr]
-    #   # TARGET SPOKE PEERS ONLY: Explicitly route to WireGuard infrastructure.
-    #   # Excludes 10.0.0.0/8 supernetting to protect local VPC DNS endpoints (10.1.0.2).
-    #   peer_cidrs      = [var.wireguard_vpc_cidr, var.wireguard_client_cidr]
-    # }
+    dev = {
+      vpc_id          = var.dev_vpc_id
+      subnet_ids      = var.dev_private_subnet_ids
+      vpc_cidr        = var.dev_vpc_cidr
+      route_table_ids = var.dev_private_route_table_ids
+      blackhole_cidrs = [var.prod_vpc_cidr]
+      # TARGET SPOKE PEERS ONLY: Explicitly route to WireGuard infrastructure.
+      # Excludes 10.0.0.0/8 supernetting to protect local VPC DNS endpoints (10.1.0.2).
+      peer_cidrs      = [var.wireguard_vpc_cidr, var.wireguard_client_cidr]
+    }
     prod = {
       vpc_id          = var.prod_vpc_id
       subnet_ids      = var.prod_private_subnet_ids
@@ -183,7 +183,6 @@ resource "aws_ec2_transit_gateway_route" "spokes_to_wireguard_clients" {
 
 # VPC Spoke Routes → TGW
 #
-# REPLACED 10.0.0.0/8 SUPERNET ROUTE.
 # Spoke VPC private route tables now route explicitly to peering resources only.
 # This keeps local AWS VPC resolver endpoints (10.x.0.2) completely isolated from TGW loops.
 

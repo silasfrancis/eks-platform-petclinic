@@ -1,3 +1,5 @@
+# Elastic IPs for NAT Gateways
+
 # Elastic IPs for NAT Gateways (based on the number of nat_gateway_count variable)
 resource "aws_eip" "nat" {
   for_each = {

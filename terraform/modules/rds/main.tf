@@ -1,3 +1,12 @@
+# RDS: MySQL Database for Petclinic Microservices
+#
+# Provisions a MySQL RDS instance with environment-aware sizing and durability
+# settings (Multi-AZ, backup retention, Performance Insights, enhanced
+# monitoring scaled up in prod, down in dev). Includes a parameter group for
+# slow query logging and a pre-deploy snapshot taken before each apply.
+
+
+# Subnet group restricting RDS placement to the dedicated data subnets
 resource "aws_db_subnet_group" "main" {
   name       = "${var.app}-${var.env}-rds-subnet-group"
   subnet_ids = var.data_subnet_ids
@@ -5,6 +14,8 @@ resource "aws_db_subnet_group" "main" {
   tags = var.extended_tags
 }
 
+# Custom parameter group enabling slow query logging to identify queries
+# taking longer than 2 seconds, with a hard execution cap of 30s
 resource "aws_db_parameter_group" "mysql" {
   name   = "${var.app}-${var.env}-mysql-params"
   family = "mysql8.0"
@@ -35,7 +46,7 @@ resource "aws_db_parameter_group" "mysql" {
 }
 
 locals {
-  is_prod = var.env == "prodd"
+  is_prod = var.env == "prod"
 
   # Backup retention — 7 days prod, 1 day dev
   backup_retention = local.is_prod ? 7 : 1
@@ -48,6 +59,7 @@ locals {
   monitoring_interval = local.is_prod ? 60 : 0
 }
 
+# Main MySQL instance
 resource "aws_db_instance" "main" {
   identifier     = "${var.app}-${var.env}-mysql"
   engine         = "mysql"
@@ -57,6 +69,8 @@ resource "aws_db_instance" "main" {
   allocated_storage = var.allocated_storage
   storage_type      = "gp3"
 
+  # Credentials sourced from Secrets Manager via the calling module —
+  # never hardcoded, and excluded from drift detection (see lifecycle below)
   db_name  = var.db_name
   username = var.db_username
   password = var.db_password
@@ -65,10 +79,11 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   parameter_group_name   = aws_db_parameter_group.mysql.name
 
+  # Encrypted at rest using the shared data storage KMS key
   storage_encrypted = true
   kms_key_id        = var.data_storage_kms_key_arn
 
-  # Multi-AZ only in prod
+  # Multi-AZ only in prod — dev runs single-AZ to save cost
   multi_az = local.is_prod
 
   # Backup retention — 1 day dev, 7 days prod
@@ -78,7 +93,7 @@ resource "aws_db_instance" "main" {
   copy_tags_to_snapshot    = true
   delete_automated_backups = false
 
-  # Always take a final snapshot before destroy in prod
+  # Always take a final snapshot before destroy in prod; dev skips it
   skip_final_snapshot       = !local.is_prod
   final_snapshot_identifier = local.is_prod ? "${var.app}-${var.env}-mysql-final-snapshot" : null
 
@@ -93,6 +108,7 @@ resource "aws_db_instance" "main" {
   performance_insights_kms_key_id       = local.is_prod ? var.data_storage_kms_key_arn : null
   performance_insights_retention_period = local.is_prod ? local.pi_retention : 0
 
+  # Prevents accidental deletion in prod via terraform destroy
   deletion_protection = local.is_prod
 
   publicly_accessible        = false
@@ -100,17 +116,19 @@ resource "aws_db_instance" "main" {
 
   tags = var.extended_tags
 
+  # Password is managed in Secrets Manager and rotated outside Terraform —
+  # don't trigger a replacement/update if it drifts
   lifecycle {
     ignore_changes = [password]
   }
 }
 
+# Manual snapshot taken on each apply
 resource "aws_db_snapshot" "pre_deploy" {
   db_instance_identifier = aws_db_instance.main.identifier
   db_snapshot_identifier = "${var.app}-${var.env}-mysql-pre-deploy-${formatdate("YYYY-MM-DD", timestamp())}"
 
   tags = var.extended_tags
-
   lifecycle {
     ignore_changes = [db_snapshot_identifier] 
   }

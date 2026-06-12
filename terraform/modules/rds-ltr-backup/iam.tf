@@ -1,3 +1,16 @@
+# RDS LTR Automated Backup — IAM
+#
+# Two roles:
+#   - lambda_rds_backup: assumed by all three Lambdas (processor,
+#     dlq_inspector, summary). Can start/describe RDS export tasks, pass the
+#     export role to RDS, consume from the main SQS queue, and write its own
+#     logs (basic execution policy)
+#   - rds_export_role: assumed by the RDS export service itself when writing
+#     snapshot exports to S3, with read/write access to the backup bucket and
+#     KMS access for encryption
+
+
+# Role assumed by the Lambda functions
 resource "aws_iam_role" "lambda_rds_backup" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -14,6 +27,7 @@ resource "aws_iam_role" "lambda_rds_backup" {
   tags = var.extended_tags
 }
 
+# Role assumed by the RDS export service when writing snapshot exports to S3
 resource "aws_iam_role" "rds_export_role" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -34,6 +48,8 @@ resource "aws_iam_role" "rds_export_role" {
   tags = var.extended_tags
 }
 
+# Permissions for the Lambda role: start/describe RDS export tasks, pass the
+# export role to RDS, and consume from the main SQS queue
 resource "aws_iam_policy" "lambda_backup" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -77,6 +93,7 @@ resource "aws_iam_role_policy_attachment" "lambda_backup" {
   policy_arn = aws_iam_policy.lambda_backup[0].arn
 }
 
+# Standard AWS-managed policy granting CloudWatch Logs write permissions
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 
@@ -84,6 +101,8 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Permissions for the RDS export role: read/write/delete on the backup
+# bucket, plus KMS access to encrypt/decrypt the exported snapshot data
 resource "aws_iam_policy" "rds_export_policy" {
   count = var.enable_rds_ltr_backup ? 1 : 0
 

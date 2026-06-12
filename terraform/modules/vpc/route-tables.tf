@@ -1,4 +1,12 @@
-# Public Route Table
+# Route Tables
+#
+# One public route table shared by all public subnets, routing 0.0.0.0/0 to
+# the IGW. Private route tables are created one-per-NAT-gateway (for
+# independent egress paths per AZ); if only one NAT gateway exists, all
+# private subnets share that single route table — otherwise each private
+# subnet is matched to the NAT gateway/route table in the same AZ.
+
+# Public Route Table — routes internet-bound traffic to the IGW
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.vpc.id
 
@@ -15,7 +23,6 @@ resource "aws_route_table" "public" {
   )
 }
 
-
 # Public Route Table Associations
 resource "aws_route_table_association" "public" {
   for_each = aws_subnet.public
@@ -25,6 +32,7 @@ resource "aws_route_table_association" "public" {
 }
 
 # Private Route Tables (One per public subnet/NAT for independent paths)
+# Each routes 0.0.0.0/0 to the NAT gateway in the same AZ
 resource "aws_route_table" "private" {
   for_each = aws_nat_gateway.nat
 
@@ -43,8 +51,10 @@ resource "aws_route_table" "private" {
   )
 }
 
-
 # Private Route Table Associations
+# If there's only one NAT gateway (and thus one private route table), all
+# private subnets use it. Otherwise, match each private subnet to the route
+# table in its own AZ.
 resource "aws_route_table_association" "private" {
   for_each = aws_subnet.private
 

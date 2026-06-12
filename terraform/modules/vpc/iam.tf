@@ -1,3 +1,9 @@
+# VPC Flow Logs — IAM
+#
+# Role and policy allowing the VPC Flow Logs service to write log streams
+# and events to the CloudWatch Log Group above. Only created when
+# var.enable_flow_logs is true.
+
 resource "aws_iam_role" "vpc_flow_logs" {
   count = var.enable_flow_logs ? 1 : 0
 

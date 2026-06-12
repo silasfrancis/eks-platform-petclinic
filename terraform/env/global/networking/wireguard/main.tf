@@ -1,9 +1,17 @@
+# WireGuard VPN Server
+#
+# Stands up a dedicated VPC and EC2-based WireGuard VPN server, used as the
+# entry point for platform engineers to securely access internal EKS
+# resources and cluster APIs in the prod/dev VPCs via the Transit Gateway.
+
 # Availability Zones
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-#Wireguard VPC
+# WireGuard VPC
+# Lightweight VPC with a single public subnet only — no private/data subnets
+# or NAT gateways needed since this VPC only hosts the VPN server
 module "vpc" {
   source = "../../../../modules/vpc"
 
@@ -17,7 +25,9 @@ module "vpc" {
   enable_flow_logs          = false
 }
 
-# Wireguard sever (EC2 instance) in prod VPC
+# WireGuard server (EC2 instance) in the WireGuard VPC
+# Bootstraps the VPN server and grants access to the "platform" IAM group
+# (platform engineers connect to this server to reach internal resources)
 module "wireguard_server" {
   source = "../../../../modules/wireguard"
   

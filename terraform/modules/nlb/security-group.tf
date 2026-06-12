@@ -1,3 +1,15 @@
+# Security Groups: NLB (Istio Gateway Load Balancers)
+#
+# Creates security groups for the NLBs provisioned via Kubernetes Service
+# type=LoadBalancer for the Istio gateways:
+#   - external: public-facing NLB, open to the internet on 80/443
+#   - internal: VPN-only NLB, restricted to the WireGuard VPC CIDR on 80/443
+#     (used for internal dashboards like Grafana, ArgoCD, etc.)
+#
+# Ingress rules are generated as a cross-product of nlb_configs x nlb_ports,
+# so adding a new port here automatically applies it to both NLB types.
+
+
 locals {
   # One entry per NLB type
   nlb_configs = {
@@ -31,6 +43,8 @@ locals {
 }
 
 # Security Groups (one per NLB type)
+# tags/tags_all changes are ignored since the AWS Load Balancer Controller
+# adds its own tags to these security groups after creation
 resource "aws_security_group" "nlb" {
   for_each = local.nlb_configs
 
@@ -49,6 +63,8 @@ resource "aws_security_group" "nlb" {
 }
 
 # Ingress Rules (HTTP + HTTPS per NLB type)
+# External NLB allows 80/443 from anywhere; internal NLB allows 80/443 only
+# from the WireGuard VPC CIDR
 resource "aws_vpc_security_group_ingress_rule" "nlb" {
   for_each = { for rule in local.ingress_rules : rule.key => rule }
 
@@ -63,6 +79,7 @@ resource "aws_vpc_security_group_ingress_rule" "nlb" {
 }
 
 # Egress Rules
+# Allow all outbound traffic from both NLB security groups
 resource "aws_vpc_security_group_egress_rule" "nlb" {
   for_each = local.nlb_configs
 

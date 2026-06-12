@@ -1,11 +1,11 @@
-resource "aws_sqs_queue" "dlq" {
-  count = var.enable_rds_ltr_backup ? 1 : 0
-  name  = "${var.app}-${var.env}-rds-backup-dlq"
+# RDS LTR Automated Backup — SQS
+#
+# Main queue receives snapshot-complete events for the processor Lambda to
+# consume; messages that fail processing 5 times are redirected to the DLQ,
+# which triggers the dlq_inspector via SNS
 
-  message_retention_seconds = 345600
-  sqs_managed_sse_enabled   = true
-}
 
+# Main queue — triggers the processor Lambda on snapshot-complete events
 resource "aws_sqs_queue" "main" {
   count = var.enable_rds_ltr_backup ? 1 : 0
   name  = "${var.app}-${var.env}-rds-backup-queue"
@@ -13,6 +13,15 @@ resource "aws_sqs_queue" "main" {
   visibility_timeout_seconds = 300
   message_retention_seconds  = 345600
   receive_wait_time_seconds  = 20
+  sqs_managed_sse_enabled   = true
+}
+
+# Dead-letter queue — receives messages that failed processing 5 times
+resource "aws_sqs_queue" "dlq" {
+  count = var.enable_rds_ltr_backup ? 1 : 0
+  name  = "${var.app}-${var.env}-rds-backup-dlq"
+
+  message_retention_seconds = 345600
   sqs_managed_sse_enabled   = true
 }
 

@@ -1,3 +1,9 @@
+# EKS Cluster
+#
+# The EKS control plane. Runs in private subnets only (no public API
+# endpoint — accessed via the WireGuard VPN / Transit Gateway). Secrets are
+# encrypted using the dedicated eks_secrets KMS key, API/audit logs are sent
+# to CloudWatch, and the cluster is protected from accidental destroy.
 resource "aws_eks_cluster" "main_cluster" {
   name     = "${var.app}-${var.env}-cluster"
   version  = var.cluster_version
@@ -10,10 +16,13 @@ resource "aws_eks_cluster" "main_cluster" {
     endpoint_public_access  = false 
     }
 
+  # Enables both the access entries API and the legacy aws-auth ConfigMap
+  # for cluster authentication
   access_config {
     authentication_mode = "API_AND_CONFIG_MAP"
   }
 
+  # Encrypts Kubernetes Secrets at the etcd layer using the eks_secrets KMS key
   encryption_config {
     resources = ["secrets"]
     provider {
@@ -45,7 +54,8 @@ resource "aws_eks_cluster" "main_cluster" {
     aws_cloudwatch_log_group.eks_log_group
   ]
 
-  # lifecycle {
-  #   prevent_destroy = true
-  # }
+  # Protects the cluster from accidental deletion via terraform destroy
+  lifecycle {
+    prevent_destroy = true
+  }
 }

@@ -1,9 +1,21 @@
+# Dev Environment Root Module
+#
+# Provisions the dev infrastructure resources for the eks-platform-petclinic
+# platform: KMS keys, Secrets Manager lookups, S3 buckets, VPC/networking,
+# NLB security groups, the EKS cluster, private Route53 hosted zone, IRSA roles, and
+# RDS. Sized down relative to prod (single NAT gateway, no flow logs,
+# db.t3.micro, LTR backup disabled).
+
+# Data Sources
+
 # Availability Zones
+# Fetches all AZs available in the target region for use in subnet distribution
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
 # Remote State for global/app-registry outputs (App registry metadata)
+# Provides shared application tags applied across all environments
 data "terraform_remote_state" "app-registry" {
   backend = "s3"
 
@@ -15,6 +27,7 @@ data "terraform_remote_state" "app-registry" {
 }
 
 # Remote State for Wireguard Server (Security group IDs for NLB rules and EKS control plane access)
+# Provides the WireGuard VPC CIDR for cross-VPC ingress rules (NLB, EKS, RDS)
 data "terraform_remote_state" "wireguard_server" {
   backend = "s3"
 
@@ -26,6 +39,8 @@ data "terraform_remote_state" "wireguard_server" {
 }
 
 
+# Locals
+
 locals {
   # Resource tags for all resources in this environment, merged with global application tags from remote state
   extended_tags = merge(
@@ -33,10 +48,12 @@ locals {
       env        = var.environment
       app        = var.app
       managed_by = "terraform"
-    },
+    }, 
     data.terraform_remote_state.app-registry.outputs.application_tag
   )
 }
+
+# Modules
 
 # KMS
 # Keys for encryption (EKS, RDS, S3, EBS, CloudWatch)
@@ -77,7 +94,7 @@ module "vpc" {
   env                      = var.environment
   vpc_name_prefix           = var.app
   availability_zones       = data.aws_availability_zones.available.names
-  public_subnet_count       = 1
+  public_subnet_count       = 2
   private_subnet_count      = 2
   data_subnet_count         = 2
   nat_gateway_count         = 1
@@ -120,7 +137,7 @@ module "eks" {
 
 # DNS (Route53 Private Hosted Zone) 
 # Private hosted zone for internal dashboard DNS
-# Grafana, ArgoCD, Prometheus, Loki — VPN access only
+# Grafana, ArgoCD, Prometheus, Goldilocks — VPN access only
 # VPC must exist (zone is associated with VPC)
 # EKS must exist (cluster_name used for zone tagging)
 module "dns" {
@@ -134,7 +151,6 @@ module "dns" {
 # Per-component IAM roles bound to EKS service accounts via OIDC
 # One role per platform component: Karpenter, Loki, Velero, ESO, ExternalDNS etc
 # EKS OIDC provider must exist — created by EKS module
-# Removed module.iam-oidc reference — OIDC provider is part of module.eks
 module "irsa" {
   source = "../../modules/irsa"
 
@@ -155,7 +171,7 @@ module "irsa" {
 
 # RDS
 # MySQL database for petclinic microservices
-# Credentials read from Secrets Manager — never hardcoded
+# Credentials read from Secrets Manager
 # EKS node SG added to RDS ingress rules via module
 module "rds" {
   source = "../../modules/rds"

@@ -1,6 +1,6 @@
 # PetClinic Platform
 
-A Kubernetes platform on AWS EKS built around the Spring PetClinic microservices application.
+A Kubernetes platform on AWS EKS built around the [Spring PetClinic microservices application](https://github.com/spring-petclinic/spring-petclinic-microservices).
 
 The repository combines infrastructure provisioning, GitOps delivery, cluster networking, autoscaling, observability, runtime security, and operational tooling across isolated production and development environments.
 
@@ -59,12 +59,12 @@ Production and development environments are isolated at the Transit Gateway rout
 .
 ├── terraform/         # AWS infrastructure and shared resources
 ├── k8s/               # Kubernetes platform and GitOps resources
-│   ├── platform/      # Istio, monitoring, autoscaling, security, backups
+│   ├── platform/      # Ingress, monitoring, autoscaling, security, backups
 │   ├── argocd/        # App of Apps configuration
 │   ├── bootstrap/     # Cluster bootstrap components
 │   └── microservice/  # Shared Helm chart for all microservices
 ├── services/          # Spring Boot microservices
-├── ansible/           # WireGuard automation via SSM
+├── ansible/           # WireGuard server configuration via SSM
 ├── migrations/        # Database migrations
 ├── docs/              # Documentation and architecture diagrams
 └── scripts/           # Validation and helper scripts
@@ -147,9 +147,11 @@ Provisions environment-specific AWS infrastructure.
 
 Includes:
 
+- KMS Keys
 - VPC networking
 - EKS cluster
 - IAM and IRSA
+- S3 buckets
 - RDS
 - platform infrastructure
 
@@ -256,7 +258,8 @@ task ansible:check_wireguard
 
 ### After Setup
 
-1. Retrieve the generated client configuration from the server
+1. Retrieve the generated client configuration from the server at
+   `/etc/wireguard/clients/configs/<client>.conf`
 2. Import it into the WireGuard client application
 3. Connect to the VPN before accessing internal services
 
@@ -287,7 +290,7 @@ The IAM role above is granted EKS access through Terraform-managed access entrie
 
 ## Configure Platform Domains
 
-The repository uses `lefrancis.org` as the example domain.
+The repository uses `lefrancis.org` as the default domain.
 
 Before deployment, update all platform ingress hostnames to match your own domain and DNS zones.
 
@@ -303,7 +306,7 @@ Example:
 
 ```yaml
 petclinic:
-  host: petclinic.example.com
+  host: petclinic.lefrancis.org
 ```
 
 ### ArgoCD
@@ -319,7 +322,7 @@ Example:
 ```yaml
 server:
   ingress:
-    host: argocd.example.com
+    host: argocd.internal.lefrancis.org
 ```
 
 ### Monitoring Stack
@@ -335,11 +338,11 @@ Examples:
 ```yaml
 grafana:
   ingress:
-    host: grafana.internal.example.com
+    host: grafana.internal.lefrancis.org
 
 prometheus:
   ingress:
-    host: prometheus.internal.example.com
+    host: prometheus.internal.lefrancis.org
 ```
 
 ### Autoscaling Stack
@@ -355,7 +358,7 @@ Example:
 ```yaml
 goldilocks:
   ingress:
-    host: goldilocks.internal.example.com
+    host: goldilocks.internal.lefrancis.org
 ```
 
 Also ensure:

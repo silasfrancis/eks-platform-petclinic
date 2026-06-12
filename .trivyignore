@@ -50,7 +50,7 @@ GHSA-3qwq-q9vm-5j42
 # Little CMS: Integer overflow in CubeSize - Awaiting upstream/base image patch
 CVE-2026-41254
 
-# --- New Vulnerabilities ---
+# --- Apache Tomcat & Spring Boot New Vulnerabilities ---
 
 # Apache Tomcat: Multiple critical/high vulnerabilities - Fix: Upgrade to 11.0.22/10.1.55/9.0.118
 CVE-2026-41293 exp:2026-07-12
@@ -69,3 +69,17 @@ CVE-2026-40976 exp:2026-07-12
 
 # Spring Boot: ACE/Session Hijacking (temp directory) - Fix: Upgrade to 4.0.6
 CVE-2026-40973 exp:2026-07-12
+
+# --- Netty Vulnerabilities (Upgrade to 4.2.15.Final or 4.1.135.Final required) ---
+
+# Netty: Various high-severity DoS, Memory Allocation, and Security Bypass issues
+CVE-2026-44894
+CVE-2026-42583
+CVE-2026-42579
+CVE-2026-42584
+CVE-2026-42587
+CVE-2026-42582
+CVE-2026-44892
+CVE-2026-44249
+CVE-2026-45416
+CVE-2026-45674

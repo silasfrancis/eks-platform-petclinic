@@ -45,7 +45,7 @@ EOT
 resource "aws_launch_template" "eks_nodes" {
   name = "${var.app}-${var.env}-eks-node-template"
   description = "EKS node launch template for ${var.env}"
-  instance_type = "t4g.small"
+  instance_type = "t4g.medium"
   image_id      = data.aws_ssm_parameter.eks_ami.value
   user_data = base64encode(local.node_user_data)
   update_default_version = true

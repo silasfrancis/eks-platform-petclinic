@@ -101,3 +101,12 @@ CVE-2026-45674
 CVE-2026-40982 exp:2026-06-30
 CVE-2026-40981 exp:2026-06-30
 CVE-2026-41002 exp:2026-06-30
+
+# Netty: additional DoS/security issues not yet covered above
+# Fixed as part of platform release - upgrading to 4.2.15.Final/4.1.135.Final
+CVE-2026-47691
+CVE-2026-42577
+
+# Thymeleaf: critical vulnerability in template engine
+# Fixed as part of platform release - upgrading thymeleaf/thymeleaf-spring6 to 3.1.5.RELEASE
+CVE-2026-41901 exp:2026-06-30

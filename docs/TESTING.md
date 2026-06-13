@@ -44,6 +44,7 @@ kubectl get nodes -l node-type=karpenter-bootstrap
 ```
 ![Karpenter Provisioned Nodes](diagrams/karpenter-provisioned-nodes.png)
 *Karpenter Provisioned Nodes*
+
 ---
 
 ## 2. Platform Health
@@ -97,6 +98,7 @@ kubectl run -it --rm config-test \
 ```
 ![Petclinic Pods](diagrams/istio-injected-microservice-pods.png)
 *Petclinic Pods*
+
 ---
 
 ## 4. External Access
@@ -145,6 +147,7 @@ kubectl --context <dev-context> get nodes
 
 ![ArgoCD](diagrams/argocd-platform-apps.png)
 *ArgoCD Platform apps*
+
 ---
 
 ## 6. mTLS Verification
@@ -236,6 +239,7 @@ kubectl argo rollouts promote customers-service -n petclinic
 ```
 ![api-gateway-rollout](diagrams/argo-rollout.png)
 *API Gateway ArgoCD Rollout*
+
 
 Grafana verification (VPN required):
 

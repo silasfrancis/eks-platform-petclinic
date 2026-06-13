@@ -33,7 +33,11 @@ includes:
 
   k8s:
     taskfile: ./k8s/Taskfile.yaml
+<<<<<<< HEAD
     dir: ./k8s
+=======
+    dir: .
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
   ansible:
     taskfile: ./ansible/Taskfile.yaml
@@ -42,6 +46,7 @@ includes:
 tasks:
 
   platform:up:
+<<<<<<< HEAD
     desc: "Provision infrastructure and bootstrap platform"
     summary: |
       End-to-end platform provisioning workflow:
@@ -103,6 +108,9 @@ tasks:
 
   validate:
     desc: "Validate all Helm charts"
+=======
+    desc: "Provision infrastructure and bootstrap platform — ENV=dev|main"
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     summary: |
       Renders all Helm charts using helm template.
 
@@ -158,10 +166,14 @@ tasks:
       - docker compose down
 
   local:logs:
+<<<<<<< HEAD
     desc: "Tail logs for a service"
     summary: |
       Usage:
         task local:logs SERVICE=customers-service
+=======
+    desc: "Tail logs — SERVICE=customers-service"
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     preconditions:
       - sh: "[ -n '{{.SERVICE}}' ]"
         msg: "SERVICE is required"
@@ -169,17 +181,29 @@ tasks:
       - docker compose logs -f {{.SERVICE}}
 
   local:build:
+<<<<<<< HEAD
     desc: "Build local service images"
+=======
+    desc: "Rebuild all service images"
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     cmds:
       - docker compose build
 
   local:restart:
+<<<<<<< HEAD
     desc: "Restart a local service"
     summary: |
       Usage:
         task local:restart SERVICE=api-gateway
+=======
+    desc: "Restart a service — SERVICE=api-gateway"
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     preconditions:
       - sh: "[ -n '{{.SERVICE}}' ]"
         msg: "SERVICE is required"
     cmds:
+<<<<<<< HEAD
       - docker compose restart {{.SERVICE}}
+=======
+      - docker compose restart {{.SERVICE}}
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886

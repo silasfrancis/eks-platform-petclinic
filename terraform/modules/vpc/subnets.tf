@@ -36,6 +36,12 @@ resource "aws_subnet" "public" {
       tags_all
     ]
   }
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
 }
 
 # Private Subnets — host EKS nodes; tagged for internal-elb discovery
@@ -67,6 +73,12 @@ resource "aws_subnet" "private" {
       tags_all
     ]
   }
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
 }
 
 # Data Subnets — host RDS
@@ -78,6 +90,17 @@ resource "aws_subnet" "data" {
       az    = az
     }
   }
+<<<<<<< HEAD
+=======
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
+}
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
   vpc_id            = aws_vpc.vpc.id
   availability_zone = each.value.az
@@ -98,4 +121,15 @@ resource "aws_subnet" "data" {
       tags_all
     ]
   }
+<<<<<<< HEAD
 }
+=======
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+      tags_all,
+    ]
+  }
+}
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886

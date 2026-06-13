@@ -289,7 +289,11 @@ karpenter:
   # serviceMonitor:
   #   enabled: true
   #   additionalLabels:
+<<<<<<< HEAD
   #     release: monitoring
+=======
+  #     release: platform-monitoring
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
   controller:
     resources:

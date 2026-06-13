@@ -1,0 +1,24 @@
+clusterIssuer:
+  enabled: true
+  email: "silas@lefrancis.org"
+  existingSecret:
+    name: "platform-security-secrets"
+    key: "cloudflare-api-token"
+
+externalSecret:
+  enabled: true
+  data: 
+    - secretKey: slack-webhook-url
+      remoteRef:
+        key: prod/platform-monitoring
+        property: slack-webhook-url
+    - secretKey: cloudflare-api-token
+      remoteRef:
+        key: prod/platform-dns
+        property: cloudflare-api-token
+
+serviceAccount:
+  create: true
+  name: "platform-security-sa"          
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-platformSecuritySecrets-irsa"    

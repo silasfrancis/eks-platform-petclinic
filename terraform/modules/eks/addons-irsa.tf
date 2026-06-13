@@ -24,7 +24,10 @@ data "aws_caller_identity" "current" {}
 locals {
   oidc_url = replace(aws_iam_openid_connect_provider.eks.url, "https://", "")
   irsa_roles = {
+<<<<<<< HEAD
       # VPC CNI — pod networking, uses AWS-managed CNI policy only
+=======
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
       vpcCni = {
         namespace = "kube-system"
         sas       = ["aws-node"]
@@ -35,7 +38,10 @@ locals {
         }
       }
 
+<<<<<<< HEAD
       # EBS CSI Driver — volume provisioning, uses AWS-managed EBS CSI policy only
+=======
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
       ebsCsi = {
         namespace = "kube-system"
         sas       = ["ebs-csi-controller-sa"]

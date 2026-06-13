@@ -1,0 +1,78 @@
+appName: api-gateway
+containerPort: 8080
+springProfile: docker
+
+image:
+  registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
+  repository: springboot/api-gateway
+  tag: "c84d2ef1"
+  digest: ""
+  pullPolicy: IfNotPresent
+
+controller:
+  type: rollout
+
+replicaCount: 1
+
+service:
+  port: 8080
+  targetPort: 8080
+
+hpa:
+  enabled: true
+
+vpa:
+  enabled: true
+
+virtualService:
+  enabled: true
+  hosts: petclinic.lefrancis.org
+  gateways: istio-ingress/public-istio-ingressgateway
+  routes:
+    - name: customers-service
+      match:
+          - uri:
+              prefix: /api/customer/
+      rewrite:
+          uri: /
+      route:
+          - destination: 
+              host: customers-service-svc.petclinic.svc.cluster.local
+              port:
+                number: 8081
+    - name: visits-route
+      match:
+          - uri:
+              prefix: /api/visit/
+      rewrite:
+          uri: /
+      route:
+          - destination:
+              host: visits-service-svc.petclinic.svc.cluster.local
+              port:
+                number: 8082
+    - name: vets-route
+      match:
+        - uri:
+            prefix: /api/vet/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: vets-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8083
+    - name: genai-route
+      match:
+        - uri:
+            prefix: /api/genai/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: genai-service-svc.petclinic.svc.cluster.local
+            port:
+              number: 8084
+
+analysisTemplate:
+  enabled: true

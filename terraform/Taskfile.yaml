@@ -10,6 +10,7 @@ vars:
   TF_PLAN: "tfplan"
 
 tasks:
+<<<<<<< HEAD
 
   bootstrap:
     desc: "Bootstrap Terraform backend infrastructure"
@@ -44,6 +45,21 @@ tasks:
       - terraform validate
       - terraform plan -var-file="{{.TF_VARS}}" -out="{{.TF_PLAN}}"
       - terraform apply "{{.TF_PLAN }}"
+=======
+  validate-env:
+    internal: true
+    cmds:
+    - |
+      if [ -z "{{.ENV}}" ]; then
+        echo "Error: ENV is required (dev or main)"
+        exit 1
+      fi
+
+      if [ "{{.ENV}}" != "dev" ] && [ "{{.ENV}}" != "main" ]; then
+        echo "Error: ENV must be 'dev' or 'main'"
+        exit 1
+      fi
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
   init:
     desc: "Initialise Terraform backend for {{.ENV}}"

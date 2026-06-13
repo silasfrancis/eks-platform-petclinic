@@ -17,13 +17,17 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
   }
 
   scaling_config {
-    desired_size = 1
-    max_size     = 1
+    desired_size = 2
+    max_size     = 2
     min_size     = 1
   }
 
   update_config {
+<<<<<<< HEAD
     max_unavailable = 1
+=======
+    max_unavailable = 1 
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
   }
 
   capacity_type = "ON_DEMAND"
@@ -53,6 +57,7 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
       var.extended_tags
     )
 
+<<<<<<< HEAD
   depends_on = [
     aws_iam_role.node_role
   ]
@@ -61,6 +66,11 @@ resource "aws_eks_node_group" "karpenter_bootstrap" {
   lifecycle {
     ignore_changes = [scaling_config[0].desired_size]
   }
+=======
+  # lifecycle {
+  #   ignore_changes = [scaling_config[0].desired_size]
+  # }
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 }
 
 # Tags the cluster's private subnets so Karpenter can auto-discover them

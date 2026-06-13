@@ -61,6 +61,10 @@ resource "aws_eks_addon" "vpc_cni" {
   
   depends_on = [
     aws_eks_cluster.main_cluster,
+<<<<<<< HEAD
+=======
+    aws_eks_node_group.karpenter_bootstrap,
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     aws_iam_role.irsa["vpcCni"]
   ]
   lifecycle {
@@ -137,6 +141,10 @@ resource "aws_eks_addon" "ebs_csi" {
 
   depends_on = [
     aws_eks_cluster.main_cluster,
+<<<<<<< HEAD
+=======
+    aws_eks_node_group.karpenter_bootstrap,
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     aws_iam_role.irsa["ebsCsi"]
   ]
   lifecycle {

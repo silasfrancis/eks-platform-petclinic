@@ -1,0 +1,77 @@
+gateways:
+  public:
+    loadbalancer:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-prod-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-093e5bfda5c0eb8f4,subnet-07756c8c6eefd19e2"
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-062fde7e3704e542c"
+    certificate:
+      enabled: true
+      spec:
+        secretName: "petclinic-public-tls"
+        issuerRef:
+          name: "letsencrypt-cloudflare"
+          kind: ClusterIssuer
+        
+  internal:
+    loadbalancer:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-prod-internal-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-0dd3324f17543edf5,subnet-0730a6c2261114c74"
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-0a4755eb8a4af212e"
+    certificate:
+      enabled: true
+      spec:
+        secretName: "petclinic-internal-tls"
+        issuerRef:
+          name: "letsencrypt-cloudflare"
+          kind: ClusterIssuer
+
+external-dns-cloudflare:
+  env:
+    - name: CF_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: cloudflare-api-token
+          key: cloudflare-api-token
+
+  registry: txt
+  txtOwnerId: "eks-cluster-01-cloudflare"
+  txtPrefix: "cloudflare-"
+
+
+external-dns-route53:
+  provider:
+    name: aws    
+  serviceAccount:
+    create: true
+    name: external-dns-route53
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-externalDnsRoute53-irsa"
+
+  registry: txt
+  txtOwnerId: "eks-cluster-01-route53"
+  txtPrefix: "route53-"
+
+
+secretStore:
+  enabled: true
+  name: ""
+
+externalSecret:
+  enabled: true
+  name: ""
+  refreshInterval: 1h
+  target: 
+    name: cloudflare-api-token
+    creationPolicy: Owner
+  data:
+    - secretKey: cloudflare-api-token
+      remoteRef:
+        key: "prod/platform-dns" 
+        property: cloudflare-api-token
+
+esoServiceAccount:
+  name: "external-dns-cloudflare"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-externalDnsSecrets-irsa"

@@ -1,7 +1,14 @@
 version: "3"
 
 vars:
+<<<<<<< HEAD
   ENV: '{{.ENV | default "dev"}}'
+=======
+  # Values passed at runtime (e.g., task bootstrap ENV=main)
+  # Defaulting here just to prevent empty string errors
+  ENV: '{{.ENV | default "dev"}}'
+  CLUSTER_NAME: '{{.CLUSTER_NAME | default "dev-petclinic-cluster"}}'
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
 env:
   AWS_REGION: "us-east-2"
@@ -9,9 +16,12 @@ env:
   ISTIO_VERSION: "1.29.1"
   ARGOCD_VERSION: "v9.5.0"
   ARGO_ROLLOUTS_VERSION: "v2.40.5"
+<<<<<<< HEAD
   CERT_MANAGER_VERSION: "v1.12.1"
   KYVERNO_VERSION: "3.8.1"
   AWS_LB_CONTROLLER_VERSION: "3.3.0"
+=======
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
 tasks:
   setup_helm_repos:
@@ -27,6 +37,19 @@ tasks:
       - helm repo add eks https://aws.github.io/eks-charts --force-update
       - helm repo update
 
+<<<<<<< HEAD
+=======
+  install_cilium:
+    desc: "Install Cilium"
+    cmds:
+      - |
+        helm upgrade --install cilium cilium/cilium \
+          --version {{ .CILIUM_VERSION }} \
+          -n kube-system \
+          --set cluster.name={{ .CLUSTER_NAME }} \
+          --values bootstrap/cilium/values.yaml
+
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
   install_metrics_server:
     desc: "Install metrics-server"
     cmds:
@@ -35,6 +58,7 @@ tasks:
           --version {{.METRICS_SERVER_VERSION}} \
           -n kube-system \
           --values bootstrap/metrics-server/values.yaml
+<<<<<<< HEAD
 
   install_aws_lb_controller:
     desc: "Install AWS Load Balancer Controller"
@@ -54,6 +78,8 @@ tasks:
           --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=$LBC_ROLE_ARN \
           --set region={{.AWS_REGION}} \
           --set vpcId=$VPC_ID
+=======
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
   install_external_secrets:
     desc: "Install External Secrets"
@@ -113,6 +139,11 @@ tasks:
           --version {{.KYVERNO_VERSION}} \
           --values bootstrap/kyverno/values.yaml
 
+  get_argo_pwd:
+    desc: Retrieve the initial admin password for ArgoCD
+    cmds:
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+  
   install_rollouts:
     desc: "Install Argo Rollouts"
     cmds:
@@ -122,6 +153,7 @@ tasks:
           --create-namespace \
           --version {{.ARGO_ROLLOUTS_VERSION}}
 
+<<<<<<< HEAD
   install_cert_manager:
     desc: "Install cert-manager with CRDs"
     cmds:
@@ -205,6 +237,13 @@ tasks:
     cmds:
       - |
         helm upgrade --install argocd-apps argocd \
+=======
+  deploy_argo_applications:
+    desc: "Deploy ArgoCD Applications (App-of-Apps)"
+    cmds:
+      - |
+        helm upgrade --install argocd k8s/argocd \
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
           --namespace argocd \
           --create-namespace \
           --values argocd/values.yaml \
@@ -225,6 +264,7 @@ tasks:
       - task: install_istiod
       - task: install_rollouts
       - task: install_argocd
+<<<<<<< HEAD
         vars: { ENV: "{{.ENV}}" }
       - task: install_kyverno
       - task: bootstrap_storage_and_namespaces
@@ -242,3 +282,6 @@ tasks:
         vars: { ENV: "{{.ENV}}" }
       - task: deploy_argocd_apps
         vars: { ENV: "{{.ENV}}" }
+=======
+      - task: deploy_argo_applications
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886

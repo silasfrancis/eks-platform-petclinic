@@ -21,7 +21,12 @@ configServer:
   enabled: true
 serviceAccount:
   annotations:
+<<<<<<< HEAD:k8s/microservice/values/env/prod/genai-service.yaml
     eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-prod-cluster-app-secrets-irsa"
+=======
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/prod-petclinic-cluster-appSecrets-irsa"
+
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886:k8s/microservice/values/env/main/genai-service.yaml
 secretStore:
   enabled: true
 externalSecret:

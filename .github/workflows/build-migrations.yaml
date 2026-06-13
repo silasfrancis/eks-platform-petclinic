@@ -134,9 +134,17 @@ jobs:
 
       - name: Verify Image Signature
         run: |
-              cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-              --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+            for i in 1 2 3 4 5; do
+              if cosign verify "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"; then
+                exit 0
+              fi
+              echo "Attempt $i failed, retrying in 5s..."
+              sleep 5
+            done
+            echo "All verification attempts failed"
+            exit 1
 
       - name: Attest scan results with Cosign
         run: |
@@ -147,11 +155,19 @@ jobs:
 
       - name: Verify scan attestation
         run: |
-              cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
-                --type vuln \
-                --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-                --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
-                    
+          for i in 1 2 3 4 5; do
+            if cosign verify-attestation "${{ steps.get_image_repo.outputs.IMAGE_REPO }}@${{ steps.get_digest.outputs.IMAGE_DIGEST }}" \
+              --type vuln \
+              --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com"; then
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "All verification attempts failed"
+          exit 1
+
       - name: Save image metadata
         run: |
           mkdir -p /tmp/build_metadata

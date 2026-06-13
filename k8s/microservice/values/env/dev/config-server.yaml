@@ -4,8 +4,8 @@ springProfile: native
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/config-server
-  tag: "ceb3b585"
-  digest: "sha256:b67f6829ccb27e52d61cca21c239780772a13e259cfba0f55225c6199ec9790b"
+  tag: "ff3b7812"
+  digest: "sha256:70a93ba354bef95478dbd2032a55d68aea7601a6abc5ddf595156250f684cd43"
   pullPolicy: IfNotPresent
 controller:
   type: deployment
@@ -22,11 +22,9 @@ probes:
     path: /
 configServer:
   enabled: false
-discoveryServer:
-  enabled: true
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-app-secrets-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
 secretStore:
   enabled: true
 externalSecret:
@@ -51,13 +49,5 @@ externalSecret:
 env:
   plain:
     CONFIG_DIR: /config
-volumesConfig:
-  enabled: true
-  volumeMounts:
-    - name: tomcat-tmp
-      mountPath: /tmp
-  volumes:
-    - name: tomcat-tmp
-      emptyDir: {}
 vpa:
   enabled: true

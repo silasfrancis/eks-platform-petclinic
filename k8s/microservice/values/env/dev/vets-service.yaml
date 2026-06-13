@@ -4,8 +4,8 @@ springProfile: docker,mysql
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/vets-service
-  tag: "ceb3b585"
-  digest: "sha256:1c1711daade043c3fe364357fa0cd7aff401a029801cca547324791b0faca9c7"
+  tag: "ff3b7812"
+  digest: "sha256:1c0db88e63146833b343796640edf7e19c96cd89a9b7cc2acbb697cd90f0e708"
   pullPolicy: IfNotPresent
 controller:
   type: rollout
@@ -21,7 +21,7 @@ configServer:
   enabled: true
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-app-secrets-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
 secretStore:
   enabled: true
 externalSecret:
@@ -49,13 +49,3 @@ vpa:
   enabled: true
 analysisTemplate:
   enabled: true
-destinationRule:
-  enabled: true
-volumesConfig:
-  enabled: true
-  volumeMounts:
-    - name: tomcat-tmp
-      mountPath: /tmp
-  volumes:
-    - name: tomcat-tmp
-      emptyDir: {}

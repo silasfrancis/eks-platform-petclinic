@@ -4,8 +4,8 @@ springProfile: native
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/config-server
-  tag: "44589ffd"
-  digest: "sha256:297dcbf7adaae1f4643b5efbf01c79afa26e7e51856295d55d3a9d120c567712"
+  tag: "ceb3b585"
+  digest: "sha256:b67f6829ccb27e52d61cca21c239780772a13e259cfba0f55225c6199ec9790b"
   pullPolicy: IfNotPresent
 controller:
   type: deployment

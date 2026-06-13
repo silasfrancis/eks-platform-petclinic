@@ -1,0 +1,72 @@
+{
+  "build_id": "ceb3b5855e54546ec2fe5ba55116dc02414c70ab",
+  "timestamp": "2026-06-13T12:06:39Z",
+  "branch": "main",
+  "triggered_by": "silasfrancis",
+  "image_details": [
+  {
+    "service": "admin-server",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/admin-server",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:af5192717805e916f0359b3a938086b462223a8862dcd68212ff375bce5e7a23",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/admin-server_trivy-results.json"
+  },
+  {
+    "service": "api-gateway",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/api-gateway",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:fdc3c9cfe3cc04b9778e1641ff0c48b72426a26eec225ed8ea772dfb333fcc46",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/api-gateway_trivy-results.json"
+  },
+  {
+    "service": "config-server",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/config-server",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:b67f6829ccb27e52d61cca21c239780772a13e259cfba0f55225c6199ec9790b",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/config-server_trivy-results.json"
+  },
+  {
+    "service": "customers-service",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/customers-service",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:28c0bab96a82685ad177a98275e0285d2cd1c421123058855c30388b936ff673",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/customers-service_trivy-results.json"
+  },
+  {
+    "service": "discovery-server",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/discovery-server",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:a9dcd42d9b3935941153b283ab460b21d01cc1ac1a808c694f5bad92a175be25",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/discovery-server_trivy-results.json"
+  },
+  {
+    "service": "genai-service",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/genai-service",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:186aca74f0c142115251ec928353386bf8fcc50c388f4d4efdc38ea7bb9065bc",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/genai-service_trivy-results.json"
+  },
+  {
+    "service": "vets-service",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/vets-service",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:1c1711daade043c3fe364357fa0cd7aff401a029801cca547324791b0faca9c7",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/vets-service_trivy-results.json"
+  },
+  {
+    "service": "visits-service",
+    "registry_uri": "509194952955.dkr.ecr.us-east-2.amazonaws.com",
+    "image_repo": "petclinic/visits-service",
+    "image_tag": "ceb3b585",
+    "image_digest": "sha256:e45bd145cd4f031d880e61b6ded32237e9fcfa4078b91bcdfc57a1a525de43f7",
+    "scan_report": "s3://prod-cicd-artifacts-509194952955-us-east-2-an/security-scans/trivy/27466159150/ceb3b585/visits-service_trivy-results.json"
+  }
+]
+}

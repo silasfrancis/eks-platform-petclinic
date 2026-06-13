@@ -36,12 +36,6 @@ resource "aws_subnet" "public" {
       tags_all
     ]
   }
-  lifecycle {
-    ignore_changes = [
-      tags,
-      tags_all,
-    ]
-  }
 }
 
 # Private Subnets — host EKS nodes; tagged for internal-elb discovery
@@ -71,12 +65,6 @@ resource "aws_subnet" "private" {
     ignore_changes = [
       tags,
       tags_all
-    ]
-  }
-  lifecycle {
-    ignore_changes = [
-      tags,
-      tags_all,
     ]
   }
 }

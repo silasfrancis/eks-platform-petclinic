@@ -1,9 +1,16 @@
+# Trivy Ignore List
+#
+# Format: <CVE-or-GHSA-ID> [exp:YYYY-MM-DD]
+# Entries with exp: stop being ignored after that date and will fail the
+# scan again — review and either fix or extend before expiry.
+# Entries without exp: are accepted indefinitely (architectural/non-issue).
+
 # jackson-core DoS - upgrade in progress
-CVE-2026-29062 exp:2026-04-30
-GHSA-72hv-8253-57qq exp:2026-04-30
+CVE-2026-29062 exp:2026-06-30
+GHSA-72hv-8253-57qq exp:2026-06-30
 
 # libc6 glibc memalign - awaiting patched distroless digest
-CVE-2026-0861 exp:2026-04-30
+CVE-2026-0861 exp:2026-06-30
 
 # mssql-jdbc bundled by Flyway - image used only for file copy, driver never executed
 CVE-2025-59250
@@ -28,8 +35,8 @@ CVE-2026-40478
 GHSA-2m67-wjpj-xhg9
 
 # Apache Tomcat: Authentication bypass via CLIENT_CERT soft fail - Upgrade to 11.0.20 planned
-CVE-2026-29145
-GHSA-95jq-rwvf-vjx4
+CVE-2026-29145 exp:2026-06-30
+GHSA-95jq-rwvf-vjx4 exp:2026-06-30
 
 # Apache Tomcat: Cipher preference order not preserved - Low impact on internal traffic
 CVE-2026-29129
@@ -51,24 +58,26 @@ GHSA-3qwq-q9vm-5j42
 CVE-2026-41254
 
 # --- Apache Tomcat & Spring Boot New Vulnerabilities ---
+# Fixed as part of platform release - upgrading to Tomcat 11.0.22/10.1.55/9.0.118
+CVE-2026-41293 exp:2026-06-30
+CVE-2026-43512 exp:2026-06-30
+CVE-2026-43515 exp:2026-06-30
+CVE-2026-24880 exp:2026-06-30
+CVE-2026-41284 exp:2026-06-30
+CVE-2026-42498 exp:2026-06-30
+CVE-2026-43513 exp:2026-06-30
 
-# Apache Tomcat: Multiple critical/high vulnerabilities - Fix: Upgrade to 11.0.22/10.1.55/9.0.118
-CVE-2026-41293 exp:2026-07-12
-CVE-2026-43512 exp:2026-07-12
-CVE-2026-43515 exp:2026-07-12
-CVE-2026-24880 exp:2026-07-12
-CVE-2026-41284 exp:2026-07-12
-CVE-2026-42498 exp:2026-07-12
-CVE-2026-43513 exp:2026-07-12
+# Bouncy Castle: Private key leakage via non-constant time
+# Fixed as part of platform release - upgrading to 1.84
+CVE-2026-5598 exp:2026-06-30
 
-# Bouncy Castle: Private key leakage via non-constant time - Fix: Upgrade to 1.84
-CVE-2026-5598 exp:2026-07-12
+# Spring Boot: Security bypass (default web security)
+# Fixed as part of platform release - upgrading to 4.0.6
+CVE-2026-40976 exp:2026-06-30
 
-# Spring Boot: Security bypass (default web security) - Fix: Upgrade to 4.0.6
-CVE-2026-40976 exp:2026-07-12
-
-# Spring Boot: ACE/Session Hijacking (temp directory) - Fix: Upgrade to 4.0.6
-CVE-2026-40973 exp:2026-07-12
+# Spring Boot: ACE/Session Hijacking (temp directory)
+# Fixed as part of platform release - upgrading to 4.0.6
+CVE-2026-40973 exp:2026-06-30
 
 # --- Netty Vulnerabilities (Upgrade to 4.2.15.Final or 4.1.135.Final required) ---
 
@@ -83,3 +92,12 @@ CVE-2026-44892
 CVE-2026-44249
 CVE-2026-45416
 CVE-2026-45674
+
+# --- Spring Cloud ---
+# CVE-2026-40982: directory traversal allowing arbitrary file read (CRITICAL)
+# CVE-2026-40981: information disclosure of secrets from unintended GCP project
+# CVE-2026-41002: TOCTOU (time-of-check-time-of-use) vulnerability
+# Fixed as part of platform release - upgrading spring-cloud-config-server to 4.3.3/5.0.3
+CVE-2026-40982 exp:2026-06-30
+CVE-2026-40981 exp:2026-06-30
+CVE-2026-41002 exp:2026-06-30

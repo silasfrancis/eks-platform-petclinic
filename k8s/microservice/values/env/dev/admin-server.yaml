@@ -4,8 +4,8 @@ springProfile: docker
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/admin-server
-  tag: "ceb3b585"
-  digest: "sha256:af5192717805e916f0359b3a938086b462223a8862dcd68212ff375bce5e7a23"
+  tag: "f9060456"
+  digest: "sha256:7df85f78962f15df418a61b3fb284ba8d480dc676b4a3e4f658d94528b7409df"
   pullPolicy: IfNotPresent
 controller:
   type: deployment
@@ -20,11 +20,3 @@ probes:
     path: /
   liveness:
     path: /
-volumesConfig:
-  enabled: true
-  volumeMounts:
-    - name: tomcat-tmp
-      mountPath: /tmp
-  volumes:
-    - name: tomcat-tmp
-      emptyDir: {}

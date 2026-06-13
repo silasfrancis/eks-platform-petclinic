@@ -1,11 +1,11 @@
 appName: genai-service
 containerPort: 8084
-springProfile: docker
+springProfile: docker,mysql
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/genai-service
-  tag: "ceb3b585"
-  digest: "sha256:186aca74f0c142115251ec928353386bf8fcc50c388f4d4efdc38ea7bb9065bc"
+  tag: "f9060456"
+  digest: "sha256:29144268c3907049995c7850a261f22d0d88d9615b9e5bdfa70cf0bc4f8e0264"
   pullPolicy: IfNotPresent
 controller:
   type: rollout
@@ -21,7 +21,7 @@ configServer:
   enabled: true
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-app-secrets-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
 secretStore:
   enabled: true
 externalSecret:
@@ -37,13 +37,3 @@ vpa:
   enabled: true
 analysisTemplate:
   enabled: true
-destinationRule:
-  enabled: true
-volumesConfig:
-  enabled: true
-  volumeMounts:
-    - name: tomcat-tmp
-      mountPath: /tmp
-  volumes:
-    - name: tomcat-tmp
-      emptyDir: {}

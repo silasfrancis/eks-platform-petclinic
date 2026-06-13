@@ -43,3 +43,9 @@ jobs:
           review-message: |
                 Auto-approved: Helm manifest update for `${{ github.head_ref }}`.
                 Validation passed. Safe to merge.
+
+      - name: Auto-merge PR
+        if: steps.check.outputs.APPROVE == 'true'
+        run: gh pr merge ${{ github.event.pull_request.number }} --squash --auto
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_PR_PAT }}

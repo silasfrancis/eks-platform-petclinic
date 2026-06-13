@@ -146,8 +146,6 @@ jobs:
           if: steps.changes.outputs.HAS_CHANGES == 'true'
           with:
             token: ${{ secrets.BOT_PR_PAT }}
-            author: "silasfrancis-bot"
-            committer: "silasfrancis07+bot@gmail.com"
             branch: update-helm/auto
             base: ${{ github.event.workflow_run.head_branch }}
             delete-branch: true

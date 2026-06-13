@@ -146,7 +146,7 @@ jobs:
           uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
           if: steps.changes.outputs.HAS_CHANGES == 'true'
           with:
-            token: ${{ github.token }}
+            token: ${{ secrets.GITOPS_PR_PAT }}
             branch: update-helm/auto
             base: ${{ github.event.workflow_run.head_branch }}
             delete-branch: true

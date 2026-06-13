@@ -31,7 +31,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: "helm-validate"
           running-workflow-name: "GitOps Auto Approve"
-          repo-token: ${{ github.token }}
+          repo-token: ${{ secrets.GITOPS_PR_PAT }}
           wait-interval: 10
           checks-discovery-timeout: 120
 

@@ -85,7 +85,7 @@ jobs:
             helm template "$SERVICE" k8s/microservice \
               -f "$VALUES_FILE" \
               --namespace petclinic \
-              > /tmp/renders/$SERVICE.yaml
+              > /tmp/service-renders/$SERVICE.yaml
 
             echo "Rendered $SERVICE OK"
           done < services.txt
@@ -124,6 +124,17 @@ jobs:
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             -summary \
             /tmp/render-argocd.yaml
+
+      - name: Upload rendered manifests
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: helm-renders-${{ github.run_id }}
+          path: |
+            /tmp/service-renders/*.yaml
+            /tmp/render-argocd.yaml
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Post validation summary
         if: always()

@@ -294,9 +294,10 @@ NODE SCALING — Karpenter
   Terraform-managed · Karpenter only
   CriticalAddonsOnly taint — no application workloads
 ```
----
 ![Karpenter Provisioned Nodes](diagrams/karpenter-provisioned-nodes.png)
 *Karpenter Provisioned Nodes*
+
+---
 
 ## WHAT PLATFORM ENGINEERS SEE
 

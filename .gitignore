@@ -10,5 +10,4 @@
 *ansible/logs/ansible.log
 *errored.tfstate
 *.tfstate*
-*silasfrancis-client.conf
 rendered/*

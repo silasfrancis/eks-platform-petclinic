@@ -1,4 +1,3 @@
-{{- if false }}
 {{- range $nsName, $nsConfig := .Values.clusterPolicy.managedNamespaces }}
 {{- if $nsConfig.istio }}
 ---
@@ -12,6 +11,5 @@ metadata:
 spec:
   action: DENY
   rules: [{}]
-{{- end }}
 {{- end }}
 {{- end }}

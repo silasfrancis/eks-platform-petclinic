@@ -30,12 +30,8 @@
 #    variables.tf and pass it from the calling module.
 locals {
   irsa_roles = {
-<<<<<<< HEAD
     # Petclinic microservices — read access to application secrets in Secrets Manager
     app-secrets = {
-=======
-    appSecrets = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
       namespace = "petclinic"
       sas       = [
         "config-server-sa", 
@@ -83,13 +79,9 @@ locals {
       }]
     }
 
-<<<<<<< HEAD
     # CloudWatch exporter — read-only access to CloudWatch metrics and resource
     # tags across the account (used to scrape AWS service metrics, e.g. RDS)
     cloud-watch-exporter = {
-=======
-    cloudwatchExporter = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
       namespace = "monitoring"
       sas       = ["cloudwatch-exporter"]
       policy    = {
@@ -103,12 +95,8 @@ locals {
       }
     }
 
-<<<<<<< HEAD
   # ArgoCD — read access to its Secrets Manager credentials (e.g. Git repo creds)
   argocd-secrets = {
-=======
-  argocdSecrets = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     namespace = "argocd"
     sas       = ["argocd-sa"]
 
@@ -121,13 +109,9 @@ locals {
     }
   }
 
-<<<<<<< HEAD
   # Platform monitoring stack — read access to its Secrets Manager credentials
   # (e.g. Grafana admin password, Slack webhook)
   platform-monitoring-secrets = {
-=======
-  platformMonitoringSecrets = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     namespace = "monitoring"
     sas       = ["platform-monitoring-sa"]
 
@@ -140,13 +124,9 @@ locals {
     }
   }
 
-<<<<<<< HEAD
   # Platform security stack — read access to its Secrets Manager credentials 
   # (e.g cloudflare api token for cert manager cluster issuer)
   platform-security-secrets = {
-=======
-  platformSecuritySecrets = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     namespace = "security"
     sas       = ["platform-security-sa"]
 
@@ -208,13 +188,9 @@ locals {
       }]
     }
 
-<<<<<<< HEAD
   # ExternalDNS (Cloudflare provider) — read access to its Secrets Manager
   # API token used to manage public DNS records
   external-dns-secrets = {
-=======
-  externalDnsSecrets = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     namespace = "istio-ingress"
     sas       = ["external-dns-cloudflare"]
 
@@ -226,14 +202,10 @@ locals {
       resources = var.platform_dns_secrets_arn
     }
   }
-<<<<<<< HEAD
 
   # ExternalDNS (Route53 provider) — manage records in the private hosted zone,
   # plus read-only access to list/discover hosted zones
   external-dns-route53 = {
-=======
-  externalDnsRoute53 = {
->>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
       namespace = "istio-ingress"
       sas       = ["external-dns-route53"]
       policy    = {

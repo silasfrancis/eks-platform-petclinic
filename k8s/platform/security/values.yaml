@@ -161,7 +161,7 @@ trivy-operator:
 
   serviceMonitor:
     enabled: true
-    namespace: trivy-system
+    namespace: monitoring
     labels:
       release: monitoring # must match Prometheus serviceMonitorSelector label
 

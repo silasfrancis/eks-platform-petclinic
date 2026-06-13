@@ -1,23 +1,18 @@
 appName: discovery-server
 containerPort: 8761
 springProfile: docker
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/discovery-server
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/discovery-server
+  tag: "ceb3b585"
+  digest: "sha256:a9dcd42d9b3935941153b283ab460b21d01cc1ac1a808c694f5bad92a175be25"
   pullPolicy: IfNotPresent
-
 controller:
   type: deployment
-
 replicaCount: 1
-
 service:
   port: 8761
   targetPort: 8761
-
 probes:
   startup:
     path: /
@@ -25,4 +20,13 @@ probes:
     path: /
   liveness:
     path: /
-
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}
+discoveryServer:
+  enabled: false

@@ -1,33 +1,26 @@
 appName: api-gateway
 containerPort: 8080
 springProfile: docker
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/api-gateway
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/api-gateway
+  tag: "ceb3b585"
+  digest: "sha256:fdc3c9cfe3cc04b9778e1641ff0c48b72426a26eec225ed8ea772dfb333fcc46"
   pullPolicy: IfNotPresent
-
 controller:
   type: rollout
-
 replicaCount: 1
-
 service:
   port: 8080
   targetPort: 8080
-
 hpa:
   enabled: true
-
 vpa:
   enabled: true
-
 virtualService:
   enabled: true
-  hosts: petclinic-dev.internal.lefrancis.org
-  gateways: istio-ingress/public-istio-ingressgateway
+  host: petclinic-dev.lefrancis.org
+  gateway: istio-ingress/ingress-public-gateway
   routes:
     - name: customers-service
       match:
@@ -37,7 +30,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: customers-service-svc.petclinic.svc.cluster.local
+            host: customers-service.petclinic.svc.cluster.local
             port:
               number: 8081
     - name: visits-route
@@ -48,7 +41,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: visits-service-svc.petclinic.svc.cluster.local
+            host: visits-service.petclinic.svc.cluster.local
             port:
               number: 8082
     - name: vets-route
@@ -59,7 +52,7 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: vets-service-svc.petclinic.svc.cluster.local
+            host: vets-service.petclinic.svc.cluster.local
             port:
               number: 8083
     - name: genai-route
@@ -70,9 +63,18 @@ virtualService:
         uri: /
       route:
         - destination:
-            host: genai-service-svc.petclinic.svc.cluster.local
+            host: genai-service.petclinic.svc.cluster.local
             port:
               number: 8084
-
 analysisTemplate:
   enabled: true
+destinationRule:
+  enabled: true
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}

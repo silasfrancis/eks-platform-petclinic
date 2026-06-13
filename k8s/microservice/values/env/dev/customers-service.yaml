@@ -1,39 +1,29 @@
 appName: customers-service
 containerPort: 8081
 springProfile: docker,mysql
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/customers-service
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/customers-service
+  tag: "ceb3b585"
+  digest: "sha256:28c0bab96a82685ad177a98275e0285d2cd1c421123058855c30388b936ff673"
   pullPolicy: IfNotPresent
-
 controller:
   type: rollout
-
 replicaCount: 1
-
 spot:
   enabled: true
-
 service:
   port: 8081
   targetPort: 8081
-
 hpa:
   enabled: true
-
 configServer:
   enabled: true
-
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/dev-config-server-sa-pod-secrets-reader"
-
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-app-secrets-irsa"
 secretStore:
   enabled: true
-
 externalSecret:
   enabled: true
   data:
@@ -53,12 +43,19 @@ externalSecret:
       remoteRef:
         key: dev/petclinic
         property: mysql_database
-
 virtualService:
   enabled: true
-
 vpa:
   enabled: true
-
 analysisTemplate:
   enabled: true
+destinationRule:
+  enabled: true
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}

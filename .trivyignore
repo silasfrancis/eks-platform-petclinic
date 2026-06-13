@@ -110,3 +110,7 @@ CVE-2026-42577
 # Thymeleaf: critical vulnerability in template engine
 # Fixed as part of platform release - upgrading thymeleaf/thymeleaf-spring6 to 3.1.5.RELEASE
 CVE-2026-41901 exp:2026-06-30
+
+# Spring AI: vulnerability in chat client/model (genai-service)
+# Fixed as part of platform release - upgrading spring-ai to 1.1.6/2.0.0-M6
+CVE-2026-41712 exp:2026-06-30

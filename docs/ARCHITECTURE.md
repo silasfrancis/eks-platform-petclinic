@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kubernetes platform on AWS EKS built around the [Spring PetClinic microservices application](https://github.com/spring-petclinic/spring-petclinic-microservices).
+A Kubernetes platform on AWS EKS built around the [Spring PetClinic microservices application](https://github.com/spring-petclinic/spring-petclinic-microservices).
 
 <!-- Hero diagrams — visual overview -->
 ![AWS Infrastructure Architecture](diagrams/aws-architecture.drawio.svg)
@@ -252,7 +252,8 @@ All share one Helm chart with per-service value overrides.
 ESO ExternalSecret pulls credentials from AWS Secrets Manager at pod
 startup. No database passwords in Git or Kubernetes manifests.
 ```
-
+![Petclinic Pods](diagrams/istio-injected-microservice-pods.png)
+*Petclinic Pods*
 ---
 
 ## HOW NODES AND PODS SCALE
@@ -292,7 +293,8 @@ NODE SCALING — Karpenter
   Terraform-managed · Karpenter only
   CriticalAddonsOnly taint — no application workloads
 ```
-
+![Karpenter Provisioned Nodes](diagrams/karpenter-provisioned-nodes.png)
+*Karpenter Provisioned Nodes*
 ---
 
 ## WHAT PLATFORM ENGINEERS SEE
@@ -433,7 +435,8 @@ ArgoCD polls Git every 2 minutes → detects image tag change
 ArgoCD notifications → Slack #petclinic-gitops
   on-deployed · on-health-degraded · on-sync-failed
 ```
-
+![api-gateway-rollout](diagrams/argo-rollout.png)
+*API Gateway ArgoCD Rollout*
 ---
 
 ## SECRETS AND BACKUP

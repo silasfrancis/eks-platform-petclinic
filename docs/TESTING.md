@@ -2,6 +2,7 @@
 
 Validation procedures to run after deployment or major platform changes.
 
+> [!NOTE]
 > The platform may not always be running continuously due to AWS costs.
 > If endpoints are unreachable, reprovision infrastructure and follow
 > the deployment steps in the README and RUNBOOK.
@@ -41,7 +42,8 @@ kubectl get pods -n karpenter
 # Bootstrap node exists
 kubectl get nodes -l node-type=karpenter-bootstrap
 ```
-
+![Karpenter Provisioned Nodes](diagrams/karpenter-provisioned-nodes.png)
+*Karpenter Provisioned Nodes*
 ---
 
 ## 2. Platform Health
@@ -93,7 +95,8 @@ kubectl run -it --rm config-test \
   -- curl http://config-server-svc:8888/actuator/health
 # Expected: {"status":"UP"}
 ```
-
+![Petclinic Pods](diagrams/istio-injected-microservice-pods.png)
+*Petclinic Pods*
 ---
 
 ## 4. External Access
@@ -121,12 +124,12 @@ curl --max-time 5 https://grafana.lefrancis.org
 wg-quick up wg0
 
 # DNS resolves to private IP
-nslookup grafana.lefrancis.org
+nslookup grafana.internal.lefrancis.org
 # Expected: private IP — not a public IP
 
 # Internal dashboards reachable
-curl -I https://grafana.lefrancis.org
-curl -I https://argocd.lefrancis.org
+curl -I https://grafana.internal.lefrancis.org
+curl -I https://argocd.internal.lefrancis.org
 # Expected: HTTP 200 or 302
 
 # Prod cluster API reachable via Transit Gateway
@@ -137,7 +140,11 @@ kubectl --context <prod-context> get nodes
 kubectl --context <dev-context> get nodes
 # Expected: dev cluster nodes listed
 ```
+![grafana](diagrams/grafana.png)
+*Grafana*
 
+![ArgoCD](diagrams/argocd-platform-apps.png)
+*ArgoCD Platform apps*
 ---
 
 ## 6. mTLS Verification
@@ -191,7 +198,7 @@ kubectl run unsigned-test \
 
 # Signed image from ECR must be admitted
 kubectl run signed-test \
-  --image=<account>.dkr.ecr.us-east-2.amazonaws.com/springboot/api-gateway:<tag> \
+  --image=<account>.dkr.ecr.us-east-2.amazonaws.com/petclinic/api-gateway:<tag> \
   -n petclinic \
   --restart=Never
 # Expected: pod created
@@ -201,7 +208,7 @@ cosign verify-attestation \
   --type vuln \
   --certificate-identity-regexp "github.com/silasfrancis" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  <account>.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service:<tag>
+  <account>.dkr.ecr.us-east-2.amazonaws.com/petclinic/customers-service:<tag>
 # Expected: attestation verified, vuln report printed
 ```
 
@@ -212,7 +219,7 @@ cosign verify-attestation \
 ```bash
 # Trigger a rollout with a new image tag
 kubectl argo rollouts set image customers-service \
-  customers-service=<account>.dkr.ecr.us-east-2.amazonaws.com/springboot/customers-service:<new-tag> \
+  customers-service=<account>.dkr.ecr.us-east-2.amazonaws.com/petclinic/customers-service:<new-tag> \
   -n petclinic
 
 # Watch canary progression
@@ -227,6 +234,8 @@ kubectl get analysisrun -n petclinic
 # Manually promote if needed
 kubectl argo rollouts promote customers-service -n petclinic
 ```
+![api-gateway-rollout](diagrams/argo-rollout.png)
+*API Gateway ArgoCD Rollout*
 
 Grafana verification (VPN required):
 
@@ -248,9 +257,11 @@ kubectl run -it --rm prom-test \
   --image=curlimages/curl \
   --restart=Never \
   -n petclinic \
-  -- curl "http://platform-monitoring-prometheus.monitoring:9090/api/v1/query?query=up{namespace='petclinic'}"
+  -- curl "http://monitoring-prometheus.monitoring:9090/api/v1/query?query=up{namespace='petclinic'}"
 # Expected: up=1 for all workloads
 ```
+
+
 
 Loki validation (VPN required, Grafana Explore):
 

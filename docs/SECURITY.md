@@ -32,16 +32,16 @@ Operational security reference for the eks-platform-petclinic platform.
 The platform implements multiple independent security controls across networking, admission, runtime, identity, and software supply chain layers.
 
 | Layer | Control | What it enforces |
-|---|---|---|
-| 1 | NetworkPolicy (default deny) | Blocks all ingress and egress traffic by default |
-| 2 | NetworkPolicy (service rules) | Explicit per-service allow rules |
-| 3 | Kyverno ImageValidatingPolicy | Cosign signature and attestation verification |
-| 4 | Kyverno ValidatingPolicy | Pod security requirements and schema guardrails |
-| 5 | Kyverno MutatingPolicy | Automated security context defaults |
-| 6 | Istio PeerAuthentication | mTLS STRICT between all workloads |
-| 7 | Istio AuthorizationPolicy | L7 RBAC using workload identity, principals, paths, and methods |
-| 8 | External Secrets Operator | AWS Secrets Manager sync — no secrets in Git |
-| 9 | IRSA | Pod-level AWS identity without static credentials |
+|-----|-------|-------------------|
+| 1  | NetworkPolicy (default deny) | Blocks all ingress and egress traffic by default |
+| 2  | NetworkPolicy (service rules) | Explicit per-service allow rules |
+| 3  | Kyverno ImageValidatingPolicy | Cosign signature and attestation verification |
+| 4  | Kyverno ValidatingPolicy | Pod security requirements and schema guardrails |
+| 5  | Kyverno MutatingPolicy | Automated security context defaults |
+| 6  | Istio PeerAuthentication | mTLS STRICT between all workloads |
+| 7  | Istio AuthorizationPolicy | L7 RBAC using workload identity, principals, paths, and methods |
+| 8  | External Secrets Operator | AWS Secrets Manager sync — no secrets in Git |
+| 9  | IRSA | Pod-level AWS identity without static credentials |
 | 10 | Falco | eBPF runtime syscall monitoring and threat detection |
 | 11 | Trivy Operator | Continuous vulnerability, misconfiguration, and compliance scanning |
 
@@ -189,6 +189,7 @@ No static AWS credentials exist inside the cluster.
 | External Secrets | Secrets Manager GetSecretValue |
 | ExternalDNS (Cloudflare) | None — uses Cloudflare API token via ESO |
 | ExternalDNS (Route53) | Route53 ChangeResourceRecordSets |
+| Trivy Operator | ECR ReadOnly for vulnerability scanning of private ECR images |
 | cert-manager | Route53 DNS validation |
 
 ---

@@ -70,7 +70,7 @@ jobs:
         if: steps.detect_services.outputs.HAS_SERVICES == 'true'
         id: render
         run: |
-          mkdir -p /tmp/renders
+          mkdir -p /tmp/service-renders
 
           while read -r SERVICE; do
             echo "Rendering $SERVICE"
@@ -101,7 +101,7 @@ jobs:
               -kubernetes-version 1.35.0 \
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
               -summary \
-              /tmp/renders/$SERVICE.yaml
+              /tmp/service-renders/$SERVICE.yaml
           done < services.txt
 
       - name: Template ArgoCD Application manifests

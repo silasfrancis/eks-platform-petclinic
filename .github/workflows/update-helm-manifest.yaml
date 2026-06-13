@@ -60,8 +60,7 @@ jobs:
               exit 0
             fi
 
-            echo "Manifest found, downloading..."
-            aws s3 cp s3://${{ env.CICD_BUCKET }}/$MANIFEST_KEY build-manifest.json
+            aws s3 cp s3://${{ env.CICD_BUCKET }}/$MANIFEST_KEY /tmp/build-manifest.json
             echo "MANIFEST_FOUND=true" >> $GITHUB_OUTPUT
 
         - name: Set Chart Environment
@@ -87,7 +86,7 @@ jobs:
           run: |
             VALUE_ENVIRONMENT=${{ steps.set_chart_env.outputs.VALUE_ENVIRONMENT }}
             TARGET_DIR="k8s/microservice/values/env/$VALUE_ENVIRONMENT"
-            TARGET_FILE="build-manifest.json"
+            TARGET_FILE="/tmp/build-manifest.json"
             CHART_FILE="k8s/microservice/Chart.yaml"
             UPDATED_SERVICES=""
 
@@ -150,13 +149,10 @@ jobs:
             branch: update-helm/auto
             base: ${{ github.event.workflow_run.head_branch }}
             delete-branch: true
-
             commit-message: |
               chore(helm): update manifests for ${{ env.SHORT_SHA }}
-
             title: |
               [Helm] Update manifests for ${{ env.SHORT_SHA }}
-
             body: |
               Automated Helm update triggered by successful build.
 
@@ -166,7 +162,6 @@ jobs:
 
               Updated services:
               ${{ steps.update_helm_values.outputs.UPDATED_SERVICES }}
-
             labels: |
               automated-pr
               helm-update

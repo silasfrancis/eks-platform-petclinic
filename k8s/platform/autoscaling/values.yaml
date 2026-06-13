@@ -140,6 +140,7 @@ goldilocks:
 # Virtual service config for autoscaling dashboards
 ingress:
   enabled: true
+<<<<<<< HEAD
   gateway: istio-ingress/ingress-internal-gateway
 
   autoscaling:
@@ -148,3 +149,14 @@ ingress:
         host: goldilocks.internal.lefrancis.org
         serviceName: autoscaling-goldilocks-dashboard
         port: 80
+=======
+  gateway: istio-ingress/internal-istio-ingressgateway
+
+  monitoring:
+    stacks:
+      - name: goldilocks
+        host: goldilocks.lefrancis.org
+        serviceName: goldilocks-dashboard
+        port: 80
+ 
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886

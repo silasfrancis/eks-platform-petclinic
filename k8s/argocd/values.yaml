@@ -38,6 +38,7 @@ externalSecrets:
   enabled: true
   refreshInterval: 1h
   secrets:
+  
     repo:
       target:
         name: argocd-repo-secret
@@ -152,7 +153,7 @@ argocdBootstrap:
           kind: ValidatingWebhookConfiguration
           jsonPointers: ["/webhooks/0/clientConfig/caBundle"]
 
-    karpenter:
+    compute:
       path: k8s/platform/compute
       namespace: karpenter
       project: platform

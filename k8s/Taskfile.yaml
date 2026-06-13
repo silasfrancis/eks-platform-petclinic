@@ -149,10 +149,10 @@ tasks:
       vars: [ENV]
     vars:
       PLATFORM_CHARTS:
-        # - { name: "autoscaling", ns: "autoscaling" }
-        # - { name: "backup",      ns: "velero" }
-        # - { name: "compute",   ns: "karpenter" }
-        # - { name: "ingress",     ns: "istio-ingress" }
+        - { name: "autoscaling", ns: "autoscaling" }
+        - { name: "backup",      ns: "velero" }
+        - { name: "compute",     ns: "karpenter" }
+        - { name: "ingress",     ns: "istio-ingress" }
         - { name: "monitoring",  ns: "monitoring" }
         - { name: "security",    ns: "security" }
     cmds:
@@ -182,15 +182,15 @@ tasks:
       vars: [ENV]
     vars:
       SERVICES:
-        # - migration-job
-        # - config-server
-        # - admin-server
-        # - discovery-server
-        # - api-gateway
-        # - customers-service
+        - migration-job
+        - config-server
+        - admin-server
+        - discovery-server
+        - api-gateway
+        - customers-service
         - genai-service
-        # - vets-service
-        # - visits-service
+        - vets-service
+        - visits-service
     cmds:
       - for: { var: SERVICES }
         cmd: |

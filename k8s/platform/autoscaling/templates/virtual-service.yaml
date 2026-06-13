@@ -1,4 +1,5 @@
 {{- if .Values.ingress.enabled }}
+<<<<<<< HEAD
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -7,12 +8,26 @@ metadata:
 spec:
   hosts:
     {{- range .Values.ingress.autoscaling.stacks }}
+=======
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ .Release.Name }}-monitoring
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    {{- range .Values.ingress.monitoring.stacks }}
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     - {{ .host | quote }}
     {{- end }}
   gateways:
     - {{ .Values.ingress.gateway | quote }}
   http:
+<<<<<<< HEAD
     {{- range .Values.ingress.autoscaling.stacks }}
+=======
+    {{- range .Values.ingress.monitoring.stacks }}
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
     - name: {{ .name | quote }}
       match:
         - headers:

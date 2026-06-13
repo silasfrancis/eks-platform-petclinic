@@ -1,11 +1,16 @@
 clusterPolicy:
   network:
     istioIngress:
-      label: istio-ingressgateway
+      label: public-istio-ingressgateway
+      serviceAccount: public-ingressgateway-sa
       namespace: istio-ingress
 
     rds:
-      cidr: "10.0.1.50/32"
+      cidr: 
+        - ipBlock:
+            cidr: 10.0.21.0/24
+        - ipBlock:
+            cidr: 10.0.22.0/24
       port: 3306
 
     prometheus:
@@ -17,12 +22,12 @@ clusterPolicy:
     ecr:
       accountId: "509194952955"
       region: "us-east-2"
-      prefix: ""
+      prefix: "petclinic"
 
     github:
       org: "silasfrancis"
-      repo: ""
-      branch: ""
+      repo: "eks-platform-petclinic"
+      branch: "dev"
       tokenIssuer: https://token.actions.githubusercontent.com
       authorizedWorkflows:
         - build-push.yaml

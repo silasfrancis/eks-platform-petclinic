@@ -1,23 +1,18 @@
 appName: admin-server
 containerPort: 9090
 springProfile: docker
-
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
-  repository: springboot/admin-server
-  tag: "c84d2ef1"
-  digest: ""
+  repository: petclinic/admin-server
+  tag: "ceb3b585"
+  digest: "sha256:af5192717805e916f0359b3a938086b462223a8862dcd68212ff375bce5e7a23"
   pullPolicy: IfNotPresent
-
 controller:
   type: deployment
-
 replicaCount: 1
-
 service:
   port: 9090
   targetPort: 9090
-
 probes:
   startup:
     path: /
@@ -25,4 +20,11 @@ probes:
     path: /
   liveness:
     path: /
-
+volumesConfig:
+  enabled: true
+  volumeMounts:
+    - name: tomcat-tmp
+      mountPath: /tmp
+  volumes:
+    - name: tomcat-tmp
+      emptyDir: {}

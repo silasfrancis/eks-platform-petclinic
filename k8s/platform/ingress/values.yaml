@@ -136,7 +136,81 @@ customCertificates:
       external-dns.alpha.kubernetes.io/provider: "route53"
       external-dns.alpha.kubernetes.io/hostname: "*.internal.lefrancis.org"
 
+<<<<<<< HEAD
 # ExternalDNS Cloudflare instance
+=======
+    role:
+      enabled: true
+
+    roleBinding:
+      enabled: true
+
+    deployment:
+      enabled: true
+
+    loadbalancer:
+      enabled: true
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-name: "petclinic-istio-internal-nlb"
+        service.beta.kubernetes.io/aws-load-balancer-type: "external"
+        # internal = private NLB — not reachable from internet
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+        # OVERRIDE: private subnet IDs
+        service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-**,subnet-**"
+        # OVERRIDE: internal NLB security group ID
+        service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-**"
+        external-dns.alpha.kubernetes.io/provider: "route53"
+        external-dns.alpha.kubernetes.io/hostname: >
+          grafana.lefrancis.org,
+          argocd.lefrancis.org,
+          prometheus.lefrancis.org,
+          loki.lefrancis.org
+        external-dns.alpha.kubernetes.io/ttl: "120"
+
+    certificate:
+      enabled: true
+      spec:
+        # OVERRIDE: separate secret from public gateway
+        secretName: "petclinic-internal-tls"
+        issuerRef:
+          name: "letsencrypt-cloudflare"
+          kind: ClusterIssuer
+
+    gateway:
+      enabled: true
+      servers:
+        http:
+          enabled: true
+          hosts:
+            - "grafana.lefrancis.org"
+            - "argocd.lefrancis.org"
+            - "prometheus.lefrancis.org"
+            - "loki.lefrancis.org"
+            - "goldilocks.lefrancis.org"
+          tls:
+            httpsRedirect: true
+        https:
+          enabled: true
+          hosts:
+            - "grafana.lefrancis.org"
+            - "argocd.lefrancis.org"
+            - "prometheus.lefrancis.org"
+            - "loki.lefrancis.org"
+            - "goldilocks.lefrancis.org"
+          tls:
+            mode: SIMPLE
+
+    hpa:
+      enabled: true
+
+    vpa:
+      enabled: true
+
+    pdb:
+      enabled: true
+
+# ExternalDNS — Cloudflare instance
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 # Public DNS records for internet-facing services.
 # Picks up resources annotated with external-dns.alpha.kubernetes.io/provider=cloudflare
 # OVERRIDE: txtOwnerId must be unique per cluster
@@ -150,6 +224,10 @@ external-dns-cloudflare:
         secretKeyRef:
           name: cloudflare-api-token
           key: cloudflare-api-token
+<<<<<<< HEAD
+=======
+
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
   domainFilters:
     - lefrancis.org
   policy: sync
@@ -247,6 +325,13 @@ externalSecret:
     name: ""
     creationPolicy: Owner
   data: []
+<<<<<<< HEAD
+=======
+  # - secretKey: cloudflare-api-token
+  #   remoteRef:
+  #     key: ""
+  #     property: cloudflare-api-token
+>>>>>>> 50dced335248a395d93e0ace9ab7a818ffafb886
 
 # ServiceAccount for ESO — IRSA allows reading from AWS Secrets Manager
 # OVERRIDE: add role ARN annotation after Terraform creates the IAM role

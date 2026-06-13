@@ -23,20 +23,20 @@ prometheus-cloudwatch-exporter:
     create: true
     name: cloudwatch-exporter
     annotations:
-      eks.amazonaws.com/role-arn: ""
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-cloud-watch-exporter-irsa"
 
 loki:
   loki:
     storage:
       bucketNames:
-        chunks: "<cluster-name>-loki-logs"
-        ruler: "<cluster-name>-loki-logs"
-        admin: "<cluster-name>-loki-logs"
+        chunks: "dev-loki-logs-509194952955-us-east-2"
+        ruler: "dev-loki-logs-509194952955-us-east-2"
+        admin: "dev-loki-logs-509194952955-us-east-2"
   serviceAccount:
     create: true
     name: loki
     annotations:
-      eks.amazonaws.com/role-arn: ""
+      eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-loki-irsa"
 
 secretStore:
   enabled: true
@@ -53,42 +53,38 @@ externalSecret:
   data:
     - secretKey: admin-user
       remoteRef:
-        key: "dev/platform-monitoring"
+        key: dev/platform-monitoring
         property: grafana-admin-user
     - secretKey: admin-password
       remoteRef:
-        key: "dev/platform-monitoring"
+        key: dev/platform-monitoring
         property: grafana-admin-password
     - secretKey: slack-webhook-url
       remoteRef:
-        key: "dev/platform-monitoring"
+        key: dev/platform-monitoring
         property: slack-webhook-url
     - secretKey: email-password
       remoteRef:
-        key: "dev/platform-monitoring"
+        key: dev/platform-monitoring
         property: email-password
 
 serviceAccount:
   create: true
-  name: "platform-monitoring"
+  name: "platform-monitoring-sa"
   annotations:
-    eks.amazonaws.com/role-arn: ""
+    eks.amazonaws.com/role-arn: "arn:aws:iam::509194952955:role/petclinic-dev-cluster-platform-monitoring-secrets-irsa"
 
 ingress:
   enabled: true
-  gateway: istio-ingress/internal-istio-ingressgateway
+  gateway: istio-ingress/ingress-internal-gateway
 
   monitoring:
     stacks:
       - name: grafana
         host: grafana-dev.internal.lefrancis.org
-        serviceName: kube-prometheus-stack-grafana
+        serviceName: monitoring-grafana
         port: 80
       - name: prometheus
         host: prometheus-dev.internal.lefrancis.org
-        serviceName: kube-prometheus-stack-prometheus
+        serviceName: monitoring-prometheus
         port: 9090
-      - name: loki
-        host: loki-dev.internal.lefrancis.org
-        serviceName: loki-gateway
-        port: 80

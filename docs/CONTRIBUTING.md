@@ -1,5 +1,34 @@
 # Contributing
 
+This repository is a platform engineering project: a production-style EKS
+platform built around the Spring Boot PetClinic microservices. The
+microservices themselves are already built and registered — contributions
+here are about the **platform**, not about adding new application services.
+
+You can also fork or reuse this platform to run your own set of
+microservices; the Helm charts, ArgoCD app registration, NetworkPolicy, and
+CI/CD pipeline are written generically enough to support that.
+
+---
+
+## What Contributions Look Like
+
+This project welcomes:
+
+- Fixes and improvements to Helm charts/templates (microservice chart,
+  platform component charts)
+- Terraform changes (modules, environment configs, new resources)
+- Resolving vulnerabilities surfaced by Trivy (CI scan or Trivy Operator
+  runtime scan)
+- Improvements to monitoring dashboards, alerting rules, NetworkPolicies,
+  or other platform components
+- Documentation updates
+
+Adding brand-new application microservices is **not** part of this
+project's scope — the PetClinic services are fixed. If you're using this
+platform as a base for your own services, see "Adapting This Platform For
+Your Own Services" below.
+
 ---
 
 ## Branch Strategy
@@ -24,14 +53,14 @@ automatically closed by the branch policy GitHub Actions workflow.
 
 ## Development Workflow
 
-### Platform Changes
+### Platform Changes (Helm charts, Terraform, policies)
 
 ```bash
 # Branch from dev
 git checkout dev && git pull origin dev
 git checkout -b feature/<change-name>
 
-# Make changes to Helm charts or values files
+# Make changes to Helm charts, values files, or Terraform
 
 # Lint the chart
 helm lint k8s/platform/monitoring
@@ -58,7 +87,7 @@ After merge to `main`:
 
 ---
 
-### Application Changes
+### Microservice Changes (existing PetClinic services)
 
 ```bash
 # Branch from dev
@@ -85,13 +114,16 @@ After merge:
 
 ---
 
-## Adding a New Microservice
+## Adapting This Platform For Your Own Services
+
+If you're reusing this platform to run a different set of microservices,
+the same policy-as-data patterns used for PetClinic apply:
 
 1. Add a service entry to `k8s/policies/values.yaml` under
    `clusterPolicy.services` — this generates the NetworkPolicy allow
    rules automatically.
 
-2. Create per-service values file:
+2. Create per-service values files:
    ```
    k8s/microservice/values/env/dev/<service>.yaml
    k8s/microservice/values/env/main/<service>.yaml
@@ -106,8 +138,8 @@ After merge:
 
 5. Create the ECR repository in `terraform/modules/ecr/`.
 
-No template changes are needed for steps 1 or 3. Both use the
-policy-as-data pattern — adding a values entry is sufficient.
+No template changes are needed for steps 1 or 3 — both use the
+policy-as-data pattern, so adding a values entry is sufficient.
 
 ---
 

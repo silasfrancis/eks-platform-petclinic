@@ -254,6 +254,7 @@ startup. No database passwords in Git or Kubernetes manifests.
 ```
 ![Petclinic Pods](diagrams/istio-injected-microservice-pods.png)
 *Petclinic Pods*
+
 ---
 
 ## HOW NODES AND PODS SCALE
@@ -293,9 +294,9 @@ NODE SCALING — Karpenter
   Terraform-managed · Karpenter only
   CriticalAddonsOnly taint — no application workloads
 ```
+---
 ![Karpenter Provisioned Nodes](diagrams/karpenter-provisioned-nodes.png)
 *Karpenter Provisioned Nodes*
----
 
 ## WHAT PLATFORM ENGINEERS SEE
 

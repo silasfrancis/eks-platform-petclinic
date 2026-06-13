@@ -4,8 +4,8 @@ springProfile: docker
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/genai-service
-  tag: "44589ffd"
-  digest: "sha256:5db5c7a6825248d787b2582f97fa133bdcc9cd526661b846135b3acf464bf670"
+  tag: "ceb3b585"
+  digest: "sha256:186aca74f0c142115251ec928353386bf8fcc50c388f4d4efdc38ea7bb9065bc"
   pullPolicy: IfNotPresent
 controller:
   type: rollout

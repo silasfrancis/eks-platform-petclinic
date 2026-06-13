@@ -12,13 +12,6 @@ GHSA-72hv-8253-57qq exp:2026-06-30
 # libc6 glibc memalign - awaiting patched distroless digest
 CVE-2026-0861 exp:2026-06-30
 
-# mssql-jdbc bundled by Flyway - image used only for file copy, driver never executed
-CVE-2025-59250
-
-# Smuggling risk in Netty - migration runner is internal/short-lived
-CVE-2026-33870
-CVE-2026-33871
-
 # libpng: Arbitrary code execution due to use-after-free
 CVE-2026-33416
 
@@ -114,3 +107,20 @@ CVE-2026-41901 exp:2026-06-30
 # Spring AI: vulnerability in chat client/model (genai-service)
 # Fixed as part of platform release - upgrading spring-ai to 1.1.6/2.0.0-M6
 CVE-2026-41712 exp:2026-06-30
+
+# --- migrations image ---
+
+# mssql-jdbc bundled by Flyway - image used only for file copy, driver never executed
+CVE-2025-59250
+
+# Smuggling risk in Netty - migration runner is internal/short-lived
+CVE-2026-33870
+CVE-2026-33871
+
+# OpenSSL/libssl: HIGH severity vulnerability in base OS packages
+# Fixed as part of platform release - upgrading base image / openssl packages
+CVE-2026-45447 exp:2026-06-30
+
+# PostgreSQL JDBC driver: HIGH severity vulnerability
+# Fixed as part of platform release - upgrading org.postgresql:postgresql to 42.7.11
+CVE-2026-42198 exp:2026-06-30

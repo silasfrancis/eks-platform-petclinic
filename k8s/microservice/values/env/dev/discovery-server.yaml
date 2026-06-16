@@ -4,8 +4,8 @@ springProfile: docker
 image:
   registry: 509194952955.dkr.ecr.us-east-2.amazonaws.com
   repository: petclinic/discovery-server
-  tag: "ceb3b585"
-  digest: "sha256:a9dcd42d9b3935941153b283ab460b21d01cc1ac1a808c694f5bad92a175be25"
+  tag: "df2148c2"
+  digest: "sha256:c8b55e582ecfd7f4a79a242b4bcc53f61d8e8ec4827b280aa387e2f3dfc7086c"
   pullPolicy: IfNotPresent
 controller:
   type: deployment

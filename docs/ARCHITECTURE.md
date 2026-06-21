@@ -294,6 +294,21 @@ NODE SCALING — Karpenter
   Terraform-managed · Karpenter only
   CriticalAddonsOnly taint — no application workloads
 ```
+
+### Spot Workload Placement
+
+The Spot NodePool is tainted with `spot=true:NoSchedule`. Only workloads that define the corresponding toleration can be scheduled onto Spot instances.
+
+This enables per-service placement decisions based on acceptable interruption risk while keeping critical services on On-Demand capacity.
+
+```yaml
+tolerations:
+  - key: spot
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+```
+
 ![Karpenter Provisioned Nodes](diagrams/karpenter-provisioned-nodes.png)
 *Karpenter Provisioned Nodes*
 
